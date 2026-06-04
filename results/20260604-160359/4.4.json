@@ -1,0 +1,28 @@
+{
+  "id": "4.4",
+  "area": "4. Direct Triage Routing",
+  "subcategory": "Telemedicine Co-Management",
+  "source_file": "area4_triage.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient with rheumatoid arthritis on methotrexate has a stable but complex regimen question about timing folic acid. Describe how a clinic pharmacist and a remote rheumatology specialist should co-manage this via telemedicine."
+    }
+  ],
+  "answer": "\n\n**Co-managed folic acid timing protocol for MTX in RA via telemedicine:**  \n*(Community Pharmacist + Remote Rheumatology Specialist)*  \n\n1.  **Initial Assessment (Pharmacist):** Verify current regimen: MTX dose/frequency, folic acid type/dose/timing, recent CBC/LFTs, renal function, and comorbidities/medications. *Red flags:* signs of infection (fever), persistent nausea/vomiting, bruising/bleeding (cytopenia), jaundice/dark urine (liver toxicity) – escalate immediately if present.\n2.  **Standard Guidance:** For weekly MTX:\n    *   Folic acid (typically 5mg leucovorin) should be taken **at least 24 hours after** the MTX dose to minimize side effects (mucositis, cytopenias). *Do not take same day.*\n    *   Confirm patient's current timing aligns with this. If they are taking it daily or same-day, advise adjustment.\n3.  **Telemedicine Workflow:**\n    *   Pharmacist schedules a brief video consult with the rheumatology specialist.\n    *   Specialist reviews all clinical details (including recent blood work) and confirms regimen suitability. Addresses complexities (e.g., high-dose MTX, renal impairment).\n    *   Pharmacist provides patient education on:\n        *   Correct timing schedule.\n        *   Common side effects to monitor (and when to seek help).\n        *   Importance of adherence and scheduled monitoring (CBC/LFTs typically monthly initially).\n        *   Basic drug interaction checks (e.g., NSAIDs, antibiotics like trimethoprim/sulfamethoxazole).\n    *   Pharmacist sets up a system for ongoing communication: e.g., shared secure portal for lab results, clear escalation path if side effects occur.\n4.  **Key Considerations & Uncertainties:**\n    *   *Uncertainty:* Without knowing exact MTX dose and recent labs, I cannot confirm optimal management. Higher doses may require different protocols.\n    *   *Critical Checks:* Ensure no contraindications (e.g., severe renal impairment, significant liver disease).\n    *   *Additional Advice:* Review alcohol intake and vaccination status (especially hepatitis). Counsel on signs of MTX toxicity requiring urgent care.\n    *   *Pharmacist Role:* Monitor for adherence and early side effects; initiate basic supportive care; escalate concerns to specialist.\n\n> **Example:** *\"Based on standard practice, we recommend taking your 5mg folic acid pill the day after your weekly methotrexate. Please confirm this schedule with our pharmacy team today. We've scheduled a telehealth visit with Dr. X next week to review your full history and labs. If you develop fever or unusual bruising before then, go to urgent care.\"*\n\n*(Note: This is general guidance. Final decisions require specialist input based on individual patient factors.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 140,
+    "completion_tokens": 1050,
+    "total_tokens": 1190,
+    "completion_tokens_details": {
+      "reasoning_tokens": 438
+    }
+  },
+  "latency_s": 15.55,
+  "model": "medpsy-4b"
+}

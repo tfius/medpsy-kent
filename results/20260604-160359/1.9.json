@@ -1,0 +1,28 @@
+{
+  "id": "1.9",
+  "area": "1. Ingestion & Symptom Processing",
+  "subcategory": "Red Flag Detection",
+  "source_file": "area1_ingestion.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "Ten minutes after taking a new antibiotic a patient has lip and tongue swelling, an itchy rash all over, and feels their throat tightening. What is happening and what is the immediate action?"
+    }
+  ],
+  "answer": "\n\n**This is acute anaphylaxis requiring emergency intervention.** Based on the rapid onset (within minutes of starting a new antibiotic) and symptoms involving skin/mucosa (lip/tongue swelling, rash) plus respiratory compromise (throat tightening), this meets criteria for anaphylaxis—a potentially life-threatening allergic reaction.\n\n**Immediate actions:**\n1.  **Stop the antibiotic immediately.**\n2.  **Call emergency medical services (EMS/911)** – airway obstruction is imminent.\n3.  **If epinephrine (adrenaline) is available and you are trained to administer it:** Give an intramuscular injection (typically 0.3-0.5mg in the mid-outer thigh). *This is the first-line treatment.* Community pharmacies often stock emergency epinephrine; check your protocols.\n4.  **While waiting for EMS:**\n    *   Have the patient lie flat (or sit if breathing is difficult) and do not let them stand or walk.\n    *   Ensure airway is clear; monitor breathing. If severe obstruction occurs, basic first aid may be needed, but advanced care requires professionals.\n    *   Administer supplemental oxygen if available.\n    *   Provide basic supportive care: antihistamines (e.g., diphenhydramine) and corticosteroids (e.g., prednisone) are secondary treatments but **do not replace epinephrine** for anaphylaxis.\n    *   Gather key information: Patient's age, specific antibiotic name, any known allergies or medical history, vital signs if possible (especially blood pressure and pulse).\n\n**Important considerations & next steps:**\n*   **Antibiotic likely culprit:** Common offenders include penicillins, sulfonamides, cephalosporins. The pharmacist should review the prescription details.\n*   **Critical red flags addressed:** Throat tightening indicates potential airway edema – this is time-sensitive.\n*   **Pharmacist role:** You've identified and initiated emergency response. Ensure EMS is activated. Provide them with all relevant details (medication, symptoms, timing).\n*   **Follow-up:** Once stabilized in medical care:\n    *   Confirm diagnosis and identify the specific allergen.\n    *   Provide clear written advice to avoid that antibiotic class/family.\n    *   Discuss an allergy bracelet and emergency action plan.\n    *   Ensure appropriate alternative antibiotics are prescribed if needed, considering cross-reactivity risks.\n    *   Consider referral for formal allergy testing when stable.\n\n**Note:** If you are in a setting without epinephrine or EMS training, focus on calling EMS immediately and basic supportive care. Do not delay emergency help. Anaphylaxis can progress rapidly to respiratory arrest or cardiovascular collapse. *(If you have access to vital signs showing hypotension or significant breathing difficulty, this further confirms severity).*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 132,
+    "completion_tokens": 988,
+    "total_tokens": 1120,
+    "completion_tokens_details": {
+      "reasoning_tokens": 396
+    }
+  },
+  "latency_s": 11.88,
+  "model": "medpsy-4b"
+}

@@ -1,0 +1,28 @@
+{
+  "id": "4.8",
+  "area": "4. Direct Triage Routing",
+  "subcategory": "Specialist Referral",
+  "source_file": "area4_triage.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient has a suspicious pigmented skin lesion that has changed size, color, and border over 2 months. What is the correct routing and urgency level?"
+    }
+  ],
+  "answer": "\n\nBased on your description (changing pigmented lesion over 2 months meeting ABCDE criteria - Evolution being key), this requires **urgent dermatology referral within 1-2 weeks**. Here's the concise guidance for your pharmacy setting:\n\n1.  **Urgency Level:** Urgent (not emergency, but time-sensitive). *Do not delay.*\n2.  **Recommended Action:**\n    *   Perform a basic visual ABCDE screening (Asymmetry, Border irregularity, Color variation, Diameter >6mm, Evolution).\n    *   Document key details: Location, size (measure), color(s), and specific changes.\n    *   Provide the patient with clear instructions for immediate next steps:\n        *   Schedule an urgent appointment with a dermatologist or skin cancer specialist within 10-14 days.\n        *   If you observe any of these red flags *now*, seek emergency care: rapid growth, bleeding/ulceration, pain, or swollen lymph nodes (e.g., in neck/armpit/groin).\n        *   Advise sun protection and avoid tanning beds until evaluation.\n        *   Consider taking a dated photo (with patient consent) for future comparison - but this doesn't replace clinical referral.\n3.  **Pharmacist Role:** You support by facilitating timely referral and providing initial risk assessment/education. You do not diagnose melanoma.\n4.  **Important Considerations:**\n    *   While many changing lesions are benign (e.g., a growing mole), melanoma is possible and treatable when caught early.\n    *   Key risk factors to ask about (if time permits): Fair skin, history of sunburns, family/personal history of skin cancer, immunosuppression, numerous moles.\n    *   If your pharmacy has access to teledermatology services, this can be a rapid interim step while waiting for an in-person appointment.\n\n> ⚠️ **Critical Reminder:** This is not a substitute for clinical evaluation. Only a dermatologist can diagnose melanoma (typically via dermoscopy and biopsy). If you have any doubt based on the visual exam, escalate to emergency if acute signs of infection or severe reaction are present; otherwise, urgent referral is key.\n\nIf you can share anonymized details like age, gender, lesion location, and approximate size/color changes (without violating privacy), I can offer more specific context. Otherwise, proceed with referral as outlined. Good luck!",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 126,
+    "completion_tokens": 870,
+    "total_tokens": 996,
+    "completion_tokens_details": {
+      "reasoning_tokens": 367
+    }
+  },
+  "latency_s": 12.25,
+  "model": "medpsy-4b"
+}

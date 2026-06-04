@@ -1,0 +1,28 @@
+{
+  "id": "A3.4",
+  "area": "ADV-3. Drug-knowledge traps (precision under pressure)",
+  "subcategory": "Serotonin syndrome (triple serotonergic)",
+  "source_file": "adv3_drug_traps.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient on sertraline (SSRI) for depression is taking tramadol for back pain and has just been started on linezolid for an infection. They now feel agitated, sweaty, shaky with twitching muscles. Any concern?"
+    }
+  ],
+  "answer": "\n\n**High concern for serotonin syndrome - urgent medical evaluation needed.** This combination (SSRI + tramadol + linezolid) significantly increases risk due to multiple serotonergic mechanisms:\n- Sertraline (SSRI)\n- Tramadol (weak SRI and reuptake inhibitor)\n- Linezolid (MAO inhibitor)\n\nYour symptoms (agitation, sweating, tremor, muscle twitching) are early signs. **Seek immediate medical assessment** - serotonin syndrome can progress to hyperthermia, rigidity, or organ failure.\n\nKey actions:\n1.  **Do not stop linezolid abruptly** (it's essential for infection), but contact your prescribing doctor/pharmacist immediately.\n2.  While awaiting help:\n    *   Ensure hydration and cool environment.\n    *   Monitor temperature and mental status.\n    *   Check if you have access to emergency services or an urgent care facility.\n    *   Provide your full medication list (doses and start dates) to the healthcare provider.\n3.  **Red flags requiring ER:** High fever (>40°C/104°F), severe muscle rigidity, confusion, rapid heart rate, or low blood pressure.\n\nAdditional considerations:\n*   Linezolid can also cause other side effects like bone marrow suppression (check for unusual bruising/bleeding/infection signs) and vitamin B12 deficiency.\n*   Rule out other causes: infection itself, electrolyte imbalance, thyroid issues, or other toxins.\n*   Your pharmacist will likely review alternatives for pain management and antibiotics.\n\n*(Note: I cannot diagnose. This is based on strong clinical suspicion from the drug profile and symptoms. Only your treating physician can confirm and manage this.)* If you have access to vital signs (temp, pulse) or lab results, share them with your doctor. Stay safe.",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 144,
+    "completion_tokens": 744,
+    "total_tokens": 888,
+    "completion_tokens_details": {
+      "reasoning_tokens": 368
+    }
+  },
+  "latency_s": 8.69,
+  "model": "medpsy-4b"
+}

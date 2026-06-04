@@ -1,0 +1,28 @@
+{
+  "id": "2.4",
+  "area": "2. Algorithmic Risk Stratification",
+  "subcategory": "Adverse Event Prediction",
+  "source_file": "area2_risk.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient on atorvastatin 80mg for 2 months reports new, symmetrical aching and weakness in both thighs and dark urine. Is this likely an adverse drug event, and how serious could it be?"
+    }
+  ],
+  "answer": "\n\n**This is highly suggestive of rhabdomyolysis, a serious adverse drug event requiring urgent medical evaluation.** Here's the key information and action:\n\n1.  **Likelihood:** Atorvastatin (especially high-dose 80mg) can cause myopathy/rhabdomyolysis. Symptoms of muscle pain/weakness + dark urine (suggesting myoglobinuria) are classic red flags.\n2.  **Seriousness:** Rhabdomyolysis can lead to acute kidney injury, electrolyte imbalances (like hyperkalemia), and other complications due to myoglobin release from damaged muscles. **This is a medical emergency.**\n3.  **Immediate Actions for the Pharmacist:**\n    *   Advise the patient to seek urgent medical care (ER or call emergency services).\n    *   Instruct them to stop atorvastatin immediately.\n    *   Ensure they have recent blood tests (Creatine Kinase - CK, renal function/electrolytes). Severe rhabdo often presents with very high CK levels (>5x upper limit of normal).\n    *   Provide supportive advice: Encourage hydration with water until medical help arrives (unless contraindicated), and note any other symptoms (nausea, confusion, reduced urine output).\n\n**Important Considerations & Context:**\n*   **Risk Factors:** High-dose statin, possible drug interactions (e.g., with fibrates, certain antibiotics/antifungals, cyclosporine), dehydration, alcohol excess, renal impairment, or underlying muscle disorders.\n*   **Differential Diagnosis:** While statin-induced is likely, other causes need medical investigation (trauma, infection, toxins, metabolic disorders).\n*   **Your Role:** You've identified a clear red flag. The pharmacist must escalate this promptly to the prescriber and ensure emergency care. Do not manage this alone.\n*   **Follow-up:** Once stabilized, the cause will be investigated. Statin therapy may need reevaluation (dose reduction, alternative statin, checking for interactions).\n\n> ⚠️ **Critical Note:** If you are in a community pharmacy setting and cannot provide immediate emergency care guidance, contact your local emergency services or medical director immediately. Do not delay.\n\n*(If more details were available - age, gender, other meds, alcohol history, renal function, CK level - the assessment could be refined. However, based on current info, urgency is paramount.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 141,
+    "completion_tokens": 822,
+    "total_tokens": 963,
+    "completion_tokens_details": {
+      "reasoning_tokens": 310
+    }
+  },
+  "latency_s": 9.92,
+  "model": "medpsy-4b"
+}

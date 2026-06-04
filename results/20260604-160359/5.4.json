@@ -1,0 +1,28 @@
+{
+  "id": "5.4",
+  "area": "5. Quality Assurance & Oversight (Human-in-the-Loop)",
+  "subcategory": "Missed-Alert Catch",
+  "source_file": "area5_oversight.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A triage suggestion labeled a patient with sudden severe abdominal pain and fainting as 'routine.' As an oversight check, what is wrong with that and what should happen?"
+    }
+  ],
+  "answer": "\n\n**This triage labeling is dangerously incorrect and requires immediate correction.** Sudden severe abdominal pain with fainting (syncope) are **red-flag symptoms** indicating possible life-threatening conditions such as:\n- Ruptured abdominal aortic aneurysm\n- Acute appendicitis/perforation\n- Ectopic pregnancy or other acute surgical abdomen\n- Severe infection (e.g., peritonitis)\n- Significant internal bleeding or shock\n\n**What should happen:**\n1.  **Immediate escalation:** The patient must be referred to emergency medical services (call ambulance) or taken to an emergency department *without delay*. Do not treat as routine.\n2.  **Pharmacist action:** While awaiting EMS:\n    - Perform a rapid assessment: Check vital signs (especially blood pressure and pulse for shock), ask about age/gender/medical history, medications, and key details (e.g., pregnancy possibility).\n    - Provide supportive care if trained and appropriate (e.g., lay patient flat, keep warm, do not give food/drink in case surgery needed). **Do not attempt to diagnose or treat the underlying cause.**\n    - Ensure safety: Prevent falls due to fainting.\n    - Document thoroughly: Symptoms, time of onset, vital signs, actions taken, and referral details.\n3.  **Pharmacist follow-up:** Review pharmacy protocols for acute abdominal pain/syncope triage. Ensure staff are trained on red flags. Consider if urgent medication review (e.g., anticoagulants) is needed but *only after emergency care*.\n\n**Why it's wrong:** \"Routine\" implies low urgency, but these symptoms suggest potential surgical or critical illness requiring imaging and specialist intervention within hours. Delaying care risks death or permanent disability.\n\n> ⚠️ **Critical note:** If you are in a community pharmacy setting and encounter this presentation, do not rely solely on triage labels. Your clinical judgment must override any system error for these symptoms. Always escalate based on red flags. If unsure about local protocols, consult your supervising physician or emergency services guidelines immediately.",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 128,
+    "completion_tokens": 736,
+    "total_tokens": 864,
+    "completion_tokens_details": {
+      "reasoning_tokens": 306
+    }
+  },
+  "latency_s": 9.95,
+  "model": "medpsy-4b"
+}

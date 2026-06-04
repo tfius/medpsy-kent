@@ -1,0 +1,28 @@
+{
+  "id": "A2.5",
+  "area": "ADV-2. Over-triage traps (looks alarming, is benign)",
+  "subcategory": "Single mildly raised home BP reading",
+  "source_file": "adv2_overtriage.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "I checked my blood pressure once at home on a cheap wrist monitor right after rushing in and arguing on the phone, and it said 150/92. I have no symptoms. Is this a hypertensive emergency - should I go to A&E?"
+    }
+  ],
+  "answer": "\n\n**No, this is unlikely a hypertensive emergency requiring immediate A&E care based on your description.** Here's why and what to do next:\n\n💡 **Key points & advice:**\n1.  **Context matters:** Stress (like arguing) can temporarily raise BP. A single reading of 150/92 (Stage 2 hypertension range) isn't diagnostic alone, especially with no symptoms.\n2.  **Device limitation:** Cheap wrist monitors are less reliable than upper-arm cuffs and prone to error (positioning, movement). *Do not rely solely on this.*\n3.  **What you should do now:**\n    *   Rest quietly for 15-20 minutes. Retake your BP using an **upper-arm home monitor** (validated device) following proper technique (back supported, feet flat, arm at heart level, no talking, empty bladder). Take 2 readings 1-2 minutes apart and average them.\n    *   If you get consistent readings ≥ 180/110 mmHg **OR** develop symptoms like severe headache, vision changes, chest pain, shortness of breath, nausea, numbness, or confusion – go to A&E immediately (hypertensive emergency).\n    *   If readings remain consistently elevated (≥ 140/90) over the next few days, schedule an appointment with your GP or community pharmacy pharmacist within 1-2 weeks for proper evaluation and management. They may check for secondary causes and discuss lifestyle changes or medication.\n    *   Important: Start tracking:\n        *   Time of day (BP often higher in morning).\n        *   Multiple readings over several days/weeks (e.g., morning and evening).\n        *   Any symptoms.\n\n⚠️ **Important considerations & red flags:**\n*   **Hypertensive emergency** involves very high BP *with evidence of organ damage* (e.g., heart failure, kidney injury, stroke, severe aortic dissection). Your lack of symptoms makes this unlikely.\n*   **Risk factors to consider:** Age? Family history? Other health conditions (kidney disease, diabetes)? Current medications (including OTC like NSAIDs or decongestants)? These help assess need for prompt medical review.\n*   **When it's urgent:** If you have any of these, seek emergency care:\n    *   Systolic ≥ 180 mmHg or Diastolic ≥ 110 mmHg (confirmed).\n    *   Symptoms suggesting organ damage (as listed above).\n    *   Known severe kidney disease or heart failure.\n*   **Next steps for you:** Address potential reversible causes:\n    *   Ensure correct home monitoring technique.\n    *   Review salt intake, alcohol, caffeine, stress, and medications with your pharmacist/GP.\n    *   Check for other risk factors (smoking, obesity).\n    *   Consider if you need ambulatory BP monitoring.\n\n> *Note: I cannot diagnose or prescribe. This is general advice based on limited information. Your registered pharmacist is best placed to provide personalized guidance after reviewing your full history and potentially doing further checks.*\n\nIf you can share (anonymized) more details like age range, gender, relevant medical/medication history, and a few days of properly taken readings, I can offer more tailored context. Otherwise, follow the steps above. Take care! 💙\n*(Remember: Consistent hypertension needs management to prevent long-term complications like heart/kidney disease, but one stressed reading isn't an emergency).*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 147,
+    "completion_tokens": 1076,
+    "total_tokens": 1223,
+    "completion_tokens_details": {
+      "reasoning_tokens": 350
+    }
+  },
+  "latency_s": 12.66,
+  "model": "medpsy-4b"
+}

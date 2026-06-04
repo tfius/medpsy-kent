@@ -1,0 +1,28 @@
+{
+  "id": "1.4",
+  "area": "1. Ingestion & Symptom Processing",
+  "subcategory": "Red Flag Detection",
+  "source_file": "area1_ingestion.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient describes: 'the worst headache of my life, came on in seconds about an hour ago, my neck feels stiff and bright light hurts.' How urgent is this and where should they go?"
+    }
+  ],
+  "answer": "\n\n**Seek emergency care immediately.** This presentation is highly suggestive of a possible subarachnoid hemorrhage (e.g., from a ruptured brain aneurysm) or meningitis, both medical emergencies.\n\n*   **Key red flags:** Sudden \"worst headache ever\" onset (seconds), neck stiffness (meningismus), and photophobia. These require urgent neuroimaging (CT scan) and specialist evaluation.\n*   **Action:** Call emergency services or go to the nearest Emergency Department right now. Do not wait. Do not drive yourself if possible; have someone else take you or call an ambulance.\n*   **Important notes for you:**\n    *   While in the ER, they will assess for other signs (e.g., vomiting, confusion, loss of consciousness, fever).\n    *   Risk factors like high blood pressure, history of head injury, or age may be relevant – share these with the medical team.\n    *   As a community pharmacy assistant, I cannot diagnose or treat this. Only emergency physicians can manage acute neurological emergencies.\n\n*(If you have additional details like age, gender, known medical conditions, medications, or recent trauma/fever, it could help refine context, but **do not delay care** for this information.)*\n*Pharmacist note: Ensure your community pharmacy has protocols for urgent referrals and can provide supportive advice while you seek emergency help.*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 134,
+    "completion_tokens": 613,
+    "total_tokens": 747,
+    "completion_tokens_details": {
+      "reasoning_tokens": 322
+    }
+  },
+  "latency_s": 7.22,
+  "model": "medpsy-4b"
+}

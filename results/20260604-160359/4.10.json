@@ -1,0 +1,28 @@
+{
+  "id": "4.10",
+  "area": "4. Direct Triage Routing",
+  "subcategory": "Mixed Routing",
+  "source_file": "area4_triage.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient with COPD has a routine inhaler-technique question but also mentions they have been coughing up green sputum with increasing breathlessness over 3 days. Describe how to split the routing between pharmacist-led care and physician escalation."
+    }
+  ],
+  "answer": "\n\n**Immediate pharmacist actions:** Assess for red flags (fever >38°C, confusion, severe hypoxia, hemodynamic instability) and provide urgent advice to seek same-day medical evaluation. Do not delay physician referral.\n\n**Pharmacist-led care components:**\n1.  **Confirm basics:** Verify current COPD medications (especially inhaled corticosteroids/systemics), check for recent antibiotic use, and ensure inhaler technique is correct *for this acute issue* (e.g., rule out incorrect bronchodilator use).\n2.  **Symptom assessment & triage:**\n    *   Ask about fever, chest pain, confusion, or significant drop in oxygen saturation (<90% on room air) – if present, advise emergency department.\n    *   Check baseline: How long has COPD been diagnosed? Any recent hospitalizations for exacerbation?\n    *   Provide supportive advice: Ensure adequate hydration. Confirm they have a pulse oximeter and know how to use it. Advise monitoring respiratory rate (increase >30/min is red flag) and oxygen saturation.\n    *   Review medications: Check for appropriate antibiotics if bacterial infection suspected (but only physician can prescribe). Ensure they are using their prescribed short-acting bronchodilator as needed. Confirm if they have a maintenance steroid inhaler and are using it correctly. **Do not initiate new antibiotics or steroids without medical direction.**\n    *   Document: Record symptoms, vital signs if available (temp, pulse, resp rate, O2 sat), current meds, and referral details.\n\n**Physician escalation components:** The physician will:\n1.  Diagnose the cause of exacerbation (likely bacterial infection like pneumonia or acute bronchitis, but also consider other causes).\n2.  Order investigations: Likely chest X-ray, blood tests (CBC, electrolytes), sputum culture.\n3.  Initiate appropriate treatment: Antibiotics if indicated, systemic corticosteroids, possible oxygen therapy and respiratory support.\n4.  Assess for complications or alternative diagnoses.\n\n**Key considerations:** Green sputum suggests possible bacterial infection in a COPD exacerbation. Worsening breathlessness over days is not routine maintenance. **This requires prompt medical evaluation within 24 hours (or sooner if red flags).** Ensure the patient has access to primary care or an urgent care facility. If you are in a region with telehealth options, that can be a rapid first step.\n\n*(Note: As an AI assistant, I cannot diagnose or prescribe. My role is to support safe triage and information sharing within the pharmacist's scope of practice.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 144,
+    "completion_tokens": 839,
+    "total_tokens": 983,
+    "completion_tokens_details": {
+      "reasoning_tokens": 302
+    }
+  },
+  "latency_s": 11.72,
+  "model": "medpsy-4b"
+}

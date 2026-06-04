@@ -1,0 +1,28 @@
+{
+  "id": "3.1",
+  "area": "3. Pharmacist Clinical Decision Support",
+  "subcategory": "Targeted Questioning",
+  "source_file": "area3_decision_support.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient presents with a headache. Generate 6 targeted follow-up questions a pharmacist should ask to triage it safely, ordered by importance."
+    }
+  ],
+  "answer": "\n\nHere are 6 targeted follow-up questions for headache triage, prioritized by clinical urgency:\n\n1.  **Sudden onset?** (\"Worst headache of my life\" or thunderclap onset within seconds/minutes). *Red flag: Subarachnoid hemorrhage.*\n2.  **Neurological symptoms?** (New confusion, weakness/numbness on one side, vision changes like double vision or loss, slurred speech, loss of balance/coordination). *Red flag: Stroke or other acute neurological emergency.*\n3.  **Fever and neck stiffness?** (Especially if sudden onset). *Red flag: Meningitis or encephalitis.*\n4.  **Age >50 years old?** (New-onset headache in this age group raises concern for secondary causes like giant cell arteritis or tumor).\n5.  **Immunosuppression or recent infection/trauma/surgery?** (e.g., HIV, chemotherapy, head injury within days). *Red flag: Increased risk of infection or other serious causes.*\n6.  **Headache characteristics & pattern:** (Location - e.g., one-sided; duration - acute vs chronic; associated symptoms like nausea/vomiting/photophobia/phonophobia; current medications including recent antibiotics or new analgesics).\n\n**Important Context for Pharmacist:**\n*   If *any* red flag symptom is present (Q1, Q2, Q3), advise **immediate emergency evaluation**.\n*   This is triage support. Do not diagnose. Assess based on full history and local protocols.\n*   Consider common causes (tension-type, migraine) but rule out emergencies first.\n*   Document findings clearly for the patient's record and potential referral.",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 122,
+    "completion_tokens": 769,
+    "total_tokens": 891,
+    "completion_tokens_details": {
+      "reasoning_tokens": 404
+    }
+  },
+  "latency_s": 10.28,
+  "model": "medpsy-4b"
+}

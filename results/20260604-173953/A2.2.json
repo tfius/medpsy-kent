@@ -1,0 +1,28 @@
+{
+  "id": "A2.2",
+  "area": "ADV-2. Over-triage traps (looks alarming, is benign)",
+  "subcategory": "Rifampicin/phenazopyridine orange secretions",
+  "source_file": "adv2_overtriage.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "I just started a new medicine and my pee has turned bright orange, and even my tears stained my contact lenses. I'm panicking that my kidneys or liver are failing. Do I need urgent tests?"
+    }
+  ],
+  "answer": "\n\n**This is likely a harmless side effect of your medication, but please confirm with your pharmacist/doctor.** The bright orange urine (and tears/sweat) you describe is a classic sign of certain medications like **rifampin** (for TB), phenazopyridine (urinary pain relief), or some antibiotics. It's usually not kidney/liver failure.\n\nHere's what to do:\n1.  **Check your medication name:** Look at the new prescription details. If it's rifampin, this is expected.\n2.  **Important reassurance & action:**\n    *   This discoloration itself isn't typically a sign of organ failure *on its own*.\n    *   **However,** you should contact your prescribing doctor or community pharmacist within 24 hours for confirmation and to rule out other issues based on your full health picture and medication list.\n    *   **Seek urgent medical care (ER) if you develop any of these red flags:** Yellowing of skin/eyes (jaundice), severe abdominal pain, persistent nausea/vomiting, unusual fatigue, dark tea-colored urine that doesn't clear with hydration, reduced urine output, swelling, or signs of an allergic reaction (rash, breathing difficulty).\n    *   While waiting for your appointment:\n        *   Stay well-hydrated.\n        *   Note any other new symptoms (like rash, fever, nausea, abdominal pain, fatigue).\n        *   Do not stop the medication abruptly unless instructed by your doctor (some are essential).\n        *   If you have access to basic liver/kidney function tests from routine blood work recently, that can be a helpful baseline.\n\n**Why this happens:** Some drugs cause harmless pigment changes. Rifampin is very common for this effect. Liver or kidney failure usually presents with more symptoms than just orange urine (like jaundice, confusion, swelling, nausea).\n\n*(Note: As an AI assistant in this pharmacy context, I cannot diagnose you. Only your healthcare provider can interpret results and manage treatment based on your individual case.)* If you feel significantly unwell beyond the discoloration, don't wait – go to urgent care or ER. Otherwise, schedule that pharmacist/doctor visit promptly. Let me know if you can share the medication name (you can omit personal details) for more specific guidance.",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 135,
+    "completion_tokens": 814,
+    "total_tokens": 949,
+    "completion_tokens_details": {
+      "reasoning_tokens": 333
+    }
+  },
+  "latency_s": 9.69,
+  "model": "medpsy-4b"
+}

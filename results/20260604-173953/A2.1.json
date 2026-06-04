@@ -1,0 +1,28 @@
+{
+  "id": "A2.1",
+  "area": "ADV-2. Over-triage traps (looks alarming, is benign)",
+  "subcategory": "Beeturia (not haematuria)",
+  "source_file": "adv2_overtriage.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "My urine has gone pinkish-red since yesterday. I feel completely fine - no pain, no fever, no burning. The only thing different is I ate a big beetroot salad last night. Should I rush to A&E for blood in my urine?"
+    }
+  ],
+  "answer": "\n\n**No immediate emergency needed, but monitor closely.** What you describe (pink urine after beetroot salad with no pain/fever) is very likely **beeturia** – a harmless, temporary discoloration caused by betalain pigments in beets. It's common and resolves on its own.\n\nHere's what to know:\n1.  **Likely cause:** Beetroot (and some other foods like blackberries or rhubarb) can turn urine pink/red without any underlying issue.\n2.  **What to do now:**\n    *   Stay hydrated.\n    *   Note if the color returns to normal within 24-48 hours.\n    *   Check for red flags (go to A&E immediately if you develop):\n        *   Pain in your side/back/flank or lower abdomen\n        *   Fever or chills\n        *   Nausea/vomiting\n        *   Blood clots in urine\n        *   History of kidney stones, cancer, or significant trauma\n        *   Recent intense exercise (can cause temporary harmless hematuria) or new medications (like blood thinners, NSAIDs, certain antibiotics).\n    *   If the pink color persists beyond 48 hours, or if any red flags develop, see your pharmacist or GP promptly for evaluation. They may do a simple urine test.\n\n**Important considerations:** While beeturia is probable, other causes of painless hematuria (like stones, infection, inflammation, or less commonly tumors) need ruling out by a professional *if it doesn't resolve*. Don't ignore persistent symptoms.\n\n*(As an AI assistant: I cannot diagnose. This advice is based on common benign causes in your scenario. Your pharmacist can provide personalized guidance and check for other potential factors like medications or supplements you might be taking.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 145,
+    "completion_tokens": 707,
+    "total_tokens": 852,
+    "completion_tokens_details": {
+      "reasoning_tokens": 330
+    }
+  },
+  "latency_s": 8.44,
+  "model": "medpsy-4b"
+}

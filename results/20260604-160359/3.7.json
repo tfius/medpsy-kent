@@ -1,0 +1,28 @@
+{
+  "id": "3.7",
+  "area": "3. Pharmacist Clinical Decision Support",
+  "subcategory": "Evidence Synthesis",
+  "source_file": "area3_decision_support.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "For a newly diagnosed adult with stage 1 hypertension and no diabetes, outline the guideline-based lifestyle and pharmacological approach and what threshold warrants starting medication."
+    }
+  ],
+  "answer": "\n\nBased on current guidelines (e.g., ACC/AHA, ESC), here's a concise, evidence-based approach for **newly diagnosed stage 1 hypertension** (systolic 130-139 mmHg or diastolic 80-89 mmHg) in an adult without diabetes. **This is not a substitute for physician consultation; your pharmacist will collaborate with the prescriber.**\n\n📌 **Key Recommendations:**\n1.  **Confirm diagnosis:** Ensure ≥2 readings on separate occasions (office and/or validated home/ambulatory monitoring). Rule out secondary causes if indicated.\n2.  **Lifestyle modification first (3-6 months):** This is foundational for all patients.\n    *   Sodium reduction (<1500 mg/day ideal, <2300 mg).\n    *   DASH-style diet (fruits, vegetables, whole grains, low-fat dairy).\n    *   Regular aerobic exercise (≥150 min/week moderate intensity).\n    *   Weight management if overweight/obese (target BMI 18.5-24.9 kg/m²).\n    *   Limit alcohol (<1 drink/day for women, <2 for men).\n    *   Smoking cessation support.\n    *   Stress management and adequate sleep.\n    *   Address OTC NSAIDs/supplements that may raise BP.\n3.  **Pharmacological approach:**\n    *   **Start medication if:** Cardiovascular risk is high (e.g., age ≥40, existing CVD, CKD, high calculated ASCVD score) OR stage 2 hypertension (≥140/90 mmHg).\n        *   First-line options typically include ACE inhibitors, ARBs, calcium channel blockers, or thiazide diuretics. Choice depends on comorbidities and tolerance.\n        *   **Important:** Baseline renal function (eGFR) and electrolytes are needed before starting most antihypertensives.\n    *   **Monitor response:** Check BP in 4-8 weeks after starting meds/lifestyle. Target is <130/80 mmHg for most adults without diabetes.\n    *   **Pharmacy role:** Provide medication counseling, adherence support, monitor for side effects (e.g., ACEi cough, hyperkalemia), check for drug interactions, and ensure appropriate monitoring.\n\n⚠️ **Critical Considerations & Red Flags:**\n*   **Life-threatening hypertension (Hypertensive Urgency/Emergency):** Seek immediate emergency care if BP ≥180/110 mmHg *with* symptoms like severe headache, chest pain, shortness of breath, vision changes, nausea/vomiting, or neurological deficits (signs of stroke/encephalopathy).\n*   **Individualization is key:** Your age, sex, ethnicity, family history, and other risk factors (smoking, dyslipidemia, CKD) determine if you need meds now. A simple risk calculator (like ASCVD) is used by your doctor.\n*   **Essential assessments needed:** Your physician will evaluate for target organ damage (e.g., left ventricular hypertrophy on echo, renal impairment, retinopathy) and other risk factors.\n*   **When to escalate:** If BP remains ≥130/80 mmHg despite optimal lifestyle and initial medication after 3-6 months, consider adding a second agent or further evaluation.\n\n💡 **Additional Advice for You:**\n*   Start home BP monitoring correctly (proper cuff size, rest 5 mins, arm at heart level, no caffeine/smoking 30 mins prior). Keep a log.\n*   Review all current medications and supplements with your pharmacist/doctor.\n*   Address modifiable risk factors like cholesterol and smoking.\n*   If you have symptoms of end-organ damage (e.g., vision changes, persistent headache, chest pain, numbness), go to the ER.\n\n*(Note: Guidelines vary slightly by region. This reflects common Western standards. Always follow your local protocol.)*\nLet me know if you can share anonymized details like age, sex, ethnicity, and basic lab results (creatinine/eGFR) for more tailored guidance within safe limits. I cannot diagnose or prescribe.",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 124,
+    "completion_tokens": 1459,
+    "total_tokens": 1583,
+    "completion_tokens_details": {
+      "reasoning_tokens": 574
+    }
+  },
+  "latency_s": 22.31,
+  "model": "medpsy-4b"
+}

@@ -1,0 +1,28 @@
+{
+  "id": "3.6",
+  "area": "3. Pharmacist Clinical Decision Support",
+  "subcategory": "Targeted Questioning",
+  "source_file": "area3_decision_support.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient says a medication is 'making them feel dizzy.' List the targeted questions needed to determine whether this is a dose issue, an interaction, orthostatic hypotension, or an unrelated cause."
+    }
+  ],
+  "answer": "\n\n**Targeted questions for dizziness evaluation:**  \n*(Pharmacist should assess these; escalate if red flags present)*  \n\n1. **Medication details:** Which specific drug(s) started recently? (Common culprits: antihypertensives, antidepressants, antibiotics like aminoglycosides). Dose and frequency? Any new OTCs/supplements?\n2. **Symptom pattern:** How long after starting the med did dizziness begin? Is it constant or episodic? Worse at certain times (e.g., standing up quickly)?\n3. **Orthostatic hypotension check:** Does dizziness occur within 1-3 minutes of standing? Have you measured BP lying down and after standing for 2-3 minutes? *(Normal drop: >20 mmHg systolic or >10 mmHg diastolic)*.\n4. **Other symptoms:** Nausea/vomiting (dehydration/inner ear issue)? Headache, vision changes, slurred speech, weakness, or numbness? *(Red flags for stroke/TIA - seek emergency care immediately)*. Chest pain/palpitations? Signs of dehydration?\n5. **Risk factors:** Age >65? History of heart disease, diabetes, Parkinson’s, or vestibular disorders? Alcohol use?\n6. **Basic context:** How long have you been on this med? Any recent illness/dehydration?\n\n**Key considerations & advice for pharmacist:**\n- Most common reversible causes: orthostatic hypotension (common with antihypertensives/diuretics), drug interactions, dehydration.\n- **Red flags requiring urgent evaluation:** Sudden vertigo with neurological symptoms (stroke), signs of severe dehydration/electrolyte imbalance, or cardiac issues.\n- **Initial actions:** Review medication list for known hypotensive/ vestibular side effects. Check renal/hepatic function and electrolytes if possible. Counsel on slow position changes and hydration. Monitor BP orthostatically.\n- *If dizziness persists >48h or worsens, refer to prescriber for dose adjustment or alternative therapy.*\n\n> *Example: If patient is on lisinopril 20mg daily with new dizziness after standing, check orthostatic vitals and consider dose reduction or timing.*  \n> *(Note: I cannot diagnose - this supports clinical decision-making. Always follow local protocols.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 135,
+    "completion_tokens": 901,
+    "total_tokens": 1036,
+    "completion_tokens_details": {
+      "reasoning_tokens": 404
+    }
+  },
+  "latency_s": 13.78,
+  "model": "medpsy-4b"
+}

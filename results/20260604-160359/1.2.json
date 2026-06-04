@@ -1,0 +1,28 @@
+{
+  "id": "1.2",
+  "area": "1. Ingestion & Symptom Processing",
+  "subcategory": "NLP Symptom Extraction",
+  "source_file": "area1_ingestion.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "Extract the symptoms from this patient message into a structured list (symptom, location, onset, duration, severity, associated factors). Message: 'since yesterday morning my tummy on the lower right side has been getting worse, sharp pain maybe 7/10, feels worse when I press it and I threw up twice, no appetite.'"
+    }
+  ],
+  "answer": "\n\nBased on the patient message, here is the structured symptom extraction:\n\n*   **Symptom:** Abdominal pain\n    *   Location: Lower right side\n    *   Onset: Yesterday morning (since onset)\n    *   Duration: Since yesterday morning (exact hours not specified)\n    *   Severity: Sharp pain rated 7/10\n    *   Associated factors: Worse with palpation (pressing), vomiting twice, loss of appetite\n\n**Critical Note:** This presentation (acute lower right quadrant pain worsening since onset) raises concern for possible appendicitis or other surgical abdomen. **This requires urgent medical evaluation by a physician.** Do not delay seeking emergency care. Key red flags include localized tenderness and nausea/vomiting.\n\n*(Disclaimer: I am an AI assistant providing structured data extraction. I cannot diagnose. The pharmacist must assess the patient clinically, consider differential diagnoses, and arrange appropriate urgent referral or emergency department attendance based on full assessment and local protocols.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 163,
+    "completion_tokens": 549,
+    "total_tokens": 712,
+    "completion_tokens_details": {
+      "reasoning_tokens": 345
+    }
+  },
+  "latency_s": 6.46,
+  "model": "medpsy-4b"
+}

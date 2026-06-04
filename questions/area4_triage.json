@@ -1,0 +1,56 @@
+{
+  "area": "4. Direct Triage Routing",
+  "description": "Routing decisions: pharmacist-led care for low-to-moderate complexity, telemedicine specialist co-management, and automated scheduling for high-urgency physician needs.",
+  "samples": [
+    {
+      "id": "4.1",
+      "subcategory": "Pharmacist-Led Care",
+      "user": "A 28-year-old woman with no significant history reports classic uncomplicated lower urinary tract infection symptoms (dysuria, frequency) for 1 day, no fever, no flank pain, not pregnant. Where should this be routed: pharmacist, physician appointment, or ED? Justify."
+    },
+    {
+      "id": "4.2",
+      "subcategory": "High-Urgency Routing + Scheduling",
+      "user": "A patient describes new-onset slurred speech and right-sided weakness that began 30 minutes ago. Determine the routing destination and the scheduling/escalation action the system should take."
+    },
+    {
+      "id": "4.3",
+      "subcategory": "Chronic Disease Titration Routing",
+      "user": "A stable hypertensive patient's home readings have crept up to 145/90 over a month with no symptoms. Is this a pharmacist-led titration case or does it require physician routing? Explain."
+    },
+    {
+      "id": "4.4",
+      "subcategory": "Telemedicine Co-Management",
+      "user": "A patient with rheumatoid arthritis on methotrexate has a stable but complex regimen question about timing folic acid. Describe how a clinic pharmacist and a remote rheumatology specialist should co-manage this via telemedicine."
+    },
+    {
+      "id": "4.5",
+      "subcategory": "Ambiguous Case Routing",
+      "user": "A 65-year-old reports intermittent chest tightness on exertion over the past 2 weeks that resolves with rest, currently pain-free and stable. Where should this be routed and why is routing it to a pharmacist alone unsafe?"
+    },
+    {
+      "id": "4.6",
+      "subcategory": "Automated Scheduling Logic",
+      "user": "Given a patient flagged as needing a same-day physician review for poorly controlled symptoms but who is clinically stable, describe the appropriate automated scheduling action and what safety-net advice should accompany it."
+    },
+    {
+      "id": "4.7",
+      "subcategory": "Minor Ailment Pharmacist-Led",
+      "user": "A patient has mild seasonal allergic rhinitis (sneezing, itchy eyes) for a week, no breathing difficulty. Is this suitable for pharmacist-led care, and what would that involve?"
+    },
+    {
+      "id": "4.8",
+      "subcategory": "Specialist Referral",
+      "user": "A patient has a suspicious pigmented skin lesion that has changed size, color, and border over 2 months. What is the correct routing and urgency level?"
+    },
+    {
+      "id": "4.9",
+      "subcategory": "Side-Effect Routing",
+      "user": "A patient reports mild nausea after starting metformin 1 week ago, still eating and drinking, no severe symptoms. Should this go to the pharmacist or be escalated? What is the pharmacist-led plan?"
+    },
+    {
+      "id": "4.10",
+      "subcategory": "Mixed Routing",
+      "user": "A patient with COPD has a routine inhaler-technique question but also mentions they have been coughing up green sputum with increasing breathlessness over 3 days. Describe how to split the routing between pharmacist-led care and physician escalation."
+    }
+  ]
+}

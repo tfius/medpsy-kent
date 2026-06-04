@@ -1,0 +1,28 @@
+{
+  "id": "4.2",
+  "area": "4. Direct Triage Routing",
+  "subcategory": "High-Urgency Routing + Scheduling",
+  "source_file": "area4_triage.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient describes new-onset slurred speech and right-sided weakness that began 30 minutes ago. Determine the routing destination and the scheduling/escalation action the system should take."
+    }
+  ],
+  "answer": "\n\n**Immediate emergency activation required.** This presentation is highly suggestive of an acute ischemic stroke (based on sudden focal neurological deficits: slurred speech and right-sided weakness). Key actions:\n\n1.  **Routing:** Call emergency medical services (EMS) immediately. Do not delay for CT scan or other diagnostics at the community pharmacy level.\n2.  **Scheduling/Escalation Action:**\n    *   The pharmacist should activate the pharmacy's emergency protocol/stroke pathway.\n    *   Provide EMS with exact symptom onset time (30 minutes ago - critical for treatment window).\n    *   While waiting for EMS:\n        *   Confirm vital signs if equipment is immediately available (BP, pulse).\n        *   Gather basic history: Age, known medical conditions (e.g., hypertension, diabetes, atrial fibrillation), current medications (especially anticoagulants like warfarin or DOACs).\n        *   Perform a rapid FAST assessment (Face droop? Arm weakness? Speech difficulty? Time): This patient meets criteria.\n        *   Administer basic pre-hospital advice: Note the time symptoms started, keep patient calm and lying down (do not eat/drink), monitor for worsening symptoms or new deficits. Do not give aspirin or other medications without medical direction due to hemorrhage risk.\n\n**Critical Context (for pharmacist & EMS):**\n*   **Time is brain:** Treatment options like IV thrombolysis have a narrow window (typically within 4.5 hours of onset).\n*   **Differential considerations:** While stroke is most urgent, EMS will rule out other causes (e.g., seizure, tumor, metabolic issue) in the emergency department.\n*   **Pharmacy role:** We support by rapid recognition and protocol activation; we do not diagnose or treat acute stroke. Final decisions are made by physicians in the hospital setting after appropriate imaging.\n\n> *If you can provide anonymized additional details (age range, gender, relevant medical history/medications), I can offer more specific guidance on potential risk factors and what to expect next in the emergency department. However, this should not delay EMS activation.*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 131,
+    "completion_tokens": 770,
+    "total_tokens": 901,
+    "completion_tokens_details": {
+      "reasoning_tokens": 336
+    }
+  },
+  "latency_s": 11.13,
+  "model": "medpsy-4b"
+}

@@ -1,0 +1,28 @@
+{
+  "id": "5.8",
+  "area": "5. Quality Assurance & Oversight (Human-in-the-Loop)",
+  "subcategory": "Drift / Performance Monitoring",
+  "source_file": "area5_oversight.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "Explain, in plain terms for a pharmacy team, why a deployed triage model's performance should be monitored over time and give two examples of what could go wrong if it isn't."
+    }
+  ],
+  "answer": "\n\n**Short answer:** Triage models need ongoing monitoring because real-world patient patterns change, and a static tool can become unsafe or inefficient. Here’s why for your pharmacy team, with two key risks:\n\n1.  **Performance drifts over time:** Patient populations evolve (e.g., more elderly patients with complex meds), disease prevalence changes (e.g., rising diabetes rates), or local protocols update. A model trained on old data might now misclassify urgent cases as low-risk.\n    *   *Example risk:* If your triage model for suspected heart attack symptoms (like chest pain) becomes overly cautious due to updated training, you might miss early signs in a diabetic patient with neuropathy masking pain. This could delay critical treatment.\n\n2.  **Local context matters:** What works in one community pharmacy may not fit another (e.g., rural vs. urban access to ERs).\n    *   *Example risk:* If your model flags \"possible heart failure\" based on shortness of breath alone, but local ER wait times are long and home oxygen is readily available via pharmacy, you might unnecessarily send patients home with worsening edema – risking decompensation.\n\n**Why this matters for pharmacies:** You’re the frontline. Unmonitored triage could mean:\n*   **Missed red flags** (e.g., sepsis signs in an immunocompromised patient) leading to ER visits later.\n*   **Wasted resources** sending low-risk patients unnecessarily or missing high-risk cases that strain emergency services.\n\n**Action for you:** Track simple metrics like:\n*   % of \"urgent\" triage cases needing same-day medical review\n*   % of \"non-urgent\" cases with red-flag symptoms upon clinician assessment\n*   Patient feedback on clarity\n\nIf these shift significantly, retrain or adjust your model. Always escalate true emergencies (e.g., trouble breathing, severe bleeding) immediately – don’t wait for triage results. Let me know if you need help setting up basic monitoring!",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 132,
+    "completion_tokens": 770,
+    "total_tokens": 902,
+    "completion_tokens_details": {
+      "reasoning_tokens": 360
+    }
+  },
+  "latency_s": 10.15,
+  "model": "medpsy-4b"
+}

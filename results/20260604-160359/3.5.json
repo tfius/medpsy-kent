@@ -1,0 +1,28 @@
+{
+  "id": "3.5",
+  "area": "3. Pharmacist Clinical Decision Support",
+  "subcategory": "Duplicate Therapy Detection",
+  "source_file": "area3_decision_support.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "Review this list for duplicate therapy and recommend an action: ibuprofen 400mg TDS, naproxen 250mg BD, omeprazole 20mg OD, co-codamol 30/500 PRN, paracetamol 1g QDS."
+    }
+  ],
+  "answer": "\n\n**Critical duplicate therapy identified:** Ibuprofen + naproxen (both NSAIDs) significantly increase risks of GI bleeding, renal toxicity, and cardiovascular events without added benefit. **Do not combine these.**\n\n**Key findings & recommendations:**\n1.  **NSAID duplication:** Avoid concurrent ibuprofen TDS and naproxen BD. Choose one appropriate NSAID based on indication/duration (e.g., short-term use). *Action:* Discuss with prescriber to deprescribe one agent or justify specific need.\n2.  **Paracetamol overdose risk:** Co-codamol (500mg paracetamol) PRN + scheduled paracetamol 1g QDS = potential >4g/day (max safe dose). *Action:* Verify indication for regular co-codamol; consider reducing frequency or stopping it if pain is controlled by other means. Monitor liver function.\n3.  **Other considerations:**\n    *   Omeprazole may be appropriate for NSAID-induced GI risk but requires assessment of individual risk factors (age, H. pylori, alcohol, steroids).\n    *   Ensure no contraindications to either ibuprofen/naproxen (renal disease, heart failure, peptic ulcer history) or paracetamol (liver disease).\n    *   Check renal function and electrolytes if NSAID use is prolonged.\n\n**Pharmacist action:** Provide clear advice on deprescribing one NSAID and managing paracetamol dosing. Escalate urgent concerns to prescriber. Counsel patient on signs of GI bleed (black/tarry stools, vomiting blood) or liver toxicity (nausea, jaundice, abdominal pain).\n\n*(Note: This is clinical decision support. Final prescribing decisions remain with the prescriber based on full clinical context.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 161,
+    "completion_tokens": 735,
+    "total_tokens": 896,
+    "completion_tokens_details": {
+      "reasoning_tokens": 352
+    }
+  },
+  "latency_s": 11.12,
+  "model": "medpsy-4b"
+}

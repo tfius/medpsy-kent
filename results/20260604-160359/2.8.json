@@ -1,0 +1,28 @@
+{
+  "id": "2.8",
+  "area": "2. Algorithmic Risk Stratification",
+  "subcategory": "Severity Scoring",
+  "source_file": "area2_risk.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A 25-year-old with known asthma reports being unable to complete full sentences, using their reliever inhaler every hour with little relief, and feeling their chest is tight. How urgent is this and what is your stratification?"
+    }
+  ],
+  "answer": "\n\n**This requires immediate emergency medical attention (call ambulance or go to A&E).** This presentation meets criteria for a life-threatening asthma exacerbation (likely respiratory failure).\n\n*   **Urgency Stratification:** High risk (Category 3 per standard asthma guidelines - e.g., BTS/SIGN). Key red flags:\n    *   Inability to complete sentences (sign of severe hypoxia/respiratory fatigue).\n    *   Persistent symptoms despite frequent reliever inhaler use (SABA) without relief.\n    *   Significant airflow obstruction.\n*   **Critical Actions:**\n    1.  **Do not wait.** Activate emergency services immediately.\n    2.  While waiting for help:\n        *   Ensure the patient is sitting upright and calm.\n        *   Administer their prescribed reliever inhaler (SABA like salbutamol) via spacer if available, but understand this alone won't resolve it.\n        *   Check basic vital signs if possible: Oxygen saturation (if you have a pulse oximeter - **<92% is critical**), heart rate, and respiratory rate. Note any cyanosis or confusion.\n        *   Ask about other symptoms: Fever (possible infection trigger)? Recent illness? New medications/allergens? Known triggers?\n        *   Ensure the patient has their asthma action plan and medication list available for emergency staff.\n        *   Contact the patient's regular GP/pharmacist for advice on any prescribed oral steroids or nebulized treatments they might have at home, but **do not delay ambulance**.\n\n*   **Important Considerations (for the pharmacist/clinician managing this):**\n    *   This is beyond community pharmacy management. The emergency team will provide oxygen, systemic corticosteroids, and likely bronchodilator nebulizers.\n    *   Potential causes to investigate in hospital: severe infection (viral/bacterial), allergen exposure, medication non-compliance/technique error, new trigger, or other underlying issue.\n    *   Review the patient's baseline asthma control and action plan. They should have been using their preventer inhaler regularly and know when to seek help early.\n    *   Once stabilized, ensure follow-up with their respiratory specialist or GP for trigger identification, review of controller therapy, and education.\n\n*Note: As an AI assistant, I cannot diagnose or prescribe. My role is urgent recognition and guidance. If you have access to local emergency protocols (e.g., calling 999/112), use them now.*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 141,
+    "completion_tokens": 845,
+    "total_tokens": 986,
+    "completion_tokens_details": {
+      "reasoning_tokens": 328
+    }
+  },
+  "latency_s": 10.49,
+  "model": "medpsy-4b"
+}

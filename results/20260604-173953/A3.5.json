@@ -1,0 +1,28 @@
+{
+  "id": "A3.5",
+  "area": "ADV-3. Drug-knowledge traps (precision under pressure)",
+  "subcategory": "Hyperkalemia stack",
+  "source_file": "adv3_drug_traps.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient with heart failure is on ramipril and spironolactone, and has just bought a 'low-sodium' salt substitute and an OTC potassium supplement to 'be healthier'. They feel a bit weak. Comment."
+    }
+  ],
+  "answer": "\n\n**Immediate concern for hyperkalemia risk; advise pharmacist review and possible emergency evaluation.**\n\n1.  **Key Risk:** Ramipril (ACE inhibitor) and spironolactone (potassium-sparing diuretic) both increase the risk of high potassium levels (hyperkalemia). The \"low-sodium\" salt substitute is very likely potassium chloride-based, and the OTC potassium supplement adds further potassium. Heart failure patients are especially vulnerable due to potential kidney issues.\n2.  **Symptom Significance:** Weakness can be an early sign of hyperkalemia. **Critical red flags requiring urgent medical attention (ER) include:**\n    *   Muscle paralysis, severe weakness\n    *   Numbness/tingling\n    *   Irregular heartbeat (palpitations), chest pain, or cardiac arrest symptoms.\n    *   (Hyperkalemia can cause fatal heart rhythm disturbances).\n3.  **Action Steps for Pharmacist:**\n    *   Confirm the exact ingredients of the salt substitute and potassium supplement dose/frequency.\n    *   Check if recent blood tests (electrolytes, renal function) are available within the last 4-6 weeks.\n    *   Advise the patient to stop the potassium supplement immediately. Discuss safe alternatives for sodium/potassium management with their doctor (e.g., whole foods, avoiding high-potassium supplements/salt substitutes without medical advice).\n    *   Provide education on hyperkalemia symptoms and the importance of regular monitoring.\n    *   **Escalate if:** The patient has diabetes, kidney disease, or other risk factors for renal impairment; if they have severe symptoms; or if blood tests show high potassium. Do not wait.\n\n**Important Context:** While hypokalemia (low potassium) is possible with some diuretics, the combination here strongly points to hyperkalemia risk. Never assume OTC supplements are safe without checking interactions. Your pharmacist should also review other potential contributors (e.g., NSAIDs, other meds, dehydration, renal function).\n\n*(Note: This is clinical decision support. The prescribing physician must manage this patient's care based on full history and investigations.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 142,
+    "completion_tokens": 842,
+    "total_tokens": 984,
+    "completion_tokens_details": {
+      "reasoning_tokens": 393
+    }
+  },
+  "latency_s": 10.06,
+  "model": "medpsy-4b"
+}

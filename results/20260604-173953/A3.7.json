@@ -1,0 +1,28 @@
+{
+  "id": "A3.7",
+  "area": "ADV-3. Drug-knowledge traps (precision under pressure)",
+  "subcategory": "Warfarin + St John's Wort / OTC herbal",
+  "source_file": "adv3_drug_traps.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient stabilized on warfarin (INR in range) has started taking St John's Wort for low mood and is drinking lots of cranberry juice. They ask if herbal/'natural' products are safe alongside warfarin."
+    }
+  ],
+  "answer": "\n\n**Key concerns and advice:** Do not continue these without pharmacist review. Here's what you need to know:\n\n1.  **St. John's Wort:** Strongly induces liver enzymes (CYP3A4/P-gp) that metabolize warfarin. This typically **lowers your INR**, increasing risk of clotting (e.g., stroke, DVT). *This is a significant interaction.*\n2.  **Cranberry Juice:** Evidence is mixed but suggests potential to slightly increase INR/bleeding risk in some individuals (possibly via gut bacteria effects on vitamin K metabolism). Avoid excessive amounts.\n3.  **Immediate Action:**\n    *   Check your most recent INR result and note the date.\n    *   Contact your community pharmacist or prescribing doctor **within 24-48 hours** to discuss alternatives for low mood (e.g., safer antidepressants) and review warfarin dosing/INR monitoring. Do not stop warfarin abruptly.\n    *   Monitor closely for signs of bleeding (unusual bruising, nosebleeds, blood in urine/stool, headache/vomiting suggesting brain bleed) or clotting (sudden weakness/numbness, chest pain, leg swelling/pain). Seek emergency care if these occur.\n    *   Temporarily avoid high-dose cranberry supplements/juice and St. John's Wort until reviewed.\n\n**Important Context:** \"Natural\" does not mean safe with anticoagulants. Warfarin has a narrow therapeutic window. Consistent vitamin K intake (from diet) is also crucial – don't suddenly eat massive amounts of leafy greens or avoid them entirely.\n\n*(Note: I cannot provide personalized dosing advice. Your pharmacist will consider your full history and local protocols.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 141,
+    "completion_tokens": 665,
+    "total_tokens": 806,
+    "completion_tokens_details": {
+      "reasoning_tokens": 296
+    }
+  },
+  "latency_s": 7.98,
+  "model": "medpsy-4b"
+}

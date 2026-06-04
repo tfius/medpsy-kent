@@ -1,0 +1,56 @@
+{
+  "area": "3. Pharmacist Clinical Decision Support",
+  "description": "Dynamic targeted questioning, guideline-grounded evidence synthesis, and therapy optimization (dose adjustment, substitution, duplicate-therapy cancellation).",
+  "samples": [
+    {
+      "id": "3.1",
+      "subcategory": "Targeted Questioning",
+      "user": "A patient presents with a headache. Generate 6 targeted follow-up questions a pharmacist should ask to triage it safely, ordered by importance."
+    },
+    {
+      "id": "3.2",
+      "subcategory": "Evidence Synthesis",
+      "user": "Summarize the evidence-based first-line management of uncomplicated type 2 diabetes in an adult with no contraindications, and name the typical first-line drug."
+    },
+    {
+      "id": "3.3",
+      "subcategory": "Therapy Optimization (Renal Dosing)",
+      "user": "A patient with an eGFR of 28 is prescribed metformin 1g twice daily. Is this appropriate, and what dose adjustment or action do you recommend?"
+    },
+    {
+      "id": "3.4",
+      "subcategory": "Therapeutic Substitution",
+      "user": "A patient develops a persistent dry cough on ramipril that is affecting their sleep. Their blood pressure is otherwise well controlled. What therapeutic substitution would you suggest and why?"
+    },
+    {
+      "id": "3.5",
+      "subcategory": "Duplicate Therapy Detection",
+      "user": "Review this list for duplicate therapy and recommend an action: ibuprofen 400mg TDS, naproxen 250mg BD, omeprazole 20mg OD, co-codamol 30/500 PRN, paracetamol 1g QDS."
+    },
+    {
+      "id": "3.6",
+      "subcategory": "Targeted Questioning",
+      "user": "A patient says a medication is 'making them feel dizzy.' List the targeted questions needed to determine whether this is a dose issue, an interaction, orthostatic hypotension, or an unrelated cause."
+    },
+    {
+      "id": "3.7",
+      "subcategory": "Evidence Synthesis",
+      "user": "For a newly diagnosed adult with stage 1 hypertension and no diabetes, outline the guideline-based lifestyle and pharmacological approach and what threshold warrants starting medication."
+    },
+    {
+      "id": "3.8",
+      "subcategory": "Therapy Optimization (Titration)",
+      "user": "A patient with type 2 diabetes on metformin 500mg once daily has an HbA1c of 8.5% and tolerates the medication well. How would you optimize/titrate their therapy?"
+    },
+    {
+      "id": "3.9",
+      "subcategory": "Interaction Management",
+      "user": "A patient on simvastatin 40mg is about to start clarithromycin for a chest infection. Identify the interaction and recommend a management plan."
+    },
+    {
+      "id": "3.10",
+      "subcategory": "Deprescribing",
+      "user": "An 82-year-old on long-term omeprazole 20mg started 4 years ago for mild reflux that resolved, now also on multiple other medications. Should this be deprescribed, and how would you approach it?"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+# --- Python / uv ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# uv keeps the lockfile (uv.lock) tracked on purpose for reproducible installs;
+# only the resolved environment is ignored.
+
+# --- Tooling caches ---
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# --- Secrets / local config ---
+.env
+.env.*
+!.env.example
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# --- Eval outputs ---
+# results/ IS committed on purpose: the stored question+answer JSON is the
+# research record we grade against, and runs are timestamped so they don't clash.
+# If you'd rather keep runs local, uncomment the next line:
+# results/
+
+# Scratch dumps produced while reviewing (e.g. /tmp/adv_dump.txt) are never in-repo,
+# but ignore any local scratch just in case:
+scratch/
+*.tmp

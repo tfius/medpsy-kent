@@ -1,0 +1,28 @@
+{
+  "id": "1.8",
+  "area": "1. Ingestion & Symptom Processing",
+  "subcategory": "NLP from Messy Intake Form",
+  "source_file": "area1_ingestion.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "Turn this messy intake free text into structured fields (chief complaint, duration, current meds, allergies): 'cant sleep 3 wks, tired all day, takes sertraline 50 + omeprazole, allergic 2 codeine makes me sick, also low mood'"
+    }
+  ],
+  "answer": "\n\nBased on the provided intake text, here is the structured clinical information:\n\n*   **Chief Complaint:** Insomnia (inability to sleep) for 3 weeks, associated with daytime fatigue and low mood.\n*   **Duration:** 3 weeks.\n*   **Current Medications:**\n    *   Sertraline 50 mg\n    *   Omeprazole\n*   **Allergies:** Codeine (causes nausea/vomiting).\n*   **Additional Symptom:** Low mood.\n\n**Important Notes for the Pharmacist:**\n1.  The insomnia and low mood could be related to depression or other causes; a clinical assessment is needed.\n2.  Sertraline can sometimes cause initial insomnia as a side effect, especially at lower doses. Review adherence and timing of dose (typically taken in AM).\n3.  Consider potential interactions or underlying issues with current meds/allergies.\n4.  **Red Flag Check:** No immediate life-threatening symptoms (e.g., suicidal/homicidal ideation, severe dehydration, anaphylaxis) are explicitly stated. However, persistent low mood and insomnia warrant depression screening and mental health referral consideration if not already addressed.\n5.  *Uncertainty:* Specific reason for omeprazole use and potential underlying cause of sleep disturbance/allergy details not fully provided. Further patient history is recommended.\n\n*(This structured data supports clinical decision-making but does not constitute a diagnosis or treatment plan.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 153,
+    "completion_tokens": 661,
+    "total_tokens": 814,
+    "completion_tokens_details": {
+      "reasoning_tokens": 360
+    }
+  },
+  "latency_s": 7.97,
+  "model": "medpsy-4b"
+}

@@ -1,0 +1,28 @@
+{
+  "id": "4.3",
+  "area": "4. Direct Triage Routing",
+  "subcategory": "Chronic Disease Titration Routing",
+  "source_file": "area4_triage.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A stable hypertensive patient's home readings have crept up to 145/90 over a month with no symptoms. Is this a pharmacist-led titration case or does it require physician routing? Explain."
+    }
+  ],
+  "answer": "\n\nBased on current hypertension guidelines (e.g., NICE, AHA), **this is likely a pharmacist-led titration case *if* specific criteria are met, but physician routing is recommended for confirmation.** Here's the concise breakdown:\n\n1.  **Key Considerations:**\n    *   Home readings ≥135/85 mmHg warrant attention. 145/90 indicates possible uncontrolled hypertension.\n    *   **Pharmacist Actions:** Review current regimen (medication, dose, duration), check for adherence and secondary causes (e.g., NSAIDs, renal disease, alcohol excess), confirm proper home technique (validated cuff, correct arm position, rest 5 mins before, no caffeine/smoking 30 min prior).\n    *   **When Titration is Appropriate:** If the patient is on a first-line agent (e.g., ACEi/ARB, CCB, thiazide) at an appropriate dose for ≥4 weeks with good adherence and no contraindications. Pharmacists can often safely increase dose or frequency within protocol limits.\n    *   **When to Refer:** If:\n        *   Stage 2 hypertension (≥140/90) persists despite optimized therapy.\n        *   New symptoms develop (headache, visual changes, chest pain, dyspnea - **red flags requiring emergency care**).\n        *   Significant comorbidities exist (diabetes, CKD, heart failure).\n        *   No clear cause identified or need for further investigation (e.g., renal ultrasound, blood tests).\n\n2.  **Recommended Pharmacist Steps:**\n    *   Document current regimen and adherence.\n    *   Provide lifestyle advice (salt reduction, exercise, alcohol moderation).\n    *   Reassess technique and ensure consistent readings.\n    *   Consider a short-term dose adjustment per local protocol (e.g., doubling ACEi dose from 10mg to 20mg daily if tolerated).\n    *   Schedule follow-up home readings in 1-2 weeks. If still elevated, refer promptly.\n\n3.  **Important Caveats:** You cannot diagnose or manage complex hypertension alone. Ensure you have:\n    *   The patient's full medical history and current medication list (including OTCs).\n    *   Local pharmacy protocol for titration.\n    *   A clear referral pathway to the prescriber if no improvement.\n\n> ⚠️ **Red Flag Reminder:** If home readings ever reach ≥180/110 mmHg or symptoms of hypertensive emergency occur, seek immediate emergency care. This case does not currently meet that threshold. Always consider potential secondary causes in resistant hypertension.",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 138,
+    "completion_tokens": 933,
+    "total_tokens": 1071,
+    "completion_tokens_details": {
+      "reasoning_tokens": 382
+    }
+  },
+  "latency_s": 13.78,
+  "model": "medpsy-4b"
+}

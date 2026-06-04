@@ -1,0 +1,28 @@
+{
+  "id": "2.10",
+  "area": "2. Algorithmic Risk Stratification",
+  "subcategory": "Complexity + Red Flag Overlay",
+  "source_file": "area2_risk.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient on lithium for bipolar disorder, also taking a new thiazide diuretic, reports tremor, nausea, and feeling unsteady. Stratify the risk and explain the interaction concern."
+    }
+  ],
+  "answer": "\n\n**High-risk lithium toxicity likely; urgent evaluation required.**  \nThis combination significantly increases lithium levels due to thiazide-induced reduction in renal lithium excretion (thiazides impair sodium handling, and lithium is reabsorbed with sodium). Your symptoms (tremor, nausea, ataxia) are early signs of toxicity.\n\n💡 **Key points & actions:**\n1.  **Stratification:** High risk (lithium narrow therapeutic index + known interaction).\n2.  **Critical next steps:**\n    *   Check serum lithium level and renal function/electrolytes immediately.\n    *   Assess for dehydration, other nephrotoxins (NSAIDs), or illness.\n    *   Temporarily hold thiazide diuretic until cause is addressed; consult prescriber urgently. Do not restart without medical guidance.\n    *   Monitor for worsening signs (confusion, seizures, coma - red flags requiring emergency care).\n3.  **Additional context:** Ensure baseline renal function was checked before starting lithium and thiazide. Review all medications and hydration/salt intake.\n\n⚠️ **Important considerations:** Other causes of symptoms exist (e.g., electrolyte imbalance, other meds), but the interaction is highly probable. Lithium toxicity can be life-threatening. Provide supportive care advice (hydration) while awaiting lab results, but do not delay medical evaluation.\n\n*(Note: As an AI assistant, I cannot diagnose or prescribe. This requires pharmacist-led clinical assessment and physician intervention.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 134,
+    "completion_tokens": 666,
+    "total_tokens": 800,
+    "completion_tokens_details": {
+      "reasoning_tokens": 356
+    }
+  },
+  "latency_s": 8.74,
+  "model": "medpsy-4b"
+}

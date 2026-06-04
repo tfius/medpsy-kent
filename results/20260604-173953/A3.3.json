@@ -1,0 +1,28 @@
+{
+  "id": "A3.3",
+  "area": "ADV-3. Drug-knowledge traps (precision under pressure)",
+  "subcategory": "Folic acid vs folinic acid (leucovorin) distinction",
+  "source_file": "adv3_drug_traps.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "For a patient on weekly methotrexate, are 'folic acid' and 'folinic acid (leucovorin)' just two names for the same supplement? Which is used for routine side-effect prevention?"
+    }
+  ],
+  "answer": "\n\n**No, they are not identical supplements, and folic acid is standard for routine prevention.** Here's a concise evidence-based summary:\n\n1.  **Key Difference:** Folic acid (the synthetic vitamin B9 form) and folinic acid/leucovorin (a reduced form of folate) have different metabolic pathways. While both can bypass some methotrexate effects, they are not interchangeable in all contexts.\n2.  **Routine Use:** For standard weekly low-dose methotrexate (e.g., for rheumatoid arthritis or psoriasis), **folic acid supplementation (typically 5 mg once weekly, taken on a non-MTX day - e.g., Monday if MTX is Friday)** is the established practice to reduce common side effects like stomatitis (mouth sores) and myelosuppression. This is supported by major guidelines (e.g., ACR).\n3.  **Important Context:**\n    *   Leucovorin is primarily used for high-dose MTX in oncology settings or specific poisonings, not routine weekly doses.\n    *   Ensure the dose and schedule are appropriate for your condition (confirm with prescribing physician).\n    *   Monitor for side effects (persistent nausea, mouth sores, bruising/bleeding, infection signs, unusual fatigue) and baseline/periodic blood tests (CBC, renal/liver function).\n    *   **Red Flag:** If you experience severe symptoms like persistent fever/infection, significant bleeding, or signs of bone marrow suppression (severe fatigue/pallor), seek emergency care immediately. Methotrexate can cause serious toxicity.\n\n**Recommendation for your pharmacist:** Provide the patient with a standard folic acid supplement (5 mg weekly) and counsel on timing relative to MTX dose. Verify there are no contraindications (e.g., severe renal impairment). If side effects persist despite folic acid, investigate other causes or consider alternative management.\n\n*(Note: This is general guidance. Individual patient factors may alter recommendations. Always follow your local protocols and prescribing information.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 139,
+    "completion_tokens": 855,
+    "total_tokens": 994,
+    "completion_tokens_details": {
+      "reasoning_tokens": 426
+    }
+  },
+  "latency_s": 10.23,
+  "model": "medpsy-4b"
+}

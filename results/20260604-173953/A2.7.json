@@ -1,0 +1,28 @@
+{
+  "id": "A2.7",
+  "area": "ADV-2. Over-triage traps (looks alarming, is benign)",
+  "subcategory": "Delayed-onset muscle soreness (not rhabdo)",
+  "source_file": "adv2_overtriage.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "Two days after my first ever leg-day at the gym, both my thighs ache a lot and feel stiff and weak. Urine looks normal, I feel well otherwise. I read about muscle breakdown - is this rhabdomyolysis, should I go to hospital?"
+    }
+  ],
+  "answer": "\n\n**This is likely delayed onset muscle soreness (DOMS), not rhabdomyolysis.** Based on your description (acute onset after unaccustomed exercise, no dark urine, normal energy/kidney function), it's a common reaction to new physical stress. Here's what you need to know:\n\n💡 **Key points:**\n- DOMS typically peaks 24-72 hours after intense/unfamiliar activity and causes soreness/stiffness without systemic symptoms.\n- Rhabdomyolysis is unlikely here (it requires severe muscle damage releasing myoglobin, which can cause kidney failure). **Red flags to watch for:** dark/brown urine (cola-colored), nausea/vomiting, confusion, or reduced urination. If any occur, seek emergency care immediately.\n- Your normal urine color and lack of other symptoms are reassuring.\n\n💡 **Recommendations:**\n1.  **Hydrate well** with water or electrolyte fluids over the next few days.\n2.  **Rest gently:** Avoid strenuous leg exercise for 3-5 days. Light movement (walking) can help.\n3.  **Pain management:** Over-the-counter pain relievers like acetaminophen may help. *Avoid NSAIDs (ibuprofen, naproxen) initially* as they can sometimes mask early signs of muscle injury; discuss with your pharmacist if you have underlying health conditions or take other meds.\n4.  **Monitor:** Check urine color daily for the next few days. If it darkens at any point, go to urgent care/ER.\n5.  **Consider context:** Were you doing new heavy eccentric exercises (e.g., downhill running, intense leg curls)? Dehydration? New medications (especially statins)? If you take statins or other muscle-affecting drugs, discuss this with your pharmacist or doctor.\n\n⚠️ **When to escalate:** Contact a healthcare professional promptly if:\n- Urine becomes dark.\n- You develop fever, nausea/vomiting, confusion, or signs of dehydration (dizziness, very dry mouth, low urine output).\n- Symptoms worsen significantly or don't start improving in 5-7 days.\n\n*(Note: As an AI assistant, I cannot diagnose. This is general guidance based on common presentation. Your pharmacist can provide personalized advice and check for medication interactions.)*\nLet me know if you have other details (age, medications, specific exercises) for more tailored support. Stay safe! 💪",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 149,
+    "completion_tokens": 849,
+    "total_tokens": 998,
+    "completion_tokens_details": {
+      "reasoning_tokens": 341
+    }
+  },
+  "latency_s": 9.89,
+  "model": "medpsy-4b"
+}

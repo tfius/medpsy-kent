@@ -1,0 +1,28 @@
+{
+  "id": "3.3",
+  "area": "3. Pharmacist Clinical Decision Support",
+  "subcategory": "Therapy Optimization (Renal Dosing)",
+  "source_file": "area3_decision_support.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient with an eGFR of 28 is prescribed metformin 1g twice daily. Is this appropriate, and what dose adjustment or action do you recommend?"
+    }
+  ],
+  "answer": "\n\n**Not appropriate; discontinuation recommended immediately.** Metformin is contraindicated in patients with eGFR < 30 mL/min/1.73m² (stage 4 CKD) due to high risk of lactic acidosis, a life-threatening complication.\n\n*   **Key facts:** Your eGFR of 28 indicates significant kidney impairment. Metformin is primarily renally excreted.\n*   **Action required:**\n    1.  Hold metformin immediately.\n    2.  Confirm the eGFR result (was it recent? any acute illness/dehydration/contrast exposure?).\n    3.  Review other medications and medical history for contributing factors to renal impairment.\n    4.  Discuss alternative diabetes management options with your prescriber (e.g., insulin, SGLT2 inhibitors *if* eGFR >45, GLP-1 RAs - all require renal consideration).\n    5.  Ensure appropriate monitoring of renal function and symptoms of lactic acidosis (unexplained muscle pain, profound fatigue, nausea/vomiting, abdominal pain, hypothermia, irregular heartbeat, unusual breathing).\n\n*   **Important considerations:** If diabetes management is essential, your pharmacist will need to collaborate with the prescriber. Do not restart metformin until eGFR is >45 (or as per local guidelines). Assess for reversible causes of renal impairment.\n\n*(Note: This is a clinical guideline-based recommendation. Final treatment decisions require your pharmacist's assessment and consultation with the prescriber.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 130,
+    "completion_tokens": 681,
+    "total_tokens": 811,
+    "completion_tokens_details": {
+      "reasoning_tokens": 352
+    }
+  },
+  "latency_s": 9.59,
+  "model": "medpsy-4b"
+}

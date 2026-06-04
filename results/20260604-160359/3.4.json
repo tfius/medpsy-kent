@@ -1,0 +1,28 @@
+{
+  "id": "3.4",
+  "area": "3. Pharmacist Clinical Decision Support",
+  "subcategory": "Therapeutic Substitution",
+  "source_file": "area3_decision_support.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient develops a persistent dry cough on ramipril that is affecting their sleep. Their blood pressure is otherwise well controlled. What therapeutic substitution would you suggest and why?"
+    }
+  ],
+  "answer": "\n\nBased on your description (persistent dry cough on ramipril without other symptoms like rash or swelling), this is highly suggestive of an **ACE inhibitor-induced cough** – a common class effect due to bradykinin accumulation.\n\n**Recommended substitution:** Switch to an **Angiotensin II Receptor Blocker (ARB)** such as losartan, valsartan, or irbesartan.\n\n**Why:**\n1.  **Same mechanism, different side effect profile:** ARBs block the angiotensin II receptor directly and do not significantly increase bradykinin levels, avoiding this cough.\n2.  **Evidence-based:** Clinical guidelines (e.g., NICE) recommend ARB substitution for ACEi-induced cough when it's persistent and symptomatic.\n3.  **BP control maintained:** Your blood pressure is already well-controlled on ramipril; an ARB provides similar cardiovascular protection.\n\n**Important considerations & next steps:**\n*   **Rule out other causes:** Briefly consider if new asthma, GERD, or environmental factors could contribute (though ACEi cough is likely).\n*   **Monitor:** Check BP and renal function/electrolytes at the first follow-up after switching.\n*   **Pharmacist role:** Provide clear instructions on the new ARB dose. Ensure you have a confirmed diagnosis of hypertension/heart failure indication for the RAAS inhibitor.\n*   **Red flag reminder:** If you ever see signs of angioedema (swelling of face/lips/tongue/throat, difficulty breathing) with ACEi, it's an emergency – stop immediately and seek urgent care. This cough alone is not angioedema.\n\n*(Note: I cannot prescribe or make the final decision. Please discuss this option with your registered pharmacist who can review the full patient history and local protocols.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 128,
+    "completion_tokens": 790,
+    "total_tokens": 918,
+    "completion_tokens_details": {
+      "reasoning_tokens": 413
+    }
+  },
+  "latency_s": 11.75,
+  "model": "medpsy-4b"
+}

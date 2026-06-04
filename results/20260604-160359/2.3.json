@@ -1,0 +1,28 @@
+{
+  "id": "2.3",
+  "area": "2. Algorithmic Risk Stratification",
+  "subcategory": "Adverse Event Prediction",
+  "source_file": "area2_risk.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient started ramipril 6 weeks ago and now complains of a persistent dry, tickly cough with no fever or sputum. Is this most likely a new medical condition or an adverse drug event? What do you recommend?"
+    }
+  ],
+  "answer": "\n\nBased on the presentation (new ACE inhibitor use 6 weeks ago, persistent dry cough without respiratory infection signs), **this is most likely an adverse drug reaction to ramipril** (ACE inhibitor-induced cough). This occurs in ~10-20% of patients and typically starts within weeks.\n\n**Recommendations:**\n1.  **Do not discontinue abruptly:** ACE inhibitors are often for hypertension/heart failure; stopping without medical advice could be harmful.\n2.  **Consult the prescriber promptly:** Discuss switching to an alternative class (e.g., ARB like losartan or valsartan, which rarely causes cough). This is standard management.\n3.  **Rule out red flags:** Ensure no signs of angioedema (swelling of face/lips/tongue/throat - seek emergency care immediately if present) or other serious conditions (e.g., heart failure exacerbation).\n4.  **Supportive advice for now:**\n    *   Reassure the patient this is a known side effect.\n    *   Advise symptomatic relief (honey, humidifier, avoiding irritants like smoke).\n    *   Check baseline renal function and potassium if switching (as with ACEi/ARBs).\n    *   Consider simple alternatives first: Could it be post-nasal drip or mild asthma? A brief history might help, but don't delay the drug review.\n\n**Important notes:** While highly likely to be drug-related, other causes (asthma, GERD, chronic bronchitis) should be considered if cough persists after stopping ACEi. Your pharmacist role is to facilitate this discussion with the prescriber and provide patient education. If cough worsens or red flags appear, escalate urgently.\n\n*(Source: UpToDate, FDA labeling for ACE inhibitors)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 142,
+    "completion_tokens": 762,
+    "total_tokens": 904,
+    "completion_tokens_details": {
+      "reasoning_tokens": 393
+    }
+  },
+  "latency_s": 9.12,
+  "model": "medpsy-4b"
+}

@@ -1,0 +1,28 @@
+{
+  "id": "1.6",
+  "area": "1. Ingestion & Symptom Processing",
+  "subcategory": "Red Flag Detection",
+  "source_file": "area1_ingestion.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "Patient reports a swollen, hot, red and very painful left calf that started two days after a long-haul flight, plus some breathlessness today. What is the concern and what should happen?"
+    }
+  ],
+  "answer": "\n\n**Immediate concern: Possible pulmonary embolism (PE) secondary to deep vein thrombosis (DVT).** This is a medical emergency requiring urgent hospital evaluation.\n\n*   **Why:** Your symptoms (unilateral calf swelling, redness, heat, pain after prolonged immobility + new breathlessness) are highly suggestive of DVT that may have embolized to the lungs. PE can be life-threatening.\n*   **What should happen:**\n    1.  **Seek emergency medical care immediately** (call ambulance or go to nearest ER). Do not wait.\n    2.  While preparing for transport:\n        *   Note any additional symptoms: chest pain, coughing (especially bloody), dizziness, fainting, rapid heart rate, low oxygen saturation (if you have a pulse oximeter).\n        *   Provide your age, gender, and key risk factors to the emergency team (e.g., recent surgery/hospitalization >4 weeks ago, cancer diagnosis/treatment, known clotting disorder, significant trauma, estrogen therapy, obesity, smoking history).\n        *   Do not massage the calf.\n        *   If you have a known severe bleeding disorder or are on strong anticoagulants (like warfarin), inform the ER staff immediately.\n    3.  **What to expect in hospital:** They will likely perform:\n        *   A clinical assessment and Wells' score for PE/DVT risk.\n        *   Blood tests (including D-dimer).\n        *   Imaging (CT pulmonary angiogram for PE, ultrasound of the calf for DVT).\n        *   Initiation of anticoagulant therapy if confirmed or strongly suspected.\n\n*   **Important context:** As a community pharmacy assistant, I cannot diagnose or prescribe. Only your treating physician can determine the exact cause and treatment. Other possibilities (like severe cellulitis) need to be ruled out by a doctor.\n*   **Preventive note for future travel:** Stay hydrated, move ankles/feet regularly during long flights, consider compression stockings if you have ongoing risk factors.\n\n*(If you can safely share anonymized details like age range and key risk factors - e.g., \"58M with recent hip replacement 3 weeks ago\" - I can offer more specific context on likelihood and next steps. Never share identifiable information.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 133,
+    "completion_tokens": 830,
+    "total_tokens": 963,
+    "completion_tokens_details": {
+      "reasoning_tokens": 352
+    }
+  },
+  "latency_s": 9.67,
+  "model": "medpsy-4b"
+}

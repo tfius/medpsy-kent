@@ -1,0 +1,28 @@
+{
+  "id": "4.9",
+  "area": "4. Direct Triage Routing",
+  "subcategory": "Side-Effect Routing",
+  "source_file": "area4_triage.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient reports mild nausea after starting metformin 1 week ago, still eating and drinking, no severe symptoms. Should this go to the pharmacist or be escalated? What is the pharmacist-led plan?"
+    }
+  ],
+  "answer": "\n\n**This does not require immediate emergency escalation but pharmacist-led management is appropriate.** Mild nausea in the first 1-2 weeks of metformin is a common transient gastrointestinal side effect (occurring in ~20-30% of patients), especially with immediate-release formulations. **No red flags are present here** (no vomiting, dehydration, hypoglycemia symptoms like shakiness/sweating/confusion, or signs of lactic acidosis like severe muscle pain/lethargy/abnormal breathing).\n\n**Pharmacist-led plan:**\n1.  **Reassure & Educate:** Confirm this is likely temporary (often resolves within days to weeks). Advise taking metformin *with meals* and ensuring adequate hydration.\n2.  **Practical Strategies:**\n    *   Check if the patient is on immediate-release (IR) or extended-release (ER/XR). If IR, consider switching to ER formulation (less GI upset).\n    *   Ensure they are not exceeding the initial dose (typically 500mg once or twice daily for first week).\n    *   Review other potential causes: new medications, alcohol, illness, dehydration.\n    *   Provide basic monitoring advice: watch for worsening symptoms (persistent vomiting, signs of dehydration like dizziness/dry mouth/low urine output) or red flags requiring urgent care.\n3.  **Follow-up:** Schedule a phone call with the patient within 1-2 weeks to assess resolution and adherence. If nausea persists beyond 2 weeks despite dose/formulation adjustment, refer back to prescriber for further evaluation (e.g., renal function check, alternative therapy).\n4.  **Important Considerations:**\n    *   Confirm baseline renal function was checked before starting metformin (contraindicated in significant renal impairment).\n    *   Ensure no other risk factors for lactic acidosis (severe heart failure, liver disease, excessive alcohol, acute illness).\n    *   Do not stop metformin abruptly without medical advice.\n\n> **When to escalate immediately:** If you observe any of these: persistent vomiting/dehydration, hypoglycemia symptoms unresponsive to glucose, signs of lactic acidosis (as above), or severe abdominal pain. Otherwise, this is a manageable side effect.\n\n*(Note: I am providing general guidance based on common practice. Always follow your local protocols and consult the prescriber for individual patient management.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 135,
+    "completion_tokens": 787,
+    "total_tokens": 922,
+    "completion_tokens_details": {
+      "reasoning_tokens": 286
+    }
+  },
+  "latency_s": 11.21,
+  "model": "medpsy-4b"
+}

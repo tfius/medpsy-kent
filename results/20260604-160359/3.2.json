@@ -1,0 +1,28 @@
+{
+  "id": "3.2",
+  "area": "3. Pharmacist Clinical Decision Support",
+  "subcategory": "Evidence Synthesis",
+  "source_file": "area3_decision_support.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "Summarize the evidence-based first-line management of uncomplicated type 2 diabetes in an adult with no contraindications, and name the typical first-line drug."
+    }
+  ],
+  "answer": "\n\nBased on current major guidelines (ADA, EASD, NICE), the evidence-based first-line management for **uncomplicated type 2 diabetes in an adult with no contraindications** is:\n\n1.  **Lifestyle modification:** Medical nutrition therapy (balanced diet, carbohydrate awareness), regular physical activity (≥150 min/week moderate intensity), weight management (if overweight/obese), and smoking cessation.\n2.  **Pharmacotherapy:** **Metformin** at an appropriate dose (typically starting 500-1000 mg once or twice daily, titrated to maximally tolerated dose ≤2000 mg/day).\n    *   **Why metformin?** It effectively lowers hepatic glucose production and improves insulin sensitivity. Benefits include weight neutrality/mild weight loss, low risk of hypoglycemia, cardiovascular safety data, cost-effectiveness, and potential long-term benefits.\n    *   **Key considerations:** Requires assessment of renal function (eGFR) before initiation and periodic monitoring. Contraindications include severe renal impairment, acute unstable conditions, and significant alcohol excess.\n\n**Important nuances:**\n*   \"Uncomplicated\" typically means no established cardiovascular disease, heart failure, chronic kidney disease, or history of pancreatitis.\n*   Individualization is key (consider age, comorbidities, risk factors, cost, adherence).\n*   If HbA1c remains above target (usually <7% or individualized) after adequate metformin and lifestyle, consider adding a second agent based on specific patient factors (e.g., SGLT2i for heart/kidney disease, GLP-1 RA for weight/CV benefit).\n*   **Red flags requiring urgent referral:** Symptoms of severe hypoglycemia, signs of diabetic ketoacidosis (DKA) or hyperosmolar state (HHS), significant new-onset symptoms suggesting complications.\n\n*(Note: This is general guidance. Always follow your local protocols and consult the full prescribing information for specific patient circumstances.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 128,
+    "completion_tokens": 778,
+    "total_tokens": 906,
+    "completion_tokens_details": {
+      "reasoning_tokens": 352
+    }
+  },
+  "latency_s": 10.73,
+  "model": "medpsy-4b"
+}

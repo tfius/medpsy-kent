@@ -1,0 +1,28 @@
+{
+  "id": "1.1",
+  "area": "1. Ingestion & Symptom Processing",
+  "subcategory": "Red Flag Detection",
+  "source_file": "area1_ingestion.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "I'm 58. For the last 25 minutes I've had heavy, crushing pressure in the center of my chest spreading to my left arm and jaw. I'm sweating and short of breath. What should I do?"
+    }
+  ],
+  "answer": "\n\n**Call emergency medical services immediately.** Your symptoms (crushing central chest pressure radiating to left arm/jaw, sweating, shortness of breath) are highly suggestive of a possible heart attack (myocardial infarction), especially at age 58. **Do not wait or try to self-treat.**\n\nHere's what to do right now:\n1.  **Dial your local emergency number** (e.g., 911 in many regions). Emergency responders can start treatment en route and alert the hospital.\n2.  While waiting for help:\n    *   Sit down and rest. Do not drive yourself.\n    *   If you have been prescribed nitroglycerin by your doctor for known angina, take it as directed (usually one tablet or spray under the tongue). **Do not take it if you haven't been prescribed it or if you've taken erectile dysfunction medication recently (like sildenafil/Viagra) due to dangerous interactions.**\n    *   If you have aspirin readily available and **you are not allergic to it and do not have a bleeding disorder or history of significant stomach ulcers/bleeding**, chew one adult-strength (325mg) or four low-dose (81mg) aspirin. Aspirin can help reduce damage, but emergency services will confirm this.\n    *   Note the exact time your symptoms started (this is crucial for treatment options like clot-busting drugs).\n    *   If you have any known medical conditions (like heart disease, diabetes, high blood pressure) or medications (especially blood thinners like warfarin, apixaban, rivaroxaban, dabigatran, clopidogrel), be ready to tell the emergency responders.\n\n**Important context for you:**\n*   Heart attack is a medical emergency. Early treatment saves heart muscle.\n*   Other possibilities exist (like severe indigestion or other cardiac issues), but only doctors with tests can diagnose this safely. **Do not dismiss it as \"just indigestion.\"**\n*   As a community pharmacy AI, I cannot diagnose you. Your pharmacist and doctor will be key in your ongoing care after this acute event.\n*   Risk factors to consider for future prevention (discuss with your doctor later): age, gender (male), smoking history, high blood pressure, high cholesterol, diabetes, family history.\n\n**When help arrives:** They may perform an ECG (electrocardiogram) and blood tests immediately. Treatment could include medications, procedures like angioplasty/stent, or other interventions depending on the cause and timing.\n\n*(If symptoms completely resolve within a few minutes, it could still be unstable angina – you still need urgent medical evaluation today. Do not ignore transient symptoms either.)*\n\nPlease seek help now. Wishing you a swift recovery. If you have non-urgent follow-up questions about prevention or risk factors after this emergency is handled, I'm here to assist. Stay safe.",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 141,
+    "completion_tokens": 976,
+    "total_tokens": 1117,
+    "completion_tokens_details": {
+      "reasoning_tokens": 366
+    }
+  },
+  "latency_s": 11.54,
+  "model": "medpsy-4b"
+}

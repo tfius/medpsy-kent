@@ -1,0 +1,28 @@
+{
+  "id": "2.1",
+  "area": "2. Algorithmic Risk Stratification",
+  "subcategory": "Severity Scoring",
+  "source_file": "area2_risk.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "Categorize the urgency of this case as ROUTINE, URGENT, or EMERGENCY and justify in one sentence: 80-year-old, fever 39.2, confusion, BP 88/52, heart rate 118, reduced urine output since yesterday."
+    }
+  ],
+  "answer": "\n\n**EMERGENCY**  \nThis presentation meets criteria for septic shock (hypotension unresponsive to fluid resuscitation likely, altered mental status, fever, tachycardia, oliguria) in an elderly patient with high mortality risk requiring immediate hospitalization.",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 156,
+    "completion_tokens": 393,
+    "total_tokens": 549,
+    "completion_tokens_details": {
+      "reasoning_tokens": 334
+    }
+  },
+  "latency_s": 4.79,
+  "model": "medpsy-4b"
+}

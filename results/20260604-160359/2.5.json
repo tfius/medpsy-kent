@@ -1,0 +1,28 @@
+{
+  "id": "2.5",
+  "area": "2. Algorithmic Risk Stratification",
+  "subcategory": "Severity Scoring",
+  "source_file": "area2_risk.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "Rank these three patients from highest to lowest clinical priority and say why: (A) sudden one-sided facial droop and arm weakness 40 min ago; (B) 3-day productive cough, no fever, feels well; (C) burning on urination for 2 days, no fever, otherwise well."
+    }
+  ],
+  "answer": "\n\nBased on clinical urgency and red-flag assessment:\n\n1.  **(A) Sudden one-sided facial droop and arm weakness 40 min ago:** Highest priority. This is a potential acute stroke (e.g., ischemic or hemorrhagic). Time is critical for interventions like thrombolysis. **Immediate emergency escalation required** per FAST criteria (Face, Arms, Speech, Time).\n2.  **(C) Burning on urination for 2 days, no fever:** High priority but not immediate emergency. Likely uncomplicated UTI (common in women). Requires prompt medical evaluation and likely antibiotics within 24-48 hours to prevent complications like pyelonephritis. *Red flag check: No fever/flank pain yet.*\n3.  **(B) 3-day productive cough, no fever, feels well:** Lowest priority among these. Likely acute viral bronchitis. Monitor for worsening (e.g., high fever, shortness of breath, hemoptysis). Symptomatic relief may be appropriate now.\n\n**Key reasoning:**\n*   **A is a neurological emergency:** Arm weakness + facial droop = stroke until proven otherwise. Do not delay.\n*   **C needs timely treatment:** UTI can progress; antibiotics are indicated but not immediately life-threatening without systemic signs.\n*   **B is likely self-limiting:** No acute danger signs.\n\n**Note for pharmacist:** For A, advise calling emergency services or going to ER *immediately*. For C and B, provide symptomatic advice (e.g., hydration, OTC analgesics) while arranging same-day/next-day primary care. Always confirm patient history and local protocols.",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 159,
+    "completion_tokens": 680,
+    "total_tokens": 839,
+    "completion_tokens_details": {
+      "reasoning_tokens": 336
+    }
+  },
+  "latency_s": 8.21,
+  "model": "medpsy-4b"
+}

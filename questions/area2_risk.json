@@ -1,0 +1,56 @@
+{
+  "area": "2. Algorithmic Risk Stratification",
+  "description": "Severity scoring, medication-regimen complexity validation, and adverse-drug-event vs new-condition discrimination.",
+  "samples": [
+    {
+      "id": "2.1",
+      "subcategory": "Severity Scoring",
+      "user": "Categorize the urgency of this case as ROUTINE, URGENT, or EMERGENCY and justify in one sentence: 80-year-old, fever 39.2, confusion, BP 88/52, heart rate 118, reduced urine output since yesterday."
+    },
+    {
+      "id": "2.2",
+      "subcategory": "Complexity Validation",
+      "user": "Does this patient need intensive pharmacist intervention or a routine medication review? 84-year-old, lives alone, on 11 medications including warfarin, digoxin, furosemide, and gabapentin, with recent falls and mild cognitive impairment. Explain your reasoning."
+    },
+    {
+      "id": "2.3",
+      "subcategory": "Adverse Event Prediction",
+      "user": "A patient started ramipril 6 weeks ago and now complains of a persistent dry, tickly cough with no fever or sputum. Is this most likely a new medical condition or an adverse drug event? What do you recommend?"
+    },
+    {
+      "id": "2.4",
+      "subcategory": "Adverse Event Prediction",
+      "user": "A patient on atorvastatin 80mg for 2 months reports new, symmetrical aching and weakness in both thighs and dark urine. Is this likely an adverse drug event, and how serious could it be?"
+    },
+    {
+      "id": "2.5",
+      "subcategory": "Severity Scoring",
+      "user": "Rank these three patients from highest to lowest clinical priority and say why: (A) sudden one-sided facial droop and arm weakness 40 min ago; (B) 3-day productive cough, no fever, feels well; (C) burning on urination for 2 days, no fever, otherwise well."
+    },
+    {
+      "id": "2.6",
+      "subcategory": "Complexity Validation",
+      "user": "Assess the medication complexity and bleeding risk for: 70-year-old on warfarin (target INR 2-3), recently prescribed a 7-day course of ciprofloxacin for a UTI, also takes ibuprofen as needed for knee pain. What is your concern?"
+    },
+    {
+      "id": "2.7",
+      "subcategory": "Adverse Event Prediction",
+      "user": "A patient started amlodipine 3 weeks ago and now has new bilateral ankle swelling but no shortness of breath and clear chest. Is this more likely heart failure (a new condition) or a drug side effect, and what is the next step?"
+    },
+    {
+      "id": "2.8",
+      "subcategory": "Severity Scoring",
+      "user": "A 25-year-old with known asthma reports being unable to complete full sentences, using their reliever inhaler every hour with little relief, and feeling their chest is tight. How urgent is this and what is your stratification?"
+    },
+    {
+      "id": "2.9",
+      "subcategory": "Adverse Event Prediction",
+      "user": "An elderly patient on apixaban and recently added naproxen reports black, tarry stools and feeling lightheaded. What adverse event do you suspect, how urgent is it, and why does the drug combination matter?"
+    },
+    {
+      "id": "2.10",
+      "subcategory": "Complexity + Red Flag Overlay",
+      "user": "A patient on lithium for bipolar disorder, also taking a new thiazide diuretic, reports tremor, nausea, and feeling unsteady. Stratify the risk and explain the interaction concern."
+    }
+  ]
+}

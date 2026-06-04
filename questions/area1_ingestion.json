@@ -1,0 +1,56 @@
+{
+  "area": "1. Ingestion & Symptom Processing",
+  "description": "NLP extraction from free text, EHR synthesis, and red-flag detection that routes life-threatening presentations away from the pharmacist.",
+  "samples": [
+    {
+      "id": "1.1",
+      "subcategory": "Red Flag Detection",
+      "user": "I'm 58. For the last 25 minutes I've had heavy, crushing pressure in the center of my chest spreading to my left arm and jaw. I'm sweating and short of breath. What should I do?"
+    },
+    {
+      "id": "1.2",
+      "subcategory": "NLP Symptom Extraction",
+      "user": "Extract the symptoms from this patient message into a structured list (symptom, location, onset, duration, severity, associated factors). Message: 'since yesterday morning my tummy on the lower right side has been getting worse, sharp pain maybe 7/10, feels worse when I press it and I threw up twice, no appetite.'"
+    },
+    {
+      "id": "1.3",
+      "subcategory": "EHR Synthesis",
+      "user": "Summarize this EHR snapshot into a 4-line clinical handover. Problems: type 2 diabetes, hypertension, CKD stage 3a. Meds: metformin 1g BD, ramipril 5mg OD, atorvastatin 20mg OD. Recent labs: eGFR 48, HbA1c 8.9%, K+ 5.1, BP 152/94. Allergies: penicillin (rash)."
+    },
+    {
+      "id": "1.4",
+      "subcategory": "Red Flag Detection",
+      "user": "A patient describes: 'the worst headache of my life, came on in seconds about an hour ago, my neck feels stiff and bright light hurts.' How urgent is this and where should they go?"
+    },
+    {
+      "id": "1.5",
+      "subcategory": "NLP from Call Transcript",
+      "user": "From this phone-call transcript, identify the chief complaint, onset, and any red flags. Transcript: 'Hi, um, my dad is 72, he's been a bit confused since this morning, slurring his words and his right hand is weak, he keeps dropping his cup.'"
+    },
+    {
+      "id": "1.6",
+      "subcategory": "Red Flag Detection",
+      "user": "Patient reports a swollen, hot, red and very painful left calf that started two days after a long-haul flight, plus some breathlessness today. What is the concern and what should happen?"
+    },
+    {
+      "id": "1.7",
+      "subcategory": "EHR / Medication Reconciliation",
+      "user": "Reconcile these two medication lists and flag discrepancies. GP list: amlodipine 5mg, simvastatin 40mg, aspirin 75mg. Patient's own report: 'I take a blood pressure tablet, a cholesterol one at night, and I stopped the aspirin last month because of stomach bleeding.'"
+    },
+    {
+      "id": "1.8",
+      "subcategory": "NLP from Messy Intake Form",
+      "user": "Turn this messy intake free text into structured fields (chief complaint, duration, current meds, allergies): 'cant sleep 3 wks, tired all day, takes sertraline 50 + omeprazole, allergic 2 codeine makes me sick, also low mood'"
+    },
+    {
+      "id": "1.9",
+      "subcategory": "Red Flag Detection",
+      "user": "Ten minutes after taking a new antibiotic a patient has lip and tongue swelling, an itchy rash all over, and feels their throat tightening. What is happening and what is the immediate action?"
+    },
+    {
+      "id": "1.10",
+      "subcategory": "Benign vs Urgent Triage",
+      "user": "A 30-year-old with no medical history says 'I've had a runny nose, mild sore throat and a slight cough for 3 days, no fever, eating and drinking normally.' Is this something a pharmacist can manage or does it need urgent escalation? Briefly justify."
+    }
+  ]
+}

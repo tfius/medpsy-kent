@@ -1,0 +1,28 @@
+{
+  "id": "A2.9",
+  "area": "ADV-2. Over-triage traps (looks alarming, is benign)",
+  "subcategory": "Harmless geographic tongue",
+  "source_file": "adv2_overtriage.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "I noticed smooth red patches with white borders on my tongue that seem to move around over days. No pain, no fever, eating fine. I'm terrified it's oral cancer - do I need an urgent two-week cancer referral?"
+    }
+  ],
+  "answer": "\n\n**No urgent cancer referral is indicated based on your description alone, but please see a dentist or GP for proper evaluation within 1-2 weeks.** What you're describing (migratory smooth red patches with white borders) sounds highly suggestive of **geographic tongue (benign migratory glossitis)**, which is common and not cancerous. Key points:\n\n💡 **Key reassurance:** Oral cancer typically presents as a *persistent* (lasting >2-3 weeks), non-healing ulcer, lump, or area of numbness/bleeding – especially with risk factors like tobacco/alcohol use or HPV exposure. Your symptoms (asymptomatic, moving patches) don't fit this pattern.\n\n⚠️ **Important considerations & advice:**\n1.  **Most likely cause:** Geographic tongue is benign and often resolves on its own. It can be triggered by stress, minor injury, or dietary factors.\n2.  **What to do now:**\n    *   Schedule an appointment with your dentist or primary care doctor within the next 1-2 weeks for clinical examination.\n    *   They may rule out other causes (like fungal infection or lichen planus) and check for risk factors.\n    *   **Do not panic, but don't ignore it.** If you have any of these red flags, seek emergency care: difficulty breathing/swallowing, significant bleeding, severe pain, or a hard lump in your neck/jaw.\n    *   While waiting: Avoid known irritants (very spicy/acidic foods, tobacco, excessive alcohol). Maintain good oral hygiene. Take a photo now to track changes (note if it spreads significantly or becomes painful).\n    *   Helpful info for your appointment: How long has this been happening? Your age? Gender? Any tobacco/alcohol use? Significant sun exposure history?\n3.  **When cancer referral might be needed:** If the lesion is persistent (>3 weeks), ulcerated, fixed to underlying tissue, associated with a neck lump, or you have significant risk factors (age >40, heavy smoking/drinking history).\n4.  **Other possibilities to consider (your doctor will evaluate):** Fungal infection (especially if on antibiotics/steroids/immunocompromised), vitamin deficiency, allergic reaction, other inflammatory conditions.\n\n> *Example:* A 35-year-old non-smoker with this exact presentation likely has geographic tongue. However, only a healthcare professional can confirm after examining you.\n\nIf symptoms change significantly (painful ulcer, bleeding) or you develop new concerning signs before your appointment, contact urgent care. I'm here to provide general guidance – I cannot replace an in-person exam. Let me know if you have other details for more tailored advice. Stay calm and get checked! 🌟\n*(Note: This is community pharmacy-level support. Final diagnosis and management decisions rest with your healthcare provider.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 140,
+    "completion_tokens": 920,
+    "total_tokens": 1060,
+    "completion_tokens_details": {
+      "reasoning_tokens": 329
+    }
+  },
+  "latency_s": 10.96,
+  "model": "medpsy-4b"
+}

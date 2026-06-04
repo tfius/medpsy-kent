@@ -1,0 +1,28 @@
+{
+  "id": "2.2",
+  "area": "2. Algorithmic Risk Stratification",
+  "subcategory": "Complexity Validation",
+  "source_file": "area2_risk.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "Does this patient need intensive pharmacist intervention or a routine medication review? 84-year-old, lives alone, on 11 medications including warfarin, digoxin, furosemide, and gabapentin, with recent falls and mild cognitive impairment. Explain your reasoning."
+    }
+  ],
+  "answer": "\n\n**Intensive pharmacist intervention is required.** Here's why (concise evidence-based reasoning):\n\n1.  **High Fall Risk:** Recent falls + age + polypharmacy (11 meds) are major red flags. Key contributors likely include:\n    *   Furosemide (ototoxicity/electrolyte imbalance risk).\n    *   Possible digoxin toxicity (symptoms: nausea, visual changes, arrhythmia - check for hypokalemia/hypomagnesemia).\n    *   Potential gabapentin side effects (dizziness, ataxia).\n    *   Other meds common in elderly (e.g., sedatives, antihypertensives causing orthostasis) not listed but likely.\n2.  **High-Risk Medications:** Warfarin (requires INR monitoring for bleeding risk) and digoxin (narrow therapeutic index - requires level monitoring).\n3.  **Cognitive Impairment:** Increases risk of non-adherence, missed doses, or incorrect dosing/storage.\n4.  **Living Alone:** Limits ability to monitor side effects or manage complex regimens.\n\n**Immediate Actions Needed (Pharmacist-led):**\n*   Urgent medication reconciliation and review for inappropriate prescribing (e.g., Beers Criteria).\n*   Verify current INR status and renal function (furosemide/digoxin/warfarin affected).\n*   Assess for signs of toxicity (bleeding, arrhythmia symptoms) - **if present, escalate to emergency care immediately.**\n*   Screen for orthostatic hypotension and electrolyte imbalances.\n*   Provide fall risk assessment tools and home safety advice.\n*   Initiate deprescribing review where appropriate (e.g., gabapentin dose/indication).\n*   Educate on warfarin/digoxin monitoring and signs of toxicity.\n*   Coordinate with GP for comprehensive geriatric assessment.\n\n**This is not routine.** Polypharmacy in frail elderly with falls and cognitive issues requires specialized intervention to prevent hospitalization. Monitor closely for new symptoms (e.g., bruising/bleeding, confusion, palpitations). If you have access to recent lab results or INR, that would significantly refine the assessment.",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 152,
+    "completion_tokens": 806,
+    "total_tokens": 958,
+    "completion_tokens_details": {
+      "reasoning_tokens": 343
+    }
+  },
+  "latency_s": 9.64,
+  "model": "medpsy-4b"
+}

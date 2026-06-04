@@ -1,0 +1,28 @@
+{
+  "id": "3.9",
+  "area": "3. Pharmacist Clinical Decision Support",
+  "subcategory": "Interaction Management",
+  "source_file": "area3_decision_support.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient on simvastatin 40mg is about to start clarithromycin for a chest infection. Identify the interaction and recommend a management plan."
+    }
+  ],
+  "answer": "\n\n**High-risk CYP3A4-mediated interaction; avoid concurrent use or adjust therapy.**  \nClarithromycin (a strong CYP3A4 inhibitor) significantly increases simvastatin blood levels (up to 15-fold), raising the risk of **myopathy/rhabdomyolysis** (symptoms: unexplained muscle pain, weakness, dark urine).  \n\n**Management plan:**  \n1. **Do not start clarithromycin** if possible. Consider alternative antibiotics less likely to inhibit CYP3A4 (e.g., azithromycin for typical chest infections).  \n2. **If clarithromycin is essential:**  \n   - Temporarily discontinue simvastatin during the 5–10 day course of clarithromycin and for at least 48 hours after stopping it (clarithromycin's half-life is long).  \n   - Restart a statin with minimal CYP3A4 dependence (e.g., pravastatin, fluvastatin, or rosuvastatin) at the lowest effective dose. *Avoid simvastatin/atorvastatin.*  \n   - Monitor for muscle symptoms daily; advise patient to seek urgent care for pain/dark urine.  \n3. **Additional considerations:** Assess renal/hepatic function and other risk factors (age >70, alcohol, hypothyroidism, high-dose statin).  \n\n> ⚠️ **Red flags requiring emergency referral:** Severe muscle pain, fever, malaise, or dark cola-colored urine (signs of rhabdomyolysis with potential renal failure).\n\n*Note: This is a pharmacist-led recommendation. Confirm with the prescriber and review full patient history.*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 127,
+    "completion_tokens": 744,
+    "total_tokens": 871,
+    "completion_tokens_details": {
+      "reasoning_tokens": 383
+    }
+  },
+  "latency_s": 11.14,
+  "model": "medpsy-4b"
+}

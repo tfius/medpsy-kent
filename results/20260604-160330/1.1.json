@@ -1,0 +1,28 @@
+{
+  "id": "1.1",
+  "area": "1. Ingestion & Symptom Processing",
+  "subcategory": "Red Flag Detection",
+  "source_file": "area1_ingestion.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "I'm 58. For the last 25 minutes I've had heavy, crushing pressure in the center of my chest spreading to my left arm and jaw. I'm sweating and short of breath. What should I do?"
+    }
+  ],
+  "answer": "\n\n**Call emergency medical services immediately (e.g., 911 or your local equivalent).** Your symptoms—sudden heavy crushing chest pressure radiating to your left arm/jaw, sweating, and shortness of breath lasting 25 minutes—are highly concerning for a possible heart attack (myocardial infarction) or other serious cardiac event. **Do not wait.** Time is critical.\n\nKey actions while waiting for help:\n1.  Sit down and rest. Do not exert yourself.\n2.  If you have access to aspirin (300mg non-coated) *and no known allergy or contraindication* (e.g., bleeding disorder, recent surgery), chew it now. **Only do this if you are certain it's safe for you.** Paramedics will confirm and provide further treatment.\n3.  Note the exact time your symptoms started (this is crucial for treatment).\n4.  If you have a history of heart disease or prescribed nitroglycerin, use it as directed by your doctor *while waiting*.\n5.  Have someone stay with you. Do not drive yourself.\n\nImportant considerations:\n*   **This requires urgent hospital evaluation** (ECG, blood tests like troponin).\n*   Other possibilities include severe angina, aortic dissection, or other emergencies—only professionals can diagnose and treat this safely.\n*   Risk factors to be aware of: Age >45, male gender, smoking history, diabetes, high blood pressure, high cholesterol, family history. If you have any of these, it increases concern.\n*   **Red flags present:** Duration (>15 minutes), radiation pattern (to arm/jaw), autonomic symptoms (sweating).\n\n*(As an AI assistant in a community pharmacy context, I cannot diagnose or replace emergency care. My role is to recognize urgency and guide immediate action based on evidence-based guidelines for acute cardiac symptoms.)* If you have additional details like medications, medical history, or vital signs (if you can safely check them now), share them with the emergency responders. They will manage your care. Wishing you a swift recovery.",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 141,
+    "completion_tokens": 784,
+    "total_tokens": 925,
+    "completion_tokens_details": {
+      "reasoning_tokens": 344
+    }
+  },
+  "latency_s": 9.42,
+  "model": "medpsy-4b"
+}

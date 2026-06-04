@@ -1,0 +1,28 @@
+{
+  "id": "2.7",
+  "area": "2. Algorithmic Risk Stratification",
+  "subcategory": "Adverse Event Prediction",
+  "source_file": "area2_risk.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient started amlodipine 3 weeks ago and now has new bilateral ankle swelling but no shortness of breath and clear chest. Is this more likely heart failure (a new condition) or a drug side effect, and what is the next step?"
+    }
+  ],
+  "answer": "\n\nBased on your description (new bilateral ankle swelling starting 3 weeks after amlodipine initiation, **no shortness of breath or pulmonary findings**), this is **most likely a benign drug-induced peripheral edema**, not new heart failure. Amlodipine commonly causes this due to capillary leakage.\n\n**Key points & next steps:**\n1.  **Likelihood:** Drug side effect (amlodipine) is probable given the timing and absence of classic heart failure symptoms (dyspnea, orthopnea, fatigue, rales). Heart failure would typically present with pulmonary congestion.\n2.  **Red flags to rule out:** While unlikely here, ensure there's no underlying cause (e.g., renal/cardiac disease, liver disease, other meds like NSAIDs/CCBs). Check for:\n    *   Other symptoms: Fatigue, reduced exercise tolerance, chest pain, palpitations, weight gain >2kg in days, nocturia.\n    *   Basic history: Age? Other medical conditions (especially heart/kidney/liver)? Other medications?\n3.  **Immediate advice for the patient:**\n    *   Continue monitoring symptoms closely. Report any new shortness of breath, chest pain, or significant fatigue immediately (go to emergency).\n    *   Simple measures: Elevate legs when resting, avoid prolonged standing/sitting, check for signs of infection (redness/warmth/pain in one leg - rule out DVT).\n    *   Basic self-check: Note if swelling is pitting (press finger leaves indentation) and measure ankle circumference vs baseline if possible. Check blood pressure regularly at home.\n    *   **Pharmacist action:** Review full medication list for other edema-causing drugs (NSAIDs, steroids, some diabetes meds). Confirm no signs of infection or DVT. Provide patient education on this common side effect but also the importance of cardiac evaluation if symptoms change.\n    *   **Recommended clinical step:** Schedule a timely appointment with the prescribing physician within 1-2 weeks for:\n        *   Confirmation (history, physical exam including JVP and heart/lung sounds).\n        *   Basic investigations: Echocardiogram (if high risk for HF) and renal function/electrolytes/BNP if indicated.\n        *   Consideration of alternative antihypertensive options if edema is intolerable.\n\n**Important note:** While likely benign, new edema always warrants medical evaluation to exclude serious causes. Do not ignore it solely as a side effect without assessment. If you have additional details (age, gender, other meds, comorbidities), a more specific assessment can be provided. I cannot diagnose or prescribe.",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 147,
+    "completion_tokens": 860,
+    "total_tokens": 1007,
+    "completion_tokens_details": {
+      "reasoning_tokens": 304
+    }
+  },
+  "latency_s": 10.43,
+  "model": "medpsy-4b"
+}

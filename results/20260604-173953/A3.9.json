@@ -1,0 +1,28 @@
+{
+  "id": "A3.9",
+  "area": "ADV-3. Drug-knowledge traps (precision under pressure)",
+  "subcategory": "Tetracycline / fluoroquinolone chelation",
+  "source_file": "adv3_drug_traps.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient prescribed doxycycline (or ciprofloxacin) takes it at the same time as their calcium carbonate antacid and iron tablets, and the infection isn't improving. Why might that be?"
+    }
+  ],
+  "answer": "\n\n**The most likely cause is reduced antibiotic absorption due to drug-mineral interactions.** Here's why and what to do:\n\n1.  **Key Mechanism:** Both doxycycline (tetracycline class) and ciprofloxacin (fluoroquinolone class) form insoluble complexes with calcium (in antacids), magnesium, aluminum, iron, and zinc. This prevents absorption in the gut.\n2.  **Specific Issue:** Taking them simultaneously with calcium carbonate (antacid) and iron significantly lowers blood levels of the antibiotic, leading to subtherapeutic concentrations and treatment failure.\n3.  **Critical Advice:**\n    *   **Separate Dosing:** The patient should take doxycycline or ciprofloxacin **at least 2-3 hours before or after** calcium/iron supplements/antacids (check specific product info, as timing can vary slightly).\n    *   **Check Current Regimen:** Confirm the exact antibiotic and infection. Other possibilities include incorrect diagnosis, resistant organism, inadequate duration, or another underlying issue – but the interaction is highly probable.\n    *   **Pharmacist Action:** Advise the patient on correct timing. Review their specific prescription and antacid/iron schedule. Consider if alternative antibiotics less affected by minerals are appropriate (e.g., amoxicillin for some infections), but this requires clinical assessment.\n    *   **Red Flag Check:** While unlikely to be an emergency here, ensure there are no signs of severe infection (high fever, hypotension, confusion, significant dehydration) requiring urgent medical review.\n\n**Important Considerations:**\n*   Doxycycline is less affected by calcium than some other tetracyclines but still significantly impacted.\n*   Ciprofloxacin has strong interactions with multiple minerals.\n*   If symptoms persist despite correct timing for 3-5 days (or as per infection guidelines), the patient needs re-evaluation by their doctor for possible resistance or alternative diagnosis.\n\n*(Note: I am providing clinical decision support based on pharmacology. The prescribing pharmacist must confirm this advice aligns with the specific prescription and local protocols.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 138,
+    "completion_tokens": 762,
+    "total_tokens": 900,
+    "completion_tokens_details": {
+      "reasoning_tokens": 318
+    }
+  },
+  "latency_s": 9.34,
+  "model": "medpsy-4b"
+}

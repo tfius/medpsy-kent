@@ -1,0 +1,28 @@
+{
+  "id": "4.6",
+  "area": "4. Direct Triage Routing",
+  "subcategory": "Automated Scheduling Logic",
+  "source_file": "area4_triage.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "Given a patient flagged as needing a same-day physician review for poorly controlled symptoms but who is clinically stable, describe the appropriate automated scheduling action and what safety-net advice should accompany it."
+    }
+  ],
+  "answer": "\n\nBased on clinical guidelines for community pharmacy practice (e.g., ASHP/ACPE standards), here is the appropriate action:\n\n**Automated Scheduling Action:**  \nThe pharmacy system should automatically generate a same-day or next-business-day physician referral request with clear urgency flags. If same-day availability exists, schedule within 24 hours; otherwise, prioritize earliest available slot (typically <72 hours). *Do not delay beyond this window for non-emergent but unstable cases.*\n\n**Safety-Net Advice to Provide:**  \n1. **Red-flag symptoms requiring immediate ER care:**  \n   - Signs of anaphylaxis (e.g., swelling, difficulty breathing), severe hypoglycemia (<54 mg/dL or <3 mmol/L with altered mental status), uncontrolled bleeding, chest pain, neurological deficits (e.g., slurred speech/weakness suggesting stroke), or signs of severe infection (high fever + confusion).  \n   - *Example:* \"If you develop trouble breathing or swelling after starting a new antibiotic, go to the ER now.\"  \n2. **Interim self-management:**  \n   - Confirm medication adherence and technique (e.g., inhaler use). Check for drug interactions/allergies. Monitor symptoms per baseline parameters (e.g., blood pressure logs, blood glucose records).  \n   - *Example:* \"Continue your current medications as prescribed unless instructed otherwise. Track your symptoms daily.\"  \n3. **Follow-up protocol:**  \n   - \"We will contact you within 24 hours to confirm your appointment and review any new concerns. If symptoms worsen before then, seek emergency care.\"  \n   - Provide written instructions on symptom monitoring (e.g., \"Record your blood pressure twice daily until your visit\").\n\n**Critical Notes:**  \n- This applies *only* if the pharmacist has ruled out acute emergencies via screening (e.g., vital signs, basic history). If instability is present (e.g., hypotensive shock), treat as emergency.  \n- Document all actions in pharmacy records per local regulations.  \n- Uncertainty: Without knowing the specific condition (e.g., hypertension vs. diabetes), advice must be general. *Always defer to your jurisdiction's scope-of-practice laws.*  \n\n> 💡 *Example context:* A diabetic patient with persistent hyperglycemia despite metformin would need same-day endocrinology review but could safely monitor ketones and hydration at home while awaiting care.",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 130,
+    "completion_tokens": 920,
+    "total_tokens": 1050,
+    "completion_tokens_details": {
+      "reasoning_tokens": 422
+    }
+  },
+  "latency_s": 13.66,
+  "model": "medpsy-4b"
+}

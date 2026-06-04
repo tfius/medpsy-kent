@@ -1,0 +1,28 @@
+{
+  "id": "A2.4",
+  "area": "ADV-2. Over-triage traps (looks alarming, is benign)",
+  "subcategory": "Costochondritis (reproducible chest pain)",
+  "source_file": "adv2_overtriage.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "I'm 24, fit, no health problems. After a heavy chest workout 2 days ago I've got a sharp pain over my left chest wall. It's worse when I press on that exact spot or twist, but fine at rest. Is this a heart attack - should I go to hospital now?"
+    }
+  ],
+  "answer": "\n\n**No immediate hospitalization needed, but monitor closely and see a doctor within 24-48 hours.** Based on your description (young age, fit, no cardiac risk factors, pain triggered by movement/pressure), this is **most likely musculoskeletal** (e.g., costochondritis or muscle strain from exercise). Heart attack is very unlikely at your age without other symptoms.\n\n💡 **Key points & advice:**\n1.  **Red flags to watch for (go to ER immediately if any occur):** Pain radiating to jaw/neck/arm, shortness of breath, sweating, nausea, dizziness, palpitations, or feeling faint.\n2.  **Likely cause:** Exercise can strain chest wall muscles or inflame the cartilage where ribs meet the breastbone (costochondritis). This is common and treatable.\n3.  **What to do now:**\n    *   Avoid activities that worsen the pain (like heavy twisting).\n    *   Over-the-counter pain relief like ibuprofen or acetaminophen can help (check for any contraindications you have, e.g., stomach/kidney issues).\n    *   Apply ice to the tender area for 15-20 minutes several times a day.\n    *   Gentle stretching might help later, but avoid aggressive movement now.\n    *   **Important:** If pain doesn't start improving within a week or gets worse (especially with new symptoms like fever or breathing difficulty), see your primary care doctor or return to the pharmacy for assessment. They can examine you and rule out other causes like rib fracture or infection.\n    *   Consider if there was any direct trauma during your workout.\n\n⚠️ **Note:** While this sounds benign, chest pain always warrants professional evaluation. If you have access to a pharmacist at your community pharmacy, they can provide initial advice and check for any medication interactions. They cannot diagnose but can guide next steps.\n\n*(Disclaimer: I am an AI assistant providing general information based on common presentations. I cannot replace an in-person medical evaluation by your physician or emergency care provider if urgent symptoms develop.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 158,
+    "completion_tokens": 778,
+    "total_tokens": 936,
+    "completion_tokens_details": {
+      "reasoning_tokens": 342
+    }
+  },
+  "latency_s": 9.21,
+  "model": "medpsy-4b"
+}
