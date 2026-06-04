@@ -1,0 +1,28 @@
+{
+  "id": "A2.2",
+  "area": "ADV-2. Over-triage traps (looks alarming, is benign)",
+  "subcategory": "Rifampicin/phenazopyridine orange secretions",
+  "source_file": "adv2_overtriage.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "I just started a new medicine and my pee has turned bright orange, and even my tears stained my contact lenses. I'm panicking that my kidneys or liver are failing. Do I need urgent tests?"
+    }
+  ],
+  "answer": "Bright orange urine can be caused by several things, including certain medications (like rifampin), supplements, or food dyes. Contact lens staining is less directly related but could indicate a more significant issue if the dye is being absorbed into the body.\n\nWhile it's understandable to be concerned about kidney or liver failure, these conditions usually present with other symptoms like fatigue, jaundice, nausea/vomiting, abdominal pain, and changes in urine output (darkening, decreased frequency). The orange color alone isn't definitive evidence of organ dysfunction.\n\n**Recommendation:**\n\n*   **Immediate Escalation:** No, urgent tests are not immediately required unless accompanied by other concerning symptoms such as:\n    *   Severe abdominal pain\n    *   Jaundice (yellowing of the skin or eyes)\n    *   Decreased urine output\n    *   Persistent nausea/vomiting\n    *   Significant fatigue\n\n*   **Further Evaluation:** If orange urine persists without other symptoms, consider contacting your doctor to discuss potential causes and whether further investigation is warranted. They may want to review your medication list, recent diet changes, or perform a urinalysis to rule out infection or other abnormalities.\n\n*   **Contact Lens Dye:** Contact lens dye can sometimes cause staining of the skin if it's absorbed into the body. If you are concerned about this, contact your eye doctor for advice on cleaning and care.\n",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 120,
+    "completion_tokens": 286,
+    "total_tokens": 406,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  },
+  "latency_s": 3.34,
+  "model": "medgemma-4b-it"
+}

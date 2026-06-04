@@ -1,0 +1,36 @@
+{
+  "area": "1. Ingestion & Symptom Processing",
+  "description": "NLP extraction from free text, EHR synthesis, and red-flag detection that routes life-threatening presentations away from the pharmacist.",
+  "samples": [
+    {
+      "id": "1.11",
+      "subcategory": "Red Flag Detection",
+      "user": "A 26-year-old says: 'I've had a fever for two days and now there are little dark red-purple spots on my legs that don't fade when I press a glass against them, plus a stiff neck and a thumping headache.' How urgent is this and where should they go?"
+    },
+    {
+      "id": "1.12",
+      "subcategory": "NLP Symptom Extraction",
+      "user": "Extract the symptoms from this patient message into a structured list (symptom, location, onset, duration, severity, associated factors). Message: 'about 4 days ago I started getting really thirsty and weeing loads, now I'm exhausted, lost a bit of weight, and my breath smells fruity, feeling a bit sick today.'"
+    },
+    {
+      "id": "1.13",
+      "subcategory": "EHR Synthesis",
+      "user": "Summarize this EHR snapshot into a 4-line clinical handover. Problems: atrial fibrillation, heart failure (reduced EF), gout. Meds: apixaban 5mg BD, bisoprolol 5mg OD, furosemide 40mg OD, allopurinol 100mg OD. Recent labs: eGFR 55, K+ 4.4, NT-proBNP raised, INR not applicable. Allergies: NKDA. Recent: admitted twice this year for fluid overload."
+    },
+    {
+      "id": "1.14",
+      "subcategory": "Red Flag Detection",
+      "user": "A patient reports: 'over the last few hours the vision in my right eye has gone, like a curtain came down, no pain at all.' What is the concern and what should happen?"
+    },
+    {
+      "id": "1.15",
+      "subcategory": "NLP from Call Transcript",
+      "user": "From this phone-call transcript, identify the chief complaint, onset, and any red flags. Transcript: 'Hello, it's about my wife, she's 68 and diabetic, her left foot has gone really swollen, red and hot over two days, there's a small ulcer that's now leaking and smells bad, and she's shivering and feels feverish.'"
+    },
+    {
+      "id": "1.16",
+      "subcategory": "NLP from Messy Intake Form",
+      "user": "Turn this messy intake free text into structured fields (chief complaint, duration, current meds, allergies): 'itchy red rash both arms since new washing powder ~5 days, no swelling no breathing probs, on levothyroxine 75 + the pill, allergic penicillin (hives)'"
+    }
+  ]
+}

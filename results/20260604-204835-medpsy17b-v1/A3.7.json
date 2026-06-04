@@ -1,0 +1,28 @@
+{
+  "id": "A3.7",
+  "area": "ADV-3. Drug-knowledge traps (precision under pressure)",
+  "subcategory": "Warfarin + St John's Wort / OTC herbal",
+  "source_file": "adv3_drug_traps.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient stabilized on warfarin (INR in range) has started taking St John's Wort for low mood and is drinking lots of cranberry juice. They ask if herbal/'natural' products are safe alongside warfarin."
+    }
+  ],
+  "answer": "\n\n**Flag this for pharmacist review and INR monitoring escalation.** Both St John's Wort (SJW) and cranberry juice can significantly affect warfarin stability, even if your current INR is normal now. Here's the key info:\n\n1.  **St John's Wort:** This herbal product *induces* CYP enzymes (including those metabolizing vitamin K) and P-glycoprotein. This typically causes **warfarin to be cleared faster**, leading to a sudden drop in effectiveness (lower INR, higher bleeding risk). Start this interaction.\n2.  **Cranberry Juice:** High doses or frequent consumption can inhibit gut bacteria that produce vitamin K, potentially causing warfarin levels to rise and INR to increase (higher bleeding risk).\n3.  **Critical Advice:**\n    *   Do not continue both products without discussing alternatives with the patient's doctor. There are safer treatments for low mood than these.\n    *   Advise the patient to get their INR checked within 1 week of starting either product and then regularly as usual (or more often if they start another new medication/supplement).\n    *   Monitor closely for signs of bleeding (unusual bruising, nosebleeds, bleeding gums, blood in urine/stool, headache/vomiting/weakness suggesting brain bleed) or signs of clotting (new swelling/pain in leg, chest pain/shortness of breath). Seek emergency care if any red flags occur.\n    *   Ensure the patient is taking warfarin consistently and has a reliable way to get their INR tested. Check for other potential interacting medications/supplements (e.g., antibiotics, NSAIDs like ibuprofen).\n    *   Suggest discussing evidence-based antidepressant options with their prescriber that don't interact with warfarin.\n    *   For cranberry: Recommend moderate consumption of standard juice (not excessive amounts daily) and ensure consistent vitamin K intake from diet (don't suddenly eat huge amounts or avoid it completely). Vitamin K is essential; consistency matters more than avoidance.\n\n**Note:** Evidence for these interactions exists but can be variable. Pharmacists often see this pattern. Your role is to flag the risk, not diagnose – final management decisions are with the treating physician based on your full assessment and local protocols. If INR becomes elevated (≥3 or ≥4 depending on target), seek urgent medical advice.",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 141,
+    "completion_tokens": 795,
+    "total_tokens": 936,
+    "completion_tokens_details": {
+      "reasoning_tokens": 301
+    }
+  },
+  "latency_s": 6.44,
+  "model": "medpsy-1.7b"
+}

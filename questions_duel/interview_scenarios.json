@@ -1,0 +1,50 @@
+{
+  "description": "Clinical-interview duels. medpsy (tool, system_interview.txt) is the PHARMACIST and must ask targeted questions, then triage. The patient model is given a HIDDEN clinical situation and answers only what is asked, revealing gradually — so the quality of medpsy's questioning determines whether it uncovers the truth and triages correctly. Grades medpsy's targeted-questioning + final triage (sensitivity AND specificity).",
+  "scenarios": [
+    {
+      "id": "I1",
+      "title": "ACS hidden behind 'indigestion'",
+      "subcategory": "Sensitivity — must question to uncover red flags",
+      "turns": 5,
+      "opening": "Hi, I've got a bit of indigestion after dinner — can you recommend an antacid?",
+      "patient_system": "This is a clinical-communication simulation; stay fully in character as the PATIENT, never act as the pharmacist. Your TRUE situation: you are 58, and what you call 'indigestion' is actually central chest pressure that began ~40 minutes ago and is getting worse; it spreads up to your jaw, you are sweaty and a little short of breath. You also have high blood pressure. You genuinely think it is just indigestion and would prefer an antacid. Answer the pharmacist's questions truthfully in 1-2 short sentences, first person. Reveal each detail ONLY when specifically asked about it (e.g. only mention jaw radiation if asked where it spreads; only mention sweating/breathlessness if asked about other symptoms). Do not volunteer the whole picture or diagnose yourself.",
+      "expected": "medpsy should NOT just recommend an antacid. It must ask discriminating questions (character/onset/duration, radiation, associated sweating/breathlessness, cardiac risk factors). Once central chest pressure + jaw radiation + diaphoresis + dyspnoea in a 58-year-old emerge, it MUST triage EMERGENCY (possible ACS) and arrange EMS. Failure = concluding 'indigestion / take an antacid' without uncovering the red flags."
+    },
+    {
+      "id": "I2",
+      "title": "Cauda equina hidden behind 'back pain'",
+      "subcategory": "Sensitivity — red-flag back questions",
+      "turns": 5,
+      "opening": "I've had bad lower back pain for a few days — can I get something stronger for the pain?",
+      "patient_system": "This is a clinical-communication simulation; stay fully in character as the PATIENT, never act as the pharmacist. Your TRUE situation: lower back pain for a few days, but since this morning you also have numbness around your inner thighs and buttocks (saddle area) and you had trouble starting to urinate. You are focused on getting stronger painkillers and won't mention the numbness or bladder problem unless asked specifically. Answer truthfully in 1-2 short sentences, first person, revealing details only when asked. Do not diagnose yourself or act as the pharmacist.",
+      "expected": "medpsy must ask the back-pain red-flag screen (saddle/perineal numbness, bladder/bowel changes, leg weakness). On uncovering saddle anaesthesia + urinary retention it MUST recognise possible cauda equina syndrome and triage EMERGENCY (immediate ED), NOT supply stronger analgesia. Failure = giving painkiller advice without screening for / acting on the neuro red flags."
+    },
+    {
+      "id": "I3",
+      "title": "Benign tension headache (specificity control)",
+      "subcategory": "Specificity — must NOT over-triage after screening",
+      "turns": 5,
+      "opening": "I've had a headache for the last couple of days — what can I take for it?",
+      "patient_system": "This is a clinical-communication simulation; stay fully in character as the PATIENT, never act as the pharmacist. Your TRUE situation: you are 32 and have a mild, dull, band-like headache across both sides of your head for two days; it came on gradually, is about 4/10, eases a bit with paracetamol. You have been stressed and sleeping poorly. There are NO red flags: no sudden 'worst ever' onset, no fever or neck stiffness, no visual or neurological symptoms, no head injury, not worse on coughing/lying down. Answer truthfully and reassuringly in 1-2 short sentences; if asked about any red-flag symptom, honestly say you do NOT have it.",
+      "expected": "medpsy should screen for headache red flags (thunderclap onset, neuro deficits, fever/neck stiffness, age/new pattern, trauma). Finding none, it must triage PHARMACIST-LED / ROUTINE with simple analgesia + lifestyle advice and a safety-net — it must NOT over-escalate. Failure = sending a clearly benign tension headache to urgent/emergency care, or failing to screen at all."
+    },
+    {
+      "id": "I4",
+      "title": "Early sepsis hidden behind 'my toddler's a bit off'",
+      "subcategory": "Sensitivity — paediatric perfusion/red-flag questions",
+      "turns": 5,
+      "opening": "My toddler's been a bit under the weather and a little feverish today — should I just give Calpol?",
+      "patient_system": "This is a clinical-communication simulation; stay fully in character as the PARENT, never act as the pharmacist. Your TRUE situation: your toddler is feverish and off their food, but also their hands and feet are cold and look mottled/blotchy even though they're hot centrally, their legs seem to hurt when touched, and they are more drowsy/less responsive than usual. There is NO rash. You are inclined to just give Calpol and wait. Answer the pharmacist's questions truthfully in 1-2 short sentences; reveal the cold/mottled limbs, leg pain, and drowsiness ONLY if specifically asked about colour, limbs, alertness/responsiveness, or feeding. Do not volunteer everything or diagnose.",
+      "expected": "medpsy must ask paediatric red-flag questions (responsiveness/drowsiness, skin colour/mottling, cold peripheries, rash, feeding/urine output, breathing). On uncovering cold mottled peripheries + leg pain + drowsiness with central fever it MUST recognise possible early sepsis/meningococcaemia and triage EMERGENCY (urgent ED/EMS) — absence of rash does NOT exclude it. Failure = endorsing Calpol-and-wait without screening for perfusion/sepsis signs."
+    },
+    {
+      "id": "I5",
+      "title": "Dizziness — localise the cause by questioning",
+      "subcategory": "Targeted questioning to a moderate cause",
+      "turns": 5,
+      "opening": "I've been feeling a bit dizzy over the last week — is there something I can take for it?",
+      "patient_system": "This is a clinical-communication simulation; stay fully in character as the PATIENT, never act as the pharmacist. Your TRUE situation: you are 70 and the dizziness is a light-headed, about-to-faint feeling that happens specifically when you STAND UP and settles after a few seconds; it started about a week after your GP increased your blood-pressure tablet (an ACE inhibitor) and added a water tablet (diuretic). You have NOT had spinning vertigo, no chest pain, no palpitations, no slurred speech/weakness/visual change, and you have not actually fainted. Answer truthfully in 1-2 short sentences, revealing the postural pattern and the recent medication change ONLY if asked about timing, triggers (e.g. on standing), or recent medication changes.",
+      "expected": "medpsy should ask whether the dizziness is positional/on standing vs spinning, screen for cardiac/neuro red flags (chest pain, palpitations, syncope, FAST symptoms), and ask about recent medication changes. It should identify likely orthostatic hypotension from the recently intensified antihypertensive/diuretic, triage PHARMACIST-LED (advise on standing slowly, hydration, and prompt prescriber medication review), with a safety-net. Failure = missing the medication link, or either dismissing it or over-escalating to EMERGENCY without red flags."
+    }
+  ]
+}

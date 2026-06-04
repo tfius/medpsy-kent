@@ -1,0 +1,80 @@
+{
+  "id": "I5",
+  "title": "Dizziness — localise the cause by questioning",
+  "subcategory": "Targeted questioning to a moderate cause",
+  "expected": "medpsy should ask whether the dizziness is positional/on standing vs spinning, screen for cardiac/neuro red flags (chest pain, palpitations, syncope, FAST symptoms), and ask about recent medication changes. It should identify likely orthostatic hypotension from the recently intensified antihypertensive/diuretic, triage PHARMACIST-LED (advise on standing slowly, hydration, and prompt prescriber medication review), with a safety-net. Failure = missing the medication link, or either dismissing it or over-escalating to EMERGENCY without red flags.",
+  "tool_model": "medpsy-4b",
+  "patient_model": "qwen3.6-27b-optiq",
+  "transcript": [
+    {
+      "turn": 1,
+      "role": "patient",
+      "model": "qwen3.6-27b-optiq",
+      "content": "I've been feeling a bit dizzy over the last week — is there something I can take for it?",
+      "latency_s": 0.0
+    },
+    {
+      "turn": 1,
+      "role": "tool",
+      "model": "medpsy-4b",
+      "content": "Is the dizziness a spinning sensation (like the room is moving), or do you feel lightheaded/unsteady?",
+      "latency_s": 6.89
+    },
+    {
+      "turn": 2,
+      "role": "patient",
+      "model": "qwen3.6-27b-optiq",
+      "content": "It’s definitely more of a lightheaded, about-to-faint feeling rather than the room spinning. I haven’t actually passed out, but it does leave me feeling quite unsteady for a moment.",
+      "latency_s": 56.79
+    },
+    {
+      "turn": 2,
+      "role": "tool",
+      "model": "medpsy-4b",
+      "content": "Okay, let's see. The patient says they've had dizziness for a week, specifically lightheadedness, not vertigo. No fainting yet. First, I need to screen for red flags. Onset and duration: one week isn't acute but could be something chronic. But red flags like sudden severe headache, chest pain, neurological symptoms? Not mentioned.\n\nNext question should focus on possible causes. Orthostatic hypotension is common—maybe dehydration or meds. They might be on antihypertensives or diuretics. Also, check for recent illness, blood loss, heart issues. The user didn't mention any other symptoms, so need to dig deeper.\n\nAsk about medications first because that's a key point. Common culprits: BP meds, antidepressants, etc. Also, hydration and salt intake. But the next question should be targeted. Maybe \"Have you started any new medications recently?\" That covers possible side effects without being too broad.\n\nWait, the guidelines say ask one focused question at a time. So after confirming it's lightheadedness, check meds. If they're on something that causes orthostatic hypotension, that's likely. Also, check for signs of dehydration or anemia.\n\nBut need to make sure not to miss cardiac issues. However, without chest pain or palpitations mentioned, maybe less urgent. Still, important to ask about heart symptoms.\n\nSo the next question is meds and recent changes. That should help narrow it down.\n\n\nHave you started any new medications in the last few weeks, especially for blood pressure, heart conditions, depression, or anxiety? (Common culprits include diuretics, beta-blockers, antidepressants).",
+      "latency_s": 12.49
+    },
+    {
+      "turn": 3,
+      "role": "patient",
+      "model": "qwen3.6-27b-optiq",
+      "content": "Yes, my GP actually adjusted my blood pressure medication about a week ago. He increased the dose of one tablet and added a water pill, which he said is a diuretic.",
+      "latency_s": 119.95
+    },
+    {
+      "turn": 3,
+      "role": "tool",
+      "model": "medpsy-4b",
+      "content": "Does the dizziness get worse when you stand up quickly from sitting or lying down? (This helps identify orthostatic hypotension).",
+      "latency_s": 9.85
+    },
+    {
+      "turn": 4,
+      "role": "patient",
+      "model": "qwen3.6-27b-optiq",
+      "content": "Yes, it happens right when I stand up from sitting or lying down, though it usually settles after a few seconds.",
+      "latency_s": 73.84
+    },
+    {
+      "turn": 4,
+      "role": "tool",
+      "model": "medpsy-4b",
+      "content": "Okay, let's put this together. The patient has lightheadedness for a week that worsens on standing—classic orthostatic hypotension. Likely due to the new BP meds (diuretic and increased antihypertensive). No red flags like chest pain or neurological symptoms.\n\nNeed to check volume status: dehydration? Recent illness/vomiting/diarrhea? But they didn't mention any, so probably medication side effect. Also ask about salt/fluid intake.\n\nNext question should be about hydration/salt and other symptoms. But keep it focused. \"Have you had any recent vomiting, diarrhea, or significant sweating?\" That covers volume depletion.\n\nWait, the user hasn't provided that yet. So answer with that question.\n\n\nHave you had any recent vomiting, diarrhea, excessive sweating, or reduced fluid intake? (This helps rule out dehydration as a contributor).",
+      "latency_s": 7.02
+    },
+    {
+      "turn": 5,
+      "role": "patient",
+      "model": "qwen3.6-27b-optiq",
+      "content": "No, I haven’t had any vomiting, diarrhea, or excessive sweating, and my fluid intake has been normal over the last week. I've just noticed I'm a bit more thirsty since starting that new water pill, but nothing else out of the ordinary.",
+      "latency_s": 102.48
+    },
+    {
+      "turn": 5,
+      "role": "tool",
+      "model": "medpsy-4b",
+      "content": "Okay, let's see. The patient is on a diuretic for hypertension, now with orthostatic lightheadedness and mild thirst—likely volume depletion from the medication.\n\nNo red flags: no chest pain, neurological symptoms, or signs of severe dehydration (like very dark urine). Duration is one week, which fits medication side effect.\n\nNeed to confirm if they're monitoring BP at home? But maybe not necessary yet. Advice would be hydration and slow position changes.\n\nDecision: pharmacist-led since it's likely manageable with education on meds and hydration. No emergency.\n\nCheck format: DECISION: PHARMACIST-LED... RED FLAGS: none... ROUTING: pharmacist advice...\n\n\nDECISION: PHARMACIST-LED  \nRED FLAGS: none identified  \nROUTING: Community pharmacist advice (medication review, hydration/salt guidance, orthostatic BP check) as this is likely medication-induced orthostatic hypotension from diuretic/antihypertensive adjustment.  \nSAFETY-NET: If dizziness worsens to fainting, chest pain, or neurological symptoms (slurred speech, weakness), seek emergency care immediately. Otherwise, monitor for signs of dehydration (excessive thirst, dark urine) and check BP at home if possible—report persistent issues back to GP.",
+      "latency_s": 10.67
+    }
+  ]
+}

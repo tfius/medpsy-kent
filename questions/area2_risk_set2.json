@@ -1,0 +1,36 @@
+{
+  "area": "2. Algorithmic Risk Stratification",
+  "description": "Severity scoring, medication-regimen complexity validation, and adverse-drug-event vs new-condition discrimination.",
+  "samples": [
+    {
+      "id": "2.11",
+      "subcategory": "Severity Scoring",
+      "user": "Categorize the urgency of this case as ROUTINE, URGENT, or EMERGENCY and justify in one sentence: 19-year-old, severe sudden one-sided testicular pain for 2 hours, nausea, the testicle looks high and swollen, no trauma."
+    },
+    {
+      "id": "2.12",
+      "subcategory": "Adverse Event Prediction",
+      "user": "A patient with epilepsy started lamotrigine 3 weeks ago and now has a widespread tender rash with blistering, mouth ulcers, and a fever. Is this likely an adverse drug event, how serious could it be, and what is the immediate action?"
+    },
+    {
+      "id": "2.13",
+      "subcategory": "Complexity Validation",
+      "user": "Does this patient need intensive pharmacist intervention or a routine medication review? 76-year-old with Parkinson's disease and depression on co-careldopa QDS, ropinirole, sertraline, and recently started tramadol for back pain, with new confusion and agitation. Explain your reasoning."
+    },
+    {
+      "id": "2.14",
+      "subcategory": "Adverse Event Prediction",
+      "user": "A patient started a SSRI (citalopram) 5 days ago and, after also taking an over-the-counter remedy containing dextromethorphan, now has agitation, sweating, shivering, brisk reflexes, and a fast heart rate. Is this an adverse drug event, what is it, and how urgent?"
+    },
+    {
+      "id": "2.15",
+      "subcategory": "Severity Scoring",
+      "user": "Rank these three patients from highest to lowest clinical priority and say why: (A) 45-year-old with sudden 'tearing' chest pain radiating to the back and unequal arm blood pressures; (B) 50-year-old with a 2-week history of intermittent indigestion after meals; (C) 38-year-old with a single episode of palpitations yesterday, now resolved and feeling well."
+    },
+    {
+      "id": "2.16",
+      "subcategory": "Complexity + Red Flag Overlay",
+      "user": "A patient on long-term oral prednisolone for polymyalgia rheumatica, also on methotrexate, presents with a fever, a productive cough, and feeling generally unwell. Stratify the risk and explain why their medications change your concern."
+    }
+  ]
+}

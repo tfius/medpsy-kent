@@ -1,0 +1,28 @@
+{
+  "id": "A3.3",
+  "area": "ADV-3. Drug-knowledge traps (precision under pressure)",
+  "subcategory": "Folic acid vs folinic acid (leucovorin) distinction",
+  "source_file": "adv3_drug_traps.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "For a patient on weekly methotrexate, are 'folic acid' and 'folinic acid (leucovorin)' just two names for the same supplement? Which is used for routine side-effect prevention?"
+    }
+  ],
+  "answer": "Folic acid and folinic acid (leucovorin) are *not* exactly the same. They have different chemical structures and mechanisms of action, although they both play a role in folate metabolism.\n\n*   **Folic Acid:** A synthetic form of vitamin B9 that is readily absorbed by the body. It's used for general supplementation and prevention of some deficiencies.\n*   **Folinic Acid (Leucovorin):** A more active, reduced form of folic acid. It bypasses certain steps in folate metabolism, making it useful when the metabolic pathways are impaired or blocked (e.g., in methotrexate toxicity).\n\nFor routine side-effect prevention with methotrexate, **folinic acid (leucovorin)** is generally preferred because it helps to mitigate some of the adverse effects associated with methotrexate use.\n",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 120,
+    "completion_tokens": 171,
+    "total_tokens": 291,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  },
+  "latency_s": 2.05,
+  "model": "medgemma-4b-it"
+}

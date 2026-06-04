@@ -1,0 +1,36 @@
+{
+  "area": "3. Pharmacist Clinical Decision Support",
+  "description": "Dynamic targeted questioning, guideline-grounded evidence synthesis, and therapy optimization (dose adjustment, substitution, duplicate-therapy cancellation).",
+  "samples": [
+    {
+      "id": "3.11",
+      "subcategory": "Targeted Questioning",
+      "user": "A patient requests something for a persistent cough. Generate 6 targeted follow-up questions a pharmacist should ask to triage it safely and identify any red flags, ordered by importance."
+    },
+    {
+      "id": "3.12",
+      "subcategory": "Evidence Synthesis",
+      "user": "Summarize the evidence-based first-line management of mild-to-moderate depression in an adult, including the role of psychological therapy and the typical first-line drug class."
+    },
+    {
+      "id": "3.13",
+      "subcategory": "Therapy Optimization (Renal Dosing)",
+      "user": "A patient with an eGFR of 22 is prescribed gabapentin 600mg three times daily for neuropathic pain. Is this appropriate, and what dose adjustment or action do you recommend?"
+    },
+    {
+      "id": "3.14",
+      "subcategory": "Therapeutic Substitution",
+      "user": "A pregnant woman in her first trimester is taking ramipril for hypertension that was prescribed before she conceived. Why is this a concern and what therapeutic substitution would you suggest?"
+    },
+    {
+      "id": "3.15",
+      "subcategory": "Interaction Management",
+      "user": "A patient stabilised on warfarin is about to start a course of fluconazole for a fungal infection. Identify the interaction, its mechanism, and recommend a management plan."
+    },
+    {
+      "id": "3.16",
+      "subcategory": "Duplicate Therapy Detection",
+      "user": "Review this list for duplicate therapy and recommend an action: sertraline 100mg OD, citalopram 20mg OD, zopiclone 7.5mg nocte PRN, propranolol 40mg BD."
+    }
+  ]
+}

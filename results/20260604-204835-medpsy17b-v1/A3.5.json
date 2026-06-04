@@ -1,0 +1,28 @@
+{
+  "id": "A3.5",
+  "area": "ADV-3. Drug-knowledge traps (precision under pressure)",
+  "subcategory": "Hyperkalemia stack",
+  "source_file": "adv3_drug_traps.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient with heart failure is on ramipril and spironolactone, and has just bought a 'low-sodium' salt substitute and an OTC potassium supplement to 'be healthier'. They feel a bit weak. Comment."
+    }
+  ],
+  "answer": "\n\n**Flag potential hyperkalemia risk; advise urgent medical evaluation for weakness.** Here's key information and action steps:\n\n⚠️ **Critical Concerns:**\n- Spironolactone (a potassium-sparing diuretic) combined with an OTC potassium supplement significantly increases your risk of dangerous high potassium (hyperkalemia), which can cause cardiac arrhythmias.\n- Your weakness could stem from hyperkalemia, worsening heart failure, dehydration, or other issues. **Do not ignore this symptom.** Check for signs like palpitations, nausea, or numbness.\n\n💡 **Practical Advice:**\n1.  **Stop the OTC potassium supplement immediately** until you see your doctor or pharmacist.\n2.  Confirm if you have recent blood tests (kidney function and electrolytes). If not, request urgent blood work.\n3.  Review other possible causes with your healthcare provider:\n    - Are you on a diuretic like furosemide? (Common in HF treatment).\n    - Check for signs of dehydration (dry mouth, dark urine) or fluid overload (swelling, shortness of breath).\n    - Ensure you're following low-sodium diet advice from your doctor/pharmacist – \"low-sodium\" substitutes are generally safe but avoid excessive salt.\n    - Monitor blood pressure and pulse at home if possible. Report any dizziness or irregular heartbeat.\n4.  **Important Considerations:** Heart failure meds require careful electrolyte monitoring. Other causes of weakness (e.g., infection, anemia, other medications) need investigation.\n\n📌 **Next Steps:**\n- Contact your prescribing doctor or community pharmacist within 24 hours for evaluation and possible lab tests.\n- If you experience chest pain, palpitations, severe dizziness, or fainting, go to the emergency department immediately.\n\n*(Note: I am not a standalone clinician. This is general guidance based on common scenarios. Your specific situation requires personalized assessment by your healthcare team.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 142,
+    "completion_tokens": 752,
+    "total_tokens": 894,
+    "completion_tokens_details": {
+      "reasoning_tokens": 346
+    }
+  },
+  "latency_s": 6.22,
+  "model": "medpsy-1.7b"
+}

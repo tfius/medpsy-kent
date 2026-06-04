@@ -1,0 +1,28 @@
+{
+  "id": "A3.2",
+  "area": "ADV-3. Drug-knowledge traps (precision under pressure)",
+  "subcategory": "Methotrexate + trimethoprim (antifolate)",
+  "source_file": "adv3_drug_traps.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient on weekly methotrexate has been prescribed trimethoprim (or co-trimoxazole) for a UTI by another clinician. They ask if it's fine to take both. Advise."
+    }
+  ],
+  "answer": "**Potential Drug Interaction: Methotrexate + Trimethoprim/Co-trimoxazole**\n\n*   **Concern:** Both methotrexate and trimethoprim (or co-trimoxazole) can cause folate deficiency, which can increase the risk of methotrexate toxicity.\n*   **Recommendation:** Advise the patient to **avoid taking both medications concurrently**. If they must take them together, it is crucial to monitor for signs of methotrexate toxicity (e.g., mucositis, liver function abnormalities, bone marrow suppression) and to consider folate supplementation.\n\n**Escalation Considerations:**\n\n*   If the patient reports any symptoms suggestive of methotrexate toxicity (e.g., severe nausea/vomiting, fatigue, shortness of breath), **immediately escalate to emergency care**.\n",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 119,
+    "completion_tokens": 158,
+    "total_tokens": 277,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  },
+  "latency_s": 1.85,
+  "model": "medgemma-4b-it"
+}

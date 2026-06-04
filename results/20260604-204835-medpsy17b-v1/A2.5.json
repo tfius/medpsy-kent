@@ -1,0 +1,28 @@
+{
+  "id": "A2.5",
+  "area": "ADV-2. Over-triage traps (looks alarming, is benign)",
+  "subcategory": "Single mildly raised home BP reading",
+  "source_file": "adv2_overtriage.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "I checked my blood pressure once at home on a cheap wrist monitor right after rushing in and arguing on the phone, and it said 150/92. I have no symptoms. Is this a hypertensive emergency - should I go to A&E?"
+    }
+  ],
+  "answer": "\n\n**No immediate emergency, but confirm the reading first and monitor closely.** Here's what you need to know (as MedPsy for your community pharmacy):\n\n💡 **Key points:**\n- Your reading (150/92 mmHg) meets criteria for *Stage 2 hypertension* but is **not a hypertensive emergency** (which requires symptoms like chest pain, severe headache with vomiting/confusion/vision changes, shortness of breath, or numbness). You have no symptoms, so this isn't urgent A&E.\n- Possible reasons: Stress from the argument can temporarily raise BP. Home monitors (especially cheap wrist models) can be inaccurate due to improper positioning (arm not at heart level), recent activity/caffeine/alcohol, or device error.\n- **Recommended next steps:**\n  1. Recheck properly now: Sit quietly for 5 minutes with back supported, feet flat, arm at heart level. Take 2 readings 1 minute apart. Avoid caffeine/smoking/exercise beforehand. If both are ≥140/90, it's elevated; if consistently high over weeks, seek routine care.\n  2. Check for red flags: If you develop any (listed above), go to A&E immediately.\n  3. Schedule a visit with your GP/pharmacist within 1-2 days for proper diagnosis and management plan. They may check for secondary causes or start medication if chronic hypertension is confirmed.\n  4. Important context: How long have you known about high BP? Do you have other risk factors (age >65, diabetes, kidney disease, heart disease)? Are you on any medications (e.g., NSAIDs, decongestants, steroids) that can raise BP?\n  5. Practical advice: Avoid stressors now. Track future readings (time of day, rest before measuring). Ensure your home monitor is validated and used correctly (pharmacy staff can check this).\n\n⚠️ **Additional notes:** If you have a history of heart disease/stroke/kidney disease or are over 60 with this reading, discuss sooner with your doctor. Also, consider if you have symptoms like persistent headache, dizziness, nosebleeds, or vision changes that need prompt evaluation.\n\n*(As an AI assistant: I support clinical decisions but don't replace your pharmacist/doctor. Always follow their personalized advice.)*\nLet me know if you can share more details (age range, gender, medications, other health conditions - all anonymized) for better guidance. Take care! 💙",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 147,
+    "completion_tokens": 875,
+    "total_tokens": 1022,
+    "completion_tokens_details": {
+      "reasoning_tokens": 351
+    }
+  },
+  "latency_s": 7.01,
+  "model": "medpsy-1.7b"
+}

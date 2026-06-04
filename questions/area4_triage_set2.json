@@ -1,0 +1,36 @@
+{
+  "area": "4. Direct Triage Routing",
+  "description": "Routing decisions: pharmacist-led care for low-to-moderate complexity, telemedicine specialist co-management, and automated scheduling for high-urgency physician needs.",
+  "samples": [
+    {
+      "id": "4.11",
+      "subcategory": "Pharmacist-Led Care",
+      "user": "A 35-year-old with no significant history reports a localised, painful red sore at the corner of the mouth and a cold sore on the lip that started yesterday, otherwise well. Where should this be routed: pharmacist, physician appointment, or ED? Justify."
+    },
+    {
+      "id": "4.12",
+      "subcategory": "High-Urgency Routing + Scheduling",
+      "user": "A 7-month-old infant has a high fever, is floppy and difficult to rouse, is not feeding, and has a non-blanching rash. Determine the routing destination and the scheduling/escalation action the system should take."
+    },
+    {
+      "id": "4.13",
+      "subcategory": "Telemedicine Co-Management",
+      "user": "A patient with HIV on stable antiretroviral therapy needs to start a statin for high cholesterol and is worried about interactions. Describe how a clinic pharmacist and a remote HIV specialist should co-manage this via telemedicine."
+    },
+    {
+      "id": "4.14",
+      "subcategory": "Ambiguous Case Routing",
+      "user": "A 55-year-old reports unintentional weight loss of about 6 kg over 3 months, a persistent change in bowel habit, and occasional blood in the stool, currently feeling otherwise well. Where should this be routed and why is pharmacist-only care unsafe?"
+    },
+    {
+      "id": "4.15",
+      "subcategory": "Minor Ailment Pharmacist-Led",
+      "user": "A healthy 22-year-old has mild, painless threadworm symptoms (perianal itching, worse at night) confirmed by seeing small white worms, no other symptoms. Is this suitable for pharmacist-led care, and what would that involve?"
+    },
+    {
+      "id": "4.16",
+      "subcategory": "Mixed Routing",
+      "user": "A patient with type 2 diabetes asks the pharmacist a routine question about switching to a once-weekly GLP-1 device, but also mentions a foot blister that has turned into a deep, non-healing ulcer over 2 weeks with surrounding redness. Describe how to split the routing between pharmacist-led care and physician escalation."
+    }
+  ]
+}

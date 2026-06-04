@@ -1,0 +1,5 @@
+{
+  "id": "I4",
+  "title": "Early sepsis hidden behind 'my toddler's a bit off'",
+  "error": "HTTPStatusError: Client error '400 Bad Request' for url 'http://localhost:1234/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400"
+}

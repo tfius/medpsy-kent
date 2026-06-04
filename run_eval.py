@@ -110,15 +110,25 @@ def main() -> None:
     p.add_argument("--max-tokens", type=int, default=2048)
     p.add_argument("--limit", type=int, help="Only run the first N samples per file")
     p.add_argument("--no-system", action="store_true", help="Do not inject the default system prompt")
+    p.add_argument("--system-file", help="Read the system prompt from this file (overrides DEFAULT_SYSTEM)")
+    p.add_argument("--label", help="Tag appended to the output dir name and stored in meta (e.g. 'medgemma-adv')")
     p.add_argument("--timeout", type=float, default=600.0, help="Per-request timeout in seconds")
-    p.add_argument("--out-dir", help="Override output directory (default: results/<timestamp>)")
+    p.add_argument("--out-dir", help="Override output directory (default: results/<timestamp>[-label])")
     args = p.parse_args()
 
-    default_system = None if args.no_system else DEFAULT_SYSTEM
+    if args.no_system:
+        default_system, system_source = None, "none"
+    elif args.system_file:
+        default_system = Path(args.system_file).read_text().strip()
+        system_source = args.system_file
+    else:
+        default_system, system_source = DEFAULT_SYSTEM, "DEFAULT_SYSTEM"
     files = discover_files(args)
 
     # Timestamp passed in via local clock (fine outside the workflow sandbox).
     stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    if args.label:
+        stamp = f"{stamp}-{args.label}"
     out_dir = Path(args.out_dir) if args.out_dir else RESULTS_DIR / stamp
     out_dir.mkdir(parents=True, exist_ok=True)
     run_log = out_dir / "run.jsonl"
@@ -130,10 +140,12 @@ def main() -> None:
 
     run_meta = {
         "timestamp": stamp,
+        "label": args.label,
         "model": args.model,
         "base_url": args.base_url,
         "temperature": args.temperature,
         "max_tokens": args.max_tokens,
+        "system_source": system_source,
         "default_system": default_system,
     }
     (out_dir / "run_meta.json").write_text(json.dumps(run_meta, indent=2))

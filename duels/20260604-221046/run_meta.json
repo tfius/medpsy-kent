@@ -1,0 +1,8 @@
+{
+  "timestamp": "20260604-221046",
+  "tool_model": "medpsy-4b",
+  "tool_system_file": "prompts/system_interview.txt",
+  "patient_model": "qwen3.6-27b-optiq",
+  "tool_temp": 0.3,
+  "patient_temp": 0.7
+}

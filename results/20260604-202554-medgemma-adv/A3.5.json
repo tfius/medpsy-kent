@@ -1,0 +1,28 @@
+{
+  "id": "A3.5",
+  "area": "ADV-3. Drug-knowledge traps (precision under pressure)",
+  "subcategory": "Hyperkalemia stack",
+  "source_file": "adv3_drug_traps.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient with heart failure is on ramipril and spironolactone, and has just bought a 'low-sodium' salt substitute and an OTC potassium supplement to 'be healthier'. They feel a bit weak. Comment."
+    }
+  ],
+  "answer": "**Comment:**\n\nThe patient is taking medications that can affect potassium levels (ramipril and spironolactone). The use of a low-sodium salt substitute *could* potentially lead to hypokalemia, especially if the OTC potassium supplement is taken without considering their current medication regimen. Weakness can be a symptom of both hypokalemia and hyperkalemia, but in this context, it's more likely related to electrolyte imbalances given their medications.\n\n**Red Flag:**\n\n*   **Hypokalemia (low potassium):** This could lead to arrhythmias, muscle weakness, and fatigue.\n*   **Hyperkalemia (high potassium):** This can also cause arrhythmias and muscle weakness, but is less common with this combination of medications than hypokalemia.\n\n**Recommendation:**\n\nAdvise the patient *not* to take the OTC potassium supplement without consulting a pharmacist or doctor first. They should inform their healthcare provider about all supplements they are taking, including the salt substitute, as it may be interacting with their prescribed medications and potentially leading to electrolyte imbalances. Monitor for any worsening of weakness or other symptoms.\n\n**Uncertainty:**\n\n*   I do not know the patient's current potassium level.\n*   I do not have information about the specific type of low-sodium salt substitute they are using, as different brands can vary in sodium content and potassium levels.\n*   The severity of their weakness is unknown.\n",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 122,
+    "completion_tokens": 292,
+    "total_tokens": 414,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  },
+  "latency_s": 3.47,
+  "model": "medgemma-4b-it"
+}

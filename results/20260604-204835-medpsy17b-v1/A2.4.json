@@ -1,0 +1,28 @@
+{
+  "id": "A2.4",
+  "area": "ADV-2. Over-triage traps (looks alarming, is benign)",
+  "subcategory": "Costochondritis (reproducible chest pain)",
+  "source_file": "adv2_overtriage.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "I'm 24, fit, no health problems. After a heavy chest workout 2 days ago I've got a sharp pain over my left chest wall. It's worse when I press on that exact spot or twist, but fine at rest. Is this a heart attack - should I go to hospital now?"
+    }
+  ],
+  "answer": "\n\n**No immediate emergency, but please see your doctor within 24 hours for evaluation.** Based on your description (young age, fit, sharp localized pain worsened by pressure/twisting but not at rest), this is **more likely musculoskeletal or nerve-related** (e.g., costochondritis from exercise strain) rather than cardiac. Heart attacks in young, healthy people are uncommon and typically present with pressure/squeezing, radiation to arm/jaw, sweating, nausea—not sharp pain relieved by rest.\n\n⚠️ **Key points & advice:**\n1.  **Red flags for ER now?** If you develop sudden severe chest pressure/pressure radiating to your arm/back, shortness of breath, dizziness, or sweating—go immediately. Otherwise, schedule a prompt appointment with your GP/pharmacist soon.\n2.  **Possible causes:** Common in this scenario: strained intercostal muscle (from heavy workout), inflamed rib cartilage (costochondritis), or nerve irritation. Less likely but needs ruling out: other issues like shingles (watch for rash) or referred pain.\n3.  **What to do now:**\n    *   Avoid activities that aggravate it (like twisting).\n    *   Note details for your doctor: exact location, how long the sharp pain lasts with movement/pressure, any other symptoms (numbness, fever, rash, recent illness), and specifics of the workout.\n    *   Your pharmacist can help assess risk factors and may suggest safe initial management (e.g., gentle stretching, OTC anti-inflammatories like ibuprofen *if appropriate for you*—check with them first due to your health history).\n    *   Consider if you have other symptoms now: fever? rash? recent illness? unexplained fatigue?\n4.  **Important context:** At 24, cardiac causes are less probable but not impossible (e.g., structural issues or inflammation). Your doctor may do a physical exam and possibly an ECG/X-ray to confirm.\n\n💡 *If pain persists beyond a few days or worsens, seek urgent care.* Don't ignore it, but don't panic either. Keep track of your symptoms. If you have access to a pharmacist today for advice on safe OTC options or basic assessment, that could be helpful interim support. Stay well! (Remember: I'm an AI assistant; final diagnosis requires a clinician).",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 158,
+    "completion_tokens": 826,
+    "total_tokens": 984,
+    "completion_tokens_details": {
+      "reasoning_tokens": 331
+    }
+  },
+  "latency_s": 6.73,
+  "model": "medpsy-1.7b"
+}

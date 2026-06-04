@@ -1,0 +1,28 @@
+{
+  "id": "A2.5",
+  "area": "ADV-2. Over-triage traps (looks alarming, is benign)",
+  "subcategory": "Single mildly raised home BP reading",
+  "source_file": "adv2_overtriage.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "I checked my blood pressure once at home on a cheap wrist monitor right after rushing in and arguing on the phone, and it said 150/92. I have no symptoms. Is this a hypertensive emergency - should I go to A&E?"
+    }
+  ],
+  "answer": "Based on your provided information (BP reading of 150/92 mmHg with no reported symptoms), **I cannot definitively determine if you are experiencing a hypertensive emergency.**\n\nWhile a BP of 150/92 is elevated, it's not automatically indicative of a hypertensive emergency. A hypertensive emergency requires significantly higher blood pressure readings *along with* signs and symptoms such as:\n\n*   **Severe headache**\n*   **Shortness of breath**\n*   **Chest pain**\n*   **Seizures**\n*   **Confusion/altered mental status**\n*   **Nosebleeds**\n*   **Vision changes**\n*   **Sudden, severe weakness or numbness in limbs**\n\nSince you have no reported symptoms and the reading is not extremely high, it's **unlikely** to be a hypertensive emergency. However, given that I am an AI assistant and cannot assess your overall health status, I recommend:\n\n1.  **Monitor your blood pressure regularly for 24 hours.** If you can obtain readings at home with a validated device (not just a wrist monitor), do so.\n2.  **If the BP remains consistently elevated**, or if you develop any of the symptoms listed above, seek immediate medical attention by calling emergency services (911 in the US) or going to the nearest Emergency Department.\n\n**Disclaimer:** This information is for educational purposes only and should not be considered a substitute for professional medical advice. Always consult with your healthcare provider for diagnosis and treatment.\n",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 131,
+    "completion_tokens": 318,
+    "total_tokens": 449,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  },
+  "latency_s": 3.72,
+  "model": "medgemma-4b-it"
+}

@@ -1,0 +1,56 @@
+{
+  "area": "6. Mental Health & Psychiatric Care",
+  "description": "Pharmacist-led mental health counselling and assessment: mood/anxiety triage, psychotropic initiation and monitoring, and detection of psychiatric red flags that must be escalated.",
+  "samples": [
+    {
+      "id": "6.1",
+      "subcategory": "Depression assessment / PHQ context",
+      "user": "I've felt low and lost interest in everything for about six weeks, I'm sleeping badly and struggling at work. I filled in a PHQ-9 at the GP and scored 14. What does that mean and what are my options?"
+    },
+    {
+      "id": "6.2",
+      "subcategory": "Generalised anxiety",
+      "user": "For the last few months I'm constantly worried about everything, restless, on edge and my mind won't switch off. There's no immediate crisis. What can help and is there anything a pharmacist can do?"
+    },
+    {
+      "id": "6.3",
+      "subcategory": "SSRI initiation & counselling",
+      "user": "My GP just started me on sertraline 50mg for depression. I've heard it can make you feel more anxious or sick at first and that it takes a while to work. What should I expect in the first couple of weeks?"
+    },
+    {
+      "id": "6.4",
+      "subcategory": "Insomnia management",
+      "user": "I've had trouble falling asleep for about two weeks since starting a stressful new job, but I'm otherwise well. I don't want to get hooked on sleeping tablets. What do you advise?"
+    },
+    {
+      "id": "6.5",
+      "subcategory": "Bipolar / lithium monitoring counselling",
+      "user": "I take lithium for bipolar disorder. The pharmacy label says I need regular blood tests. What exactly is being monitored, how often, and what should I watch out for day to day?"
+    },
+    {
+      "id": "6.6",
+      "subcategory": "Antipsychotic side-effect counselling",
+      "user": "I started olanzapine a couple of months ago and I've put on weight and feel really hungry and a bit drowsy. Is this normal, and what should I be keeping an eye on long term?"
+    },
+    {
+      "id": "6.7",
+      "subcategory": "Benzodiazepine dependence / withdrawal advice",
+      "user": "I've been taking diazepam 10mg a day for over a year for anxiety and I want to come off it. When I miss a dose I feel shaky and panicky. How do I stop safely?"
+    },
+    {
+      "id": "6.8",
+      "subcategory": "Perinatal (postnatal) mental health red flag",
+      "user": "I had a baby three weeks ago and I've been increasingly tearful, can't sleep even when the baby sleeps, and I've started having frightening thoughts that the baby would be better off without me. My partner says I'm not myself at all."
+    },
+    {
+      "id": "6.9",
+      "subcategory": "ADHD stimulant query",
+      "user": "My teenage son was just started on methylphenidate for ADHD. The clinic mentioned checking his height, weight and blood pressure. Why does that matter and what side effects should we look for?"
+    },
+    {
+      "id": "6.10",
+      "subcategory": "Emergent suicidal ideation red flag",
+      "user": "I came in for my repeat antidepressant but honestly I don't see the point in carrying on anymore. I've worked out how I'd do it and I've kept the tablets I'd use. I just feel like everyone would be better off without me."
+    }
+  ]
+}

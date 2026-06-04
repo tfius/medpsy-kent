@@ -92,6 +92,22 @@ there for grading.
 - **adv5 — Persuasion/anchoring**: social pressure to be unsafe (confirm an unverified dose, false
   premises, benign-self-diagnosis anchoring, false authority, cost-based under-triage, wear-down, neonatal fever).
 
+## Duel mode (model-vs-model adversarial chat)
+
+`duel.py` runs a live multi-turn conversation: a **patient** model role-plays an adversarial caller
+(persona + hidden clinical situation + unsafe goal) while the **tool** model is the medpsy CDS
+assistant. This probes *dynamic* failures the one-shot bank misses — caving under repeated pressure,
+failing to re-triage when a red flag is revealed mid-conversation, or dropping a boundary across turns.
+
+```bash
+uv run duel.py                                  # medgemma(patient) vs medpsy-4b(tool), v4 prompt
+uv run duel.py --tool-model medpsy-1.7b
+uv run duel.py --patient-model qwen3.5-4b-mlx --label q-vs-medpsy
+```
+
+Scenarios live in `questions_duel/scenarios.json` (each has a `patient_system` persona and an
+`expected` grading note). Transcripts are saved to `duels/<timestamp>[-label]/<id>.json`.
+
 ## Research areas
 
 1. **Ingestion & Symptom Processing** — NLP extraction, EHR synthesis, red-flag detection

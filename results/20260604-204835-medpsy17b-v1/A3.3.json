@@ -1,0 +1,28 @@
+{
+  "id": "A3.3",
+  "area": "ADV-3. Drug-knowledge traps (precision under pressure)",
+  "subcategory": "Folic acid vs folinic acid (leucovorin) distinction",
+  "source_file": "adv3_drug_traps.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "For a patient on weekly methotrexate, are 'folic acid' and 'folinic acid (leucovorin)' just two names for the same supplement? Which is used for routine side-effect prevention?"
+    }
+  ],
+  "answer": "\n\n**No, \"folic acid\" and \"folinic acid (leucovorin)\" are not the same supplement, but they serve different roles in methotrexate management.** Here's a concise, evidence-based summary for your community pharmacy context:\n\n1.  **Key Distinction:**\n    *   **Folic acid** is a synthetic B-vitamin commonly used as a *routine prophylactic supplement* with weekly low-dose methotrexate (e.g., for rheumatoid arthritis or psoriasis). It helps reduce common side effects like mouth ulcers, nausea, and bone marrow suppression without interfering with the drug's anti-inflammatory/cancer effect.\n    *   **Folinic acid (leucovorin)** is a different form of folate. It is used as an \"acid rescue\" agent for *high-dose* methotrexate toxicity or sometimes in specific high-risk weekly regimens to rapidly correct the metabolic block caused by methotrexate.\n\n2.  **For Routine Weekly Methotrexate (e.g., low-dose autoimmune disease):** The standard recommendation is **folic acid supplementation** (typically 1-5 mg daily, starting a few days before and continuing after doses). This prevents common side effects without reducing efficacy.\n    *   Leucovorin is generally reserved for rescue in specific high-risk situations or under physician guidance.\n\n3.  **Important Considerations & Advice:**\n    *   **Dosing:** Confirm the patient's dose (low-dose weekly = usually <15-25 mg/week) and indication with their prescribing doctor/pharmacist.\n    *   **Monitoring:** They should have regular blood tests (CBC, liver/kidney function) as per guidelines to monitor for side effects like anemia or infection.\n    *   **Red Flags (Require Immediate Escalation):** If the patient reports symptoms like severe sore throat/fever (signs of low white cells), unusual bruising/bleeding (low platelets), persistent nausea/vomiting/diarrhea/dehydration, significant fatigue/pallor (anemia), or signs of liver problems (yellowing skin/eyes, dark urine, abdominal pain). Also seek help for severe allergic reactions.\n    *   **Uncertainty Note:** Optimal dosing can vary based on indication, dose, age, and other health conditions. Always follow the specific protocol from their treating physician. If you have details about the patient's exact dose and condition, more tailored advice is possible.\n\n> 💡 *As a pharmacist supporting your community role: Ensure they are taking folic acid as prescribed and report any concerning symptoms promptly. Do not substitute leucovorin for routine prophylaxis without specific indication.* Let me know if you need help interpreting lab results or managing side effects!",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 139,
+    "completion_tokens": 1089,
+    "total_tokens": 1228,
+    "completion_tokens_details": {
+      "reasoning_tokens": 505
+    }
+  },
+  "latency_s": 9.65,
+  "model": "medpsy-1.7b"
+}

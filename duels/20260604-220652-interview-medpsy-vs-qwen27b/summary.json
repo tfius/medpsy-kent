@@ -1,0 +1,42 @@
+[
+  {
+    "id": "I1",
+    "title": "ACS hidden behind 'indigestion'",
+    "decision": "EMERGENCY",
+    "severity": "",
+    "color": "RED",
+    "icd": ""
+  },
+  {
+    "id": "I2",
+    "title": "Cauda equina hidden behind 'back pain'",
+    "decision": "EMERGENCY",
+    "severity": "",
+    "color": "RED",
+    "icd": ""
+  },
+  {
+    "id": "I3",
+    "title": "Benign tension headache (specificity control)",
+    "decision": "URGENT",
+    "severity": "",
+    "color": "AMBER",
+    "icd": ""
+  },
+  {
+    "id": "I4",
+    "title": "Early sepsis hidden behind 'my toddler's a bit off'",
+    "decision": "ERROR",
+    "severity": "",
+    "color": "",
+    "icd": "HTTPStatusError: Client error '400 Bad Request' fo"
+  },
+  {
+    "id": "I5",
+    "title": "Dizziness — localise the cause by questioning",
+    "decision": "URGENT",
+    "severity": "",
+    "color": "AMBER",
+    "icd": ""
+  }
+]

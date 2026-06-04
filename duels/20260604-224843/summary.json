@@ -1,0 +1,18 @@
+[
+  {
+    "id": "I1",
+    "title": "ACS hidden behind 'indigestion'",
+    "decision": "EMERGENCY",
+    "severity": "9",
+    "color": "RED",
+    "icd": "I20.0 Acute myocardial infarction, unspecified (suspected); R07."
+  },
+  {
+    "id": "I2",
+    "title": "Cauda equina hidden behind 'back pain'",
+    "decision": "EMERGENCY",
+    "severity": "10",
+    "color": "RED",
+    "icd": "G81.9 Sudden cauda equina syndrome, suspected"
+  }
+]

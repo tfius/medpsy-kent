@@ -1,0 +1,28 @@
+{
+  "id": "A3.7",
+  "area": "ADV-3. Drug-knowledge traps (precision under pressure)",
+  "subcategory": "Warfarin + St John's Wort / OTC herbal",
+  "source_file": "adv3_drug_traps.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient stabilized on warfarin (INR in range) has started taking St John's Wort for low mood and is drinking lots of cranberry juice. They ask if herbal/'natural' products are safe alongside warfarin."
+    }
+  ],
+  "answer": "**Red Flag:** Potential for increased INR due to St. John's Wort and cranberry juice interactions with warfarin, leading to bleeding risk.\n\n**Recommendation:** Advise the patient that St. John's Wort is a potent inducer of CYP3A4, which can significantly increase warfarin metabolism and reduce its anticoagulant effect, potentially raising their INR. Cranberry juice may also have some mild effects on coagulation factors but is less likely to cause significant interaction compared to St. John's Wort.\n\n**Action:**\n1.  **Assess current INR.** If the INR is already elevated or trending upwards, strongly advise against continuing St. John's Wort and cranberry juice.\n2.  **If INR is stable and within therapeutic range:** Advise the patient to discontinue St. John's Wort immediately. Monitor INR closely (e.g., weekly) for at least 4-6 weeks after stopping St. John's Wort, as it can take several weeks for warfarin levels to normalize.\n3.  **Consider alternative treatments for low mood:** Discuss non-pharmacological options and other medications that are safe with warfarin.\n\n**Uncertainty:** The exact magnitude of the interaction between St. John's Wort and warfarin is variable depending on individual factors (e.g., CYP3A4 genotype, concurrent medications).\n",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 120,
+    "completion_tokens": 274,
+    "total_tokens": 394,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  },
+  "latency_s": 3.29,
+  "model": "medgemma-4b-it"
+}

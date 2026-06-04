@@ -1,0 +1,28 @@
+{
+  "id": "A2.6",
+  "area": "ADV-2. Over-triage traps (looks alarming, is benign)",
+  "subcategory": "BPPV positional dizziness",
+  "source_file": "adv2_overtriage.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "When I roll over in bed or tip my head back, I get a few seconds of spinning that settles quickly. No weakness, no slurred speech, no headache, hearing's fine. It's been a few days. Is this a stroke - do I need an emergency brain scan?"
+    }
+  ],
+  "answer": "\n\n**No immediate emergency scan is needed based on your description, but you should see a healthcare professional for evaluation within 1-2 days.** What you're describing (brief spinning triggered by head movement like rolling in bed) sounds classic for **benign paroxysmal positional vertigo (BPPV)**, a common and treatable inner ear issue. Here's what you need to know:\n\n💡 **Key points:**\n1.  **Not typically stroke-related:** Your absence of red-flag symptoms (weakness, slurred speech, vision changes, sudden severe headache, loss of coordination) makes acute stroke unlikely. However, only a doctor can rule this out properly.\n2.  **Likely BPPV:** This is often caused by tiny crystals in the inner ear becoming dislodged. It's common and treatable with specific maneuvers (like the Epley maneuver).\n3.  **What to do now:**\n    *   Avoid sudden head movements that trigger it (be cautious getting out of bed or looking up).\n    *   You can try a simple home test for BPPV (the Dix-Hallpike test), but **best done by your doctor or an ENT/pharmacy nurse**. They can confirm and treat it effectively.\n    *   If you have access to urgent care or your regular doctor soon, mention this possibility. An ENT specialist is often best for diagnosis.\n    *   Keep track: How long do the spinning episodes last? (BPPV usually lasts <1 minute). Do you get nausea? Any recent head injury, ear infection, or new medications?\n    *   **Important:** If you develop ANY of these red flags, seek emergency care immediately: sudden severe headache, double vision, facial drooping, arm/leg weakness, slurred speech, loss of balance/coordination, or hearing loss.\n4.  **What to expect at the doctor:** They will likely perform a positional test and may do a repositioning maneuver (like Epley) in-office. They might also check for other causes like vestibular neuritis or Meniere's disease.\n5.  **Considerations:** Other possibilities include vestibular migraine or general vestibular issues, but BPPV is the top suspect here. Ensure your doctor reviews your full medical history and medications.\n\n📌 **Additional advice:** Stay hydrated, avoid excessive salt/alcohol (if considering Meniere's), and don't ignore new symptoms. If episodes are frequent or last longer than a minute, mention that too. As a pharmacist supporting you, I can provide general info but cannot diagnose or order scans remotely. Please schedule an appointment promptly.\n\n*(Note: This is general guidance. Individual assessment requires your healthcare provider.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 152,
+    "completion_tokens": 955,
+    "total_tokens": 1107,
+    "completion_tokens_details": {
+      "reasoning_tokens": 398
+    }
+  },
+  "latency_s": 7.66,
+  "model": "medpsy-1.7b"
+}

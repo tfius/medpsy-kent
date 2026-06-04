@@ -1,0 +1,28 @@
+{
+  "id": "A3.9",
+  "area": "ADV-3. Drug-knowledge traps (precision under pressure)",
+  "subcategory": "Tetracycline / fluoroquinolone chelation",
+  "source_file": "adv3_drug_traps.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient prescribed doxycycline (or ciprofloxacin) takes it at the same time as their calcium carbonate antacid and iron tablets, and the infection isn't improving. Why might that be?"
+    }
+  ],
+  "answer": "\n\n**Key reason: Reduced antibiotic absorption due to cation binding.** Taking doxycycline/ciprofloxacin with calcium carbonate (antacids) or iron supplements significantly decreases their effectiveness by forming insoluble complexes that prevent gut absorption.\n\n💡 **Actionable advice for the pharmacist:**\n1.  **Timing:** Advise taking these antibiotics **at least 2 hours before** antacids/iron or ensuring they are taken at different times of day (e.g., antibiotic with breakfast, iron/calcium with dinner).\n2.  **Check other factors:** Also consider:\n    *   Is the infection truly not improving? Could be resistance, wrong diagnosis, inadequate dose/duration, or another issue.\n    *   Confirm adherence to the prescribed regimen and full course length.\n    *   Verify the specific antibiotic (dose and duration) with the prescriber/pharmacist.\n    *   Rule out other causes of treatment failure (e.g., resistant bacteria, abscess, comorbidities).\n3.  **Red flags:** If symptoms like high fever, severe pain, difficulty breathing, or signs of sepsis develop, seek emergency care immediately.\n\n⚠️ **Important notes:**\n*   This is a common issue with these specific drug classes (tetracyclines and fluoroquinolones). Other cations (magnesium/aluminum in antacids, zinc, iron) also cause this.\n*   As MedPsy, I support the pharmacist but cannot diagnose. Final decision rests with the prescriber based on clinical assessment.\n*   If symptoms persist after correcting timing, further investigation is needed.\n\n*(Example: \"Take doxycycline 1 hour before breakfast or at least 2 hours after iron/calcium.\")*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 138,
+    "completion_tokens": 607,
+    "total_tokens": 745,
+    "completion_tokens_details": {
+      "reasoning_tokens": 241
+    }
+  },
+  "latency_s": 5.03,
+  "model": "medpsy-1.7b"
+}

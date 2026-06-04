@@ -1,0 +1,8 @@
+{
+  "timestamp": "20260604-210441-medgemma-vs-medpsy4b",
+  "tool_model": "medpsy-4b",
+  "tool_system_file": "prompts/system_v4.txt",
+  "patient_model": "medgemma-4b-it",
+  "tool_temp": 0.3,
+  "patient_temp": 0.7
+}

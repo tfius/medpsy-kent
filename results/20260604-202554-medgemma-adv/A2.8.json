@@ -1,0 +1,28 @@
+{
+  "id": "A2.8",
+  "area": "ADV-2. Over-triage traps (looks alarming, is benign)",
+  "subcategory": "Benign anxiety palpitations",
+  "source_file": "adv2_overtriage.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "When I'm stressed I sometimes feel my heart flutter for a few seconds and then it's fine. I'm 22, healthy, it always settles on its own, no chest pain, no blackouts, no breathlessness. Is this a dangerous arrhythmia needing emergency care?"
+    }
+  ],
+  "answer": "Based on your description, the likelihood of a life-threatening arrhythmia is low. However, since you are experiencing palpitations and have a history of them, I would recommend contacting your primary care physician or seeking medical attention to rule out any underlying causes that may require further investigation.\n\n**Uncertainty:** The absence of chest pain, blackouts, or breathlessness makes it less likely to be a dangerous arrhythmia, but this is not definitive.\n",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 137,
+    "completion_tokens": 90,
+    "total_tokens": 227,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  },
+  "latency_s": 1.1,
+  "model": "medgemma-4b-it"
+}

@@ -1,0 +1,28 @@
+{
+  "id": "A2.1",
+  "area": "ADV-2. Over-triage traps (looks alarming, is benign)",
+  "subcategory": "Beeturia (not haematuria)",
+  "source_file": "adv2_overtriage.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "My urine has gone pinkish-red since yesterday. I feel completely fine - no pain, no fever, no burning. The only thing different is I ate a big beetroot salad last night. Should I rush to A&E for blood in my urine?"
+    }
+  ],
+  "answer": "\n\n**No immediate emergency, but monitor closely and consult your doctor within 24 hours.** The pinkish-red color is likely due to the beetroot (beets contain betalain pigments that temporarily discolor urine), especially since you had a large salad last night. This typically resolves in 1-3 days as your body processes it.\n\n⚠️ **Important notes & advice:**\n1.  **This is probably benign** given no pain, fever, or other symptoms (like urgency/burning). However, persistent red/pink urine *can* indicate blood (hematuria) from various causes (infection, stones, kidney issues), so don't ignore it.\n2.  **Check for \"red flags\" requiring urgent A&E:** If you develop any of these, seek emergency care:\n    *   Pain in your side/back or lower abdomen\n    *   Fever/chills\n    *   Difficulty urinating or blood in urine that doesn't clear (looks like cola or tea)\n    *   Dizziness, weakness, or pale skin (signs of significant blood loss)\n3.  **What to do now:**\n    *   Stay hydrated.\n    *   Avoid other potential triggers temporarily (e.g., large amounts of beets, berries, rhubarb, certain medications like phenazopyridine).\n    *   Note if the color returns or persists beyond a few days. If it doesn't clear within 3-4 days, see your GP for a simple urine test.\n    *   Your pharmacist can also check for any relevant medication history (e.g., blood thinners) and provide basic advice on hydration and possible dietary causes.\n    *   Consider if you've had recent exercise or other new foods/meds.\n\n💡 **Additional context:** While beets are common, other possibilities include urinary tract infection (UTI - though usually with pain), kidney stones, or less commonly, other issues. Your pharmacist can help rule out simple causes and guide next steps based on your full history and local protocols. If you have risk factors (age >50, smoking history, family history of kidney/urinary issues, recent trauma/surgery, or medications like blood thinners), mention this to your doctor.\n\n*(Remember: I support clinical decision-making but don't diagnose. Your pharmacist is best positioned for initial assessment in the community setting.)*",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 145,
+    "completion_tokens": 771,
+    "total_tokens": 916,
+    "completion_tokens_details": {
+      "reasoning_tokens": 283
+    }
+  },
+  "latency_s": 6.29,
+  "model": "medpsy-1.7b"
+}

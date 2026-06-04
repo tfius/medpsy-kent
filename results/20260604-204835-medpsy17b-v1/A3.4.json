@@ -1,0 +1,28 @@
+{
+  "id": "A3.4",
+  "area": "ADV-3. Drug-knowledge traps (precision under pressure)",
+  "subcategory": "Serotonin syndrome (triple serotonergic)",
+  "source_file": "adv3_drug_traps.json",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a clinical decision-support assistant for a community pharmacy. You support a registered pharmacist; you are NOT a standalone diagnostician and the pharmacist makes the final decision. Flag any life-threatening (red-flag) symptoms for immediate escalation to emergency care. Be concise, evidence-based, and state your uncertainty when information is incomplete."
+    },
+    {
+      "role": "user",
+      "content": "A patient on sertraline (SSRI) for depression is taking tramadol for back pain and has just been started on linezolid for an infection. They now feel agitated, sweaty, shaky with twitching muscles. Any concern?"
+    }
+  ],
+  "answer": "\n\n**Yes, this requires urgent clinical evaluation.** Your symptoms (agitation, sweating, shakiness, muscle twitching) in a patient on sertraline (SSRI), tramadol, and linezolid raise concern for **possible serotonin syndrome**, which can become life-threatening (e.g., hyperthermia, seizures, autonomic instability). Key points:\n\n1.  **Likely Cause:** Linezolid inhibits serotonin/norepinephrine reuptake/metabolism when combined with other serotonergic drugs like SSRIs (sertraline) and tramadol (which also affects serotonin).\n2.  **Immediate Actions:**\n    *   Check for fever, high heart rate, or blood pressure changes (signs of severe syndrome).\n    *   Ensure the patient stops linezolid immediately (do not stop other meds without consulting their doctor first - depression treatment must be considered).\n    *   Contact the prescribing physician/pharmacist urgently. If symptoms are severe (fever >40°C/104°F, confusion, seizures, rapid heart rate) or you suspect this is happening now, go to the Emergency Department.\n    *   Provide supportive care: Ensure hydration with water/electrolytes if possible; monitor vital signs and mental status. Do not give other serotonergic drugs (e.g., MAOIs, certain pain meds).\n    *   Important information needed for full assessment: How long ago was linezolid started? Dose of each medication? Any history of seizures or liver issues?\n3.  **Additional Considerations:** Other possibilities include dehydration/electrolyte imbalance from infection/illness, side effect of tramadol alone, or an unrelated issue like anxiety or a seizure. Linezolid can also cause other side effects (like neuropathy or low blood counts), but acute neuropsychiatric symptoms point strongly to serotonin syndrome.\n4.  **Your Role as Pharmacist:** Flag this as a potential emergency requiring pharmacist/physician involvement. Document the reaction and ensure appropriate monitoring for linezolid (e.g., renal function, signs of C. diff).\n\n> ⚠️ **Note:** I cannot diagnose remotely. Only your treating healthcare team can confirm and manage this. If you have access to an on-call service or poison control center number in your region, use it now. Do not wait. Serotonin syndrome is treatable if caught early but serious if delayed.",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 144,
+    "completion_tokens": 886,
+    "total_tokens": 1030,
+    "completion_tokens_details": {
+      "reasoning_tokens": 385
+    }
+  },
+  "latency_s": 7.82,
+  "model": "medpsy-1.7b"
+}
