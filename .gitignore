@@ -44,3 +44,10 @@ scratch/
 # Generated ICD-10 embedding cache (~35MB, regenerate with `uv run icd_lookup.py --build`)
 icd_embed_cache.npz
 *.npz
+
+# Model weights & node deps (qvac-app) — never commit GGUFs (multi-GB)
+*.gguf
+node_modules/
+qvac-app/models/
+qvac-app/data/icd10.index.bin
+qvac-app/data/icd10.index.meta.json

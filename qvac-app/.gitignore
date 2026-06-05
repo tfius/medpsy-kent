@@ -1,0 +1,17 @@
+# Node
+node_modules/
+.env
+.env.*
+!.env.example
+
+# Model weights — NEVER commit GGUFs (multi-GB; live elsewhere on disk, symlinked in)
+models/
+*.gguf
+*.bin
+*.safetensors
+
+# Generated ICD-10 embedding index (regenerate with `npm run build-icd-index`)
+data/icd10.index.bin
+data/icd10.index.meta.json
+
+# data/icd10.json IS committed (small, makes the app self-contained)

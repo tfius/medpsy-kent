@@ -496,3 +496,55 @@ appendicitis **K37.9**, ectopic **O09**). Only UTI (N39.0), GAD (F41.1), pneumon
 - Refine the 3 semantic misses (UTI→puerperal, pneumonia→specific organism) — e.g. prefer the most
   general site/organism-unspecified code; consider returning top-3 for human/LLM pick.
 - Curate + run the expanded/mental-health banks; fresh scored interview run.
+
+---
+
+## 2026-06-05 — Session 10: QVAC SDK app (hackathon package)
+
+Built `qvac-app/` — a local-first community-pharmacy triage app on the **QVAC SDK** (Tether's
+on-device, P2P AI platform), productizing the whole eval effort.
+
+**QVAC architecture (who loads + infers):** the app/device does it locally. `loadModel()` loads a GGUF
+into local memory; `completion()`/`embed()` run on your hardware via QVAC's llama.cpp engine
+(`qvac-fabric-llm.cpp`). No cloud. Alternatives: the QVAC CLI HTTP server (OpenAI-compatible, like LM
+Studio), or **P2P delegated inference** to a peer.
+
+**Pluggable backend (key decision):** during dev you can use **LM Studio** (it already serves medpsy +
+nomic, OpenAI-compatible) and flip to the **QVAC SDK** with one env var — same triage + RAG logic.
+- `src/backends/lmstudio.js` — pure Node `fetch`, **zero npm install**, runs today.
+- `src/backends/qvac.js` — `@qvac/sdk` `loadModel`/`completion`/`embed` (dynamic import).
+- `MEDPSY_BACKEND=lmstudio|qvac` selects; `src/backend.js` factory.
+
+**Pipeline:** complaint → `triage.js` (medpsy, structured `DECISION/SEVERITY/RED FLAGS/CONDITION/
+ICD-10/ROUTING/SAFETY-NET`) → extract the named CONDITION → `icd.js` embeds it and cosine-searches an
+on-device ICD-10 index (12,246 WHO codes from `data/icd10.json`, exported via `scripts/export_icd.py`)
+→ **verified** ICD-10 code replaces medpsy's hallucinated one. Same approach as Python `icd_lookup.py`,
+ported to `provider.embed()`.
+
+**medpsy GGUF:** symlinked into `qvac-app/models/` (`/Users/tex/repos/models/qvac/MedPsy-4B-GGUF/...`),
+**not committed** (2.7 GB). `data/icd10.json` (~1 MB) IS committed so the app is self-contained; the
+37 MB embedding index is gitignored (regenerable via `npm run build-icd-index`).
+
+**Colour coding:** kept (standard triage RAG / Manchester-style). The colour is derived deterministically
+from medpsy's own `DECISION`/`SEVERITY` band (EMERGENCY→🔴, URGENT→🟡, PHARMACIST-LED/ROUTINE→🟢; 8–10
+RED / 5–7 AMBER / 0–4 GREEN) so the model can't emit a colour that contradicts its own score (the
+earlier `3 / AMBER` bug). medpsy still drives it via the category + number.
+
+**Smoke test (LM Studio backend, end-to-end, no npm install):**
+
+| Case | Decision | Band | Verified ICD-10 |
+|------|----------|------|-----------------|
+| Crushing chest pain, 58 | EMERGENCY | 🔴 RED | I21.9 Acute MI |
+| UTI symptoms | URGENT/PHARMACIST-LED | 🟡/🟢 | N30.9 / N39.0 |
+| Back pain + saddle numbness + retention | EMERGENCY | 🔴 RED | G83.4 Cauda equina |
+
+All ICD codes verified on-device and valid (vs medpsy's hallucinated/invalid codes). Pipeline confirmed.
+
+**QVAC embeddings:** `embed({modelId, text})` over a GGUF embedding model (GTE-Large / EmbeddingGemma /
+nomic) via the same llama.cpp engine; `@qvac/rag` wraps it in an `EmbeddingService`; OpenAI-compatible
+`/v1/embeddings` route too.
+
+### Open next steps
+- Run the **QVAC SDK backend** with the local medpsy GGUF (`MEDPSY_BACKEND=qvac`, needs `@qvac/sdk` install).
+- Swap the flat cosine index for **`@qvac/rag`** (`ragIngest`/`ragSearch`, HyperDB/LanceDB).
+- P2P delegated inference for hard cases; multimodal OCR (prescriptions) / STT (phone triage).
