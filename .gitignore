@@ -40,3 +40,7 @@ Thumbs.db
 # but ignore any local scratch just in case:
 scratch/
 *.tmp
+
+# Generated ICD-10 embedding cache (~35MB, regenerate with `uv run icd_lookup.py --build`)
+icd_embed_cache.npz
+*.npz

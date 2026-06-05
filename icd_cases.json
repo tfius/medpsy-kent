@@ -1,0 +1,25 @@
+{
+  "description": "20 cases for measuring medpsy's ICD-10 coding accuracy. expected_code is the curated, DB-verified WHO ICD-10 answer key; condition is the canonical phrase used to exercise the lookup tool. The script asks medpsy to code each vignette and compares to expected_code.",
+  "cases": [
+    {"id": "C1",  "area": "cardio",   "condition": "acute myocardial infarction",      "expected_code": "I21.9", "vignette": "58-year-old with 40 minutes of crushing central chest pressure radiating to the jaw, sweating and breathless."},
+    {"id": "C2",  "area": "neuro",    "condition": "cauda equina syndrome",            "expected_code": "G83.4", "vignette": "Lower back pain with new numbness over the inner thighs and buttocks and difficulty starting to urinate."},
+    {"id": "C3",  "area": "neuro",    "condition": "subarachnoid haemorrhage",         "expected_code": "I60.9", "vignette": "Sudden 'worst headache of my life' reaching maximum in seconds, with neck stiffness and photophobia."},
+    {"id": "C4",  "area": "resp",     "condition": "pulmonary embolism",               "expected_code": "I26.9", "vignette": "Pleuritic chest pain and breathlessness two days after a long-haul flight, with a hot swollen calf."},
+    {"id": "C5",  "area": "allergy",  "condition": "anaphylactic shock",               "expected_code": "T78.2", "vignette": "Lip and tongue swelling, widespread urticaria and throat tightening minutes after a first dose of antibiotic."},
+    {"id": "C6",  "area": "endo",     "condition": "type 1 diabetes with ketoacidosis","expected_code": "E10.1", "vignette": "Young adult with vomiting, marked thirst and polyuria, deep rapid breathing and a fruity breath odour."},
+    {"id": "C7",  "area": "gi",       "condition": "acute appendicitis",               "expected_code": "K35.8", "vignette": "Right iliac fossa pain worse on movement, with anorexia and vomiting for a day."},
+    {"id": "C8",  "area": "uro",      "condition": "urinary tract infection",          "expected_code": "N39.0", "vignette": "Burning on urination and urinary frequency for one day in a non-pregnant woman, no fever or flank pain."},
+    {"id": "C9",  "area": "neuro",    "condition": "cerebral infarction",              "expected_code": "I63.9", "vignette": "Sudden right-arm weakness and slurred speech that began one hour ago."},
+    {"id": "C10", "area": "rheum",    "condition": "giant cell arteritis",             "expected_code": "M31.6", "vignette": "74-year-old with new right temporal headache, scalp tenderness and jaw ache on chewing, with blurred vision."},
+    {"id": "C11", "area": "cardio",   "condition": "dissection of aorta",              "expected_code": "I71.0", "vignette": "Sudden severe tearing chest pain radiating straight through to the back in a hypertensive patient."},
+    {"id": "C12", "area": "uro",      "condition": "torsion of testis",                "expected_code": "N44",   "vignette": "14-year-old with sudden lower abdominal pain, vomiting and a tender high-riding testicle."},
+    {"id": "C13", "area": "obs",      "condition": "ectopic pregnancy",                "expected_code": "O00.9", "vignette": "Reproductive-age woman with a late light period, unilateral pelvic pain, right shoulder-tip pain and feeling faint."},
+    {"id": "C14", "area": "tox",      "condition": "toxic effect of carbon monoxide",  "expected_code": "T58",   "vignette": "Whole household with headache, nausea and dizziness worse in the evenings at home, with an old boiler."},
+    {"id": "C15", "area": "mh",       "condition": "depressive episode",               "expected_code": "F32.9", "vignette": "Two weeks of persistent low mood, loss of interest, poor sleep and hopelessness, first episode."},
+    {"id": "C16", "area": "mh",       "condition": "generalised anxiety disorder",     "expected_code": "F41.1", "vignette": "Several months of excessive uncontrollable worry with restlessness, muscle tension and poor concentration."},
+    {"id": "C17", "area": "mh",       "condition": "bipolar affective disorder",       "expected_code": "F31.9", "vignette": "Patient with a past manic episode now elevated and irritable, needing little sleep, with grandiose plans."},
+    {"id": "C18", "area": "neuro",    "condition": "migraine",                         "expected_code": "G43.9", "vignette": "Recurrent one-sided throbbing headaches preceded by visual aura, with nausea and light sensitivity."},
+    {"id": "C19", "area": "resp",     "condition": "asthma",                           "expected_code": "J45.9", "vignette": "Known asthmatic, increasingly breathless and wheezy, using the reliever inhaler hourly with little relief."},
+    {"id": "C20", "area": "resp",     "condition": "pneumonia",                        "expected_code": "J18.9", "vignette": "Productive cough with green sputum, fever and focal chest crackles, breathless on exertion."}
+  ]
+}

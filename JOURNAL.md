@@ -446,3 +446,53 @@ Generated `summary.md`/`summary.json` scorecards for the completed runs.
 - Fresh full interview run to confirm the de-escalation fix (I3 → GREEN) and populate a complete scorecard.
 - For trustworthy ICD: post-process the model's code against an ICD lookup rather than trusting free-gen.
 - Curate + run the expanded/mental-health banks; `--scripted` patient option.
+
+---
+
+## 2026-06-05 — Session 9: ICD-10 lookup (fixing the hallucinated codes)
+
+**Problem:** medpsy invents plausible-but-wrong ICD-10 codes. **Fix built:** don't trust the model's
+code — take the condition and look it up in a real database (tool / RAG).
+
+**The database.** WHO ICD-10 (2019), **12,542 codes**, shipped offline by the `simple-icd-10` pip
+package (no API/internet). Added `simple-icd-10`, `rapidfuzz`, `numpy` to `pyproject.toml` (reproducible
+via `uv sync`).
+
+**The lookup tool (`icd_lookup.py`).** Maps a condition phrase → verified code. Two backends:
+- **fuzzy** (rapidfuzz WRatio) — offline, but makes substring errors ("anaphylactic shock" → R45.7
+  *emotional shock*; "urinary tract infection" → P39.3 *neonatal* UTI; "pneumonia" → A40.3 *strep sepsis*).
+- **semantic** (default) — embeds all 12.5k descriptions with the local nomic model (cached to
+  `icd_embed_cache.npz`, ~35 MB) and ranks by cosine. Plus an "unspecified" re-rank (prefer the .9 code
+  within the best category for a generic condition).
+- Measured on the 20 conditions: **semantic 17/20 exact (85%), 18/20 category** vs **fuzzy 10/20 exact**.
+
+**Can medpsy do embeddings?** No. LM Studio returns 768-dim for *any* model name and cosine(nomic,
+medpsy-4b) = **1.0** — it always serves the loaded nomic embedder. medpsy is generative; use a dedicated
+embedder (same split QVAC uses).
+
+**medpsy ICD-10 coding test (`icd_test.py`, 20 vignettes, DB-verified answer key).** First run used
+`max_tokens=300` → medpsy (a reasoning model) spent it all thinking and returned empty for 9 cases.
+Re-ran with an **8k token budget** so reasoning always completes (empty outputs → 0):
+
+| | exact | category (3-char) | invalid code | miss |
+|--|-------|-------------------|--------------|------|
+| **medpsy-4b** (8k) | **3/20 (15%)** | 10/20 (50%) | 6/20 (30%) | **17/20 (85%)** |
+| **lookup tool (semantic)** | **17/20 (85%)** | 18/20 (90%) | 0/20 | 3/20 |
+
+Confidently and sometimes dangerously wrong: cauda equina → **S36.4** (intestine injury!),
+SAH → **G00.2** (strep meningitis), CO poisoning → **T78.2** (anaphylaxis!), GCA → **G45.2** (TIA),
+bipolar → **F30.0** (hypomania); plus invented/invalid codes (anaphylaxis **T78.6**, DKA **E10.921**,
+appendicitis **K37.9**, ectopic **O09**). Only UTI (N39.0), GAD (F41.1), pneumonia (J18.9) were exact.
+
+**Conclusion:** model-generated ICD codes are unusable as-is (15% exact, 35% invalid). A deterministic
+**lookup / RAG over a real ICD database is the fix** (85% exact, 0% invalid). On QVAC this is native —
+`ragSaveEmbeddings` the ICD table once, then `ragSearch(condition, topK)`; bring-your-own vector DB
+(LanceDB / SQLite-vector). Artifacts: `icd_lookup.py`, `icd_cases.json`, `icd_test.py`,
+`icd_test_results.json`, `icd_embed_cache.npz`.
+
+### Open next steps
+- Wire the lookup into the interview/duel pipeline: replace medpsy's `ICD-10:` line with the looked-up
+  code (use medpsy's *named condition*, not its code).
+- Refine the 3 semantic misses (UTI→puerperal, pneumonia→specific organism) — e.g. prefer the most
+  general site/organism-unspecified code; consider returning top-3 for human/LLM pick.
+- Curate + run the expanded/mental-health banks; fresh scored interview run.

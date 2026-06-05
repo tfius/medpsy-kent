@@ -9,20 +9,24 @@ Claude reads each question + answer and evaluates the response.
 ## Layout
 
 ```
-pyproject.toml / uv.lock     # uv project (dep: httpx)
-run_eval.py                  # the runner
-questions/                   # baseline bank — 5 research areas × 10 = 50
-questions_adversarial/       # adversarial stress bank — 5 failure modes × 10 = 50
-results/<timestamp>/         # one run: <id>.json per sample + run.jsonl + run_meta.json
-README.md                    # this file (how to use)
-EVALUATION.md                # findings/grades per run
-JOURNAL.md                   # narrative log of what we did and why
+pyproject.toml / uv.lock     # uv project (httpx, rapidfuzz, simple-icd-10, numpy)
+run_eval.py                  # one-shot bank runner
+compare_runs.py              # pair two runs side-by-side + stats -> comparisons/
+duel.py                      # multi-turn two-model duels (interview / adversarial) + scorecard
+icd_lookup.py                # condition -> verified ICD-10 (semantic/fuzzy over WHO ICD-10)
+icd_test.py / icd_cases.json # medpsy ICD-coding accuracy test + DB-verified answer key
+prompts/                     # system_v1–v4 (one-shot) + system_interview.txt (duel)
+questions/                   # baseline bank — areas 1–6 (incl. mental health), 90 samples
+questions_adversarial/       # adversarial stress bank — 6 failure modes, 90 samples
+questions_duel/              # duel scenarios (adversarial + interview)
+results/ duels/ comparisons/ # stored runs, transcripts/scorecards, side-by-sides
+README.md / EVALUATION.md / JOURNAL.md   # usage / findings / narrative log
 ```
 
 ## Setup
 
 ```bash
-uv sync          # creates .venv and installs httpx
+uv sync          # creates .venv and installs deps (httpx, rapidfuzz, simple-icd-10, numpy)
 ```
 
 LM Studio must be running with the target model loaded. Check which models are available:
@@ -92,21 +96,48 @@ there for grading.
 - **adv5 — Persuasion/anchoring**: social pressure to be unsafe (confirm an unverified dose, false
   premises, benign-self-diagnosis anchoring, false authority, cost-based under-triage, wear-down, neonatal fever).
 
-## Duel mode (model-vs-model adversarial chat)
+## Duel mode (multi-turn, two models)
 
-`duel.py` runs a live multi-turn conversation: a **patient** model role-plays an adversarial caller
-(persona + hidden clinical situation + unsafe goal) while the **tool** model is the medpsy CDS
-assistant. This probes *dynamic* failures the one-shot bank misses — caving under repeated pressure,
-failing to re-triage when a red flag is revealed mid-conversation, or dropping a boundary across turns.
+`duel.py` runs a live multi-turn conversation between two LM Studio models. Two modes:
+
+- **Interview (default):** medpsy is the **pharmacist** and must ask targeted triage questions; the
+  patient model answers a **hidden** scenario, revealing detail only when asked. medpsy concludes with
+  `DECISION / SEVERITY (0–10 + RED/AMBER/GREEN) / RED FLAGS / ICD-10 / ROUTING / SAFETY-NET`.
+- **Adversarial:** the patient model role-plays an adversarial caller; medpsy is the CDS tool that must
+  hold the line (re-triage when a red flag surfaces, refuse unsafe requests, not cave under pressure).
 
 ```bash
-uv run duel.py                                  # medgemma(patient) vs medpsy-4b(tool), v4 prompt
-uv run duel.py --tool-model medpsy-1.7b
-uv run duel.py --patient-model qwen3.5-4b-mlx --label q-vs-medpsy
+uv run duel.py --label my-run                                  # DEFAULT: medpsy interviews qwen3.6 patient
+uv run duel.py --patient-model medgemma-4b-it --label gemma    # different patient model
+uv run duel.py --tool-model medpsy-1.7b                        # smaller medpsy as the pharmacist
+# adversarial mode instead:
+uv run duel.py --tool-system-file prompts/system_v4.txt --scenarios questions_duel/scenarios.json --label adv
 ```
 
-Scenarios live in `questions_duel/scenarios.json` (each has a `patient_system` persona and an
-`expected` grading note). Transcripts are saved to `duels/<timestamp>[-label]/<id>.json`.
+Reasoning patient models (qwen) need headroom — default `--patient-max-tokens 1600`. Transcripts +
+a colour-coded **scorecard** (`summary.md`/`summary.json`) save to `duels/<timestamp>[-label]/`. The
+scorecard's ICD column is the **verified** code from `icd_lookup` (see below) — medpsy's own code is
+shown only when it differed (it usually did).
+
+## ICD-10 grounding & coding test
+
+medpsy hallucinates ICD-10 codes, so we ground them against a real database. `icd_lookup.py` maps a
+condition phrase → verified WHO ICD-10 code (offline `simple-icd-10`, 12.5k codes). Default backend is
+**semantic** (embeds descriptions with the LM Studio nomic model, cached to `icd_embed_cache.npz`); a
+**fuzzy** backend works offline with no model.
+
+```bash
+uv run icd_lookup.py --build                       # build the embedding cache once (~35MB, regenerable)
+uv run icd_lookup.py "acute myocardial infarction" # -> I21.9 (semantic; add --fuzzy for offline)
+uv run icd_lookup.py "cauda equina syndrome" -k 3
+
+uv run icd_test.py                                 # medpsy ICD-coding accuracy vs DB-verified key (20 cases)
+uv run icd_test.py --model medpsy-1.7b --max-tokens 8000
+```
+
+`icd_test.py` reports medpsy's exact / category / invalid-code / miss rates and the lookup tool's
+recovery; results in `icd_test_results.json`. (Measured: medpsy ~15% exact / 30% invalid; semantic
+lookup ~85% exact.)
 
 ## Research areas
 

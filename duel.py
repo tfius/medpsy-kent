@@ -67,8 +67,23 @@ def _clean_patient(text):
     return cleaned or "Sorry, I'm not sure — what do you think I should do?"
 
 
+def _verify_icd(condition):
+    """Map the condition medpsy named -> a VERIFIED ICD-10 code via icd_lookup (the
+    fix for medpsy's hallucinated codes). Returns (code, description). Graceful if the
+    ICD deps/cache aren't available."""
+    if not condition:
+        return "", ""
+    try:
+        from icd_lookup import best_code, describe
+        code = best_code(condition)
+        return code, describe(code)
+    except Exception:
+        return "", ""
+
+
 def _parse_triage(rec):
-    """Pull DECISION / SEVERITY / colour / ICD-10 from the final tool (medpsy) turn."""
+    """Pull DECISION / SEVERITY / colour from the final tool (medpsy) turn, and replace
+    medpsy's (often wrong) ICD-10 code with a verified lookup from the condition it named."""
     tool_turns = [t for t in rec.get("transcript", []) if t.get("role") == "tool"]
     txt = tool_turns[-1]["content"] if tool_turns else ""
     dec_m = re.search(r"(?:DECISION|TRIAGE):\s*\**\s*([A-Za-z\-]+)", txt)
@@ -79,9 +94,22 @@ def _parse_triage(rec):
     severity = sev_num.group(0) if sev_num else ""
     col_m = re.search(r"\b(RED|AMBER|GREEN)\b", sev_line)
     color = col_m.group(1) if col_m else _DECISION_COLOR.get(decision, "")
+    # medpsy's own ICD line: separate the code it gave from the condition it named
     icd_m = re.search(r"ICD[-\s]?10:\s*\**\s*(.+)", txt)
-    icd = icd_m.group(1).strip().rstrip("*").strip()[:64] if icd_m else ""
-    return {"decision": decision, "severity": severity, "color": color, "icd": icd}
+    icd_line = icd_m.group(1).strip().rstrip("*").strip() if icd_m else ""
+    code_m = re.search(r"([A-TV-Z][0-9]{2}(?:\.[0-9A-Z]{1,4})?)", icd_line)
+    icd_model = code_m.group(1) if code_m else ""
+    condition = icd_line.replace(icd_model, "", 1) if icd_model else icd_line
+    condition = re.sub(r"\(?\bsuspected\b\)?", "", condition, flags=re.I).strip(" .,;:-")
+    if not condition:  # fall back to the ASSESSMENT line
+        am = re.search(r"ASSESSMENT:\s*([^\n]+)", txt)
+        condition = am.group(1).strip()[:80] if am else ""
+    icd_verified, icd_desc = _verify_icd(condition)
+    mismatch = bool(icd_model and icd_verified and
+                    icd_model.upper().replace(".", "") != icd_verified.upper().replace(".", ""))
+    return {"decision": decision, "severity": severity, "color": color,
+            "condition": condition[:48], "icd_model": icd_model,
+            "icd_verified": icd_verified, "icd_desc": icd_desc, "icd_mismatch": mismatch}
 
 
 def _scorecard(records, out_dir):
@@ -90,30 +118,43 @@ def _scorecard(records, out_dir):
     for r in records:
         if "error" in r:
             rows.append({"id": r.get("id"), "title": r.get("title"), "decision": "ERROR",
-                         "severity": "", "color": "", "icd": r["error"][:50]})
+                         "severity": "", "color": "", "icd_verified": "", "icd_model": "",
+                         "icd_mismatch": False, "condition": r["error"][:48]})
         else:
             rows.append({"id": r.get("id"), "title": r.get("title"), **_parse_triage(r)})
 
+    def icd_cell(row):
+        v, m = row.get("icd_verified", ""), row.get("icd_model", "")
+        if not v:
+            return m or "—"
+        return f"{v} (medpsy:{m})" if row.get("icd_mismatch") else v
+
     print(f"\n{'═' * 78}\n  SCORECARD  (tool = {records[0].get('tool_model','?') if records else '?'})\n{'═' * 78}", flush=True)
-    print(f"  {'':2} {'ID':5} {'SEV':3} {'DECISION':14} {'ICD-10 (suspected)':30} TITLE", flush=True)
+    print(f"  {'':2} {'ID':5} {'SEV':3} {'DECISION':14} {'ICD-10 (verified)':26} TITLE", flush=True)
     counts = {"RED": 0, "AMBER": 0, "GREEN": 0, "": 0}
+    fixed = 0
     for row in rows:
         c = row["color"]
         counts[c] = counts.get(c, 0) + 1
+        fixed += bool(row.get("icd_mismatch"))
         tint = _ANSI.get(c, "")
         line = (f"  {_DOT.get(c,'⚪')}  {row['id'] or '?':5} {row['severity'] or '-':>3} "
-                f"{tint}{row['decision']:14}{_RESET} {row['icd'][:30]:30} {row['title'] or ''}")
+                f"{tint}{row['decision']:14}{_RESET} {icd_cell(row)[:26]:26} {row['title'] or ''}")
         print(line, flush=True)
     print(f"\n  totals: {_DOT['RED']} {counts.get('RED',0)} RED   "
           f"{_DOT['AMBER']} {counts.get('AMBER',0)} AMBER   "
-          f"{_DOT['GREEN']} {counts.get('GREEN',0)} GREEN", flush=True)
+          f"{_DOT['GREEN']} {counts.get('GREEN',0)} GREEN"
+          f"   |  ICD lookup corrected medpsy on {fixed} case(s)", flush=True)
 
     (out_dir / "summary.json").write_text(json.dumps(rows, indent=2, ensure_ascii=False))
-    md = ["# Duel scorecard\n", "| | ID | Severity | Decision | ICD-10 (suspected) | Scenario |",
-          "|--|----|----------|----------|--------------------|----------|"]
+    md = ["# Duel scorecard\n",
+          "ICD-10 column = verified code from `icd_lookup` (medpsy's own code shown when it differed).\n",
+          "| | ID | Severity | Decision | ICD-10 (verified) | medpsy ICD | Scenario |",
+          "|--|----|----------|----------|-------------------|------------|----------|"]
     for row in rows:
         md.append(f"| {_DOT.get(row['color'],'⚪')} | {row['id']} | {row['severity'] or '—'} | "
-                  f"{row['decision'] or '—'} | {row['icd'] or '—'} | {row['title'] or ''} |")
+                  f"{row['decision'] or '—'} | {row.get('icd_verified') or '—'} | "
+                  f"{row.get('icd_model') or '—'}{' ⚠' if row.get('icd_mismatch') else ''} | {row['title'] or ''} |")
     (out_dir / "summary.md").write_text("\n".join(md) + "\n")
 
 

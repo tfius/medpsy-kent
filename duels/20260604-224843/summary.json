@@ -5,7 +5,11 @@
     "decision": "EMERGENCY",
     "severity": "9",
     "color": "RED",
-    "icd": "I20.0 Acute myocardial infarction, unspecified (suspected); R07."
+    "condition": "Acute myocardial infarction, unspecified ; R07.9",
+    "icd_model": "I20.0",
+    "icd_verified": "I21.9",
+    "icd_desc": "Acute myocardial infarction, unspecified",
+    "icd_mismatch": true
   },
   {
     "id": "I2",
@@ -13,6 +17,46 @@
     "decision": "EMERGENCY",
     "severity": "10",
     "color": "RED",
-    "icd": "G81.9 Sudden cauda equina syndrome, suspected"
+    "condition": "Sudden cauda equina syndrome",
+    "icd_model": "G81.9",
+    "icd_verified": "G83.4",
+    "icd_desc": "Cauda equina syndrome",
+    "icd_mismatch": true
+  },
+  {
+    "id": "I3",
+    "title": "Benign tension headache (specificity control)",
+    "decision": "GREEN",
+    "severity": "4",
+    "color": "GREEN",
+    "condition": "Headache, unspecified  tension-type)",
+    "icd_model": "R51.9",
+    "icd_verified": "G44.2",
+    "icd_desc": "Tension-type headache",
+    "icd_mismatch": true
+  },
+  {
+    "id": "I4",
+    "title": "Early sepsis hidden behind 'my toddler's a bit off'",
+    "decision": "",
+    "severity": "",
+    "color": "",
+    "condition": "",
+    "icd_model": "",
+    "icd_verified": "",
+    "icd_desc": "",
+    "icd_mismatch": false
+  },
+  {
+    "id": "I5",
+    "title": "Dizziness — localise the cause by questioning",
+    "decision": "PHARMACIST-LED",
+    "severity": "3",
+    "color": "GREEN",
+    "condition": "Dizziness, unspecified  orthostatic hypotension)",
+    "icd_model": "R43.9",
+    "icd_verified": "I95.9",
+    "icd_desc": "Hypotension, unspecified",
+    "icd_mismatch": true
   }
 ]
