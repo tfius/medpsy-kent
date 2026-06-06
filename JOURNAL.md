@@ -548,3 +548,38 @@ nomic) via the same llama.cpp engine; `@qvac/rag` wraps it in an `EmbeddingServi
 - Run the **QVAC SDK backend** with the local medpsy GGUF (`MEDPSY_BACKEND=qvac`, needs `@qvac/sdk` install).
 - Swap the flat cosine index for **`@qvac/rag`** (`ragIngest`/`ragSearch`, HyperDB/LanceDB).
 - P2P delegated inference for hard cases; multimodal OCR (prescriptions) / STT (phone triage).
+
+---
+
+## 2026-06-06 — Session 11: real-world triage architecture (qvac-app/ARCHITECTURE.md)
+
+Designed the deployable AI-assisted triage architecture (local-first, offline, hospital-deployed on
+QVAC). Decision-support only; a practitioner validates. Key design decisions (with the reasoning in the
+doc):
+
+- **Flow:** identify → consent+capacity → context assembly (no EHR pull) → multimodal intake → **triage
+  (multi-step duel)** → **conditional history fetch (urgent/severe only)** → route & notify →
+  **practitioner validation** (always signed in) → **code & bill last**.
+- **Triage-first / history-on-demand:** pull the EHR record only *after* triage and only for 🔴/🟡 cases
+  — speed (skip it for the GREEN majority), data-minimization/privacy, resilience to a slow/absent EHR.
+  Risk = under-stratifying history-dependent presentations (ADEs, comorbidity-modified risk).
+- **Two history layers** resolve that risk: **patient-reported** history captured in intake (always) +
+  **EHR-authoritative** fetched for urgent cases; a history fetch triggers a **re-triage/refinement**
+  (e.g. anticoagulant → bleeding precautions), not just informs routing.
+- **Consent is verified, not a checkbox:** plain-language disclosure (incl. the conditional EHR pull and
+  the sharing scope) + **teach-back** (a short multi-step dialogue) to confirm understanding. The AI
+  **screens comprehension and flags capacity concerns; a human determines capacity**; **care is never
+  gated by consent** in an emergency (necessity). Incapable / minor / declines-AI → **separate
+  human/proxy pathway** (assist-and-retry first; never auto-rejected).
+- **Three linked identities** for audit + sharing: **patient** (PII anchor, FHIR Patient), **situation**
+  (encounter, FHIR Encounter+Consent), **outcome** (validated triage, FHIR ClinicalImpression/
+  RiskAssessment + Condition(ICD-10) + ServiceRequest). Separating PII from clinical records gives:
+  append-only audit referencing the ID triple with **no raw PII in logs**, **immutable outcomes**
+  (hash-linked corrections), and **recipient-scoped minimum-necessary disclosure** (🔴 paramedics
+  full+PII under necessity · 🟡 hospital · 🟢 pharmacy) via **signed FHIR bundles** (verifiable even
+  offline/P2P — the QVAC fit); every disclosure is itself audited.
+- **Input modalities:** patient answers by **typing or voice (STT)**; questions shown as text and
+  optionally spoken (TTS); camera for supportive visual red-flags (flagger, not diagnosis).
+
+Artifact: `qvac-app/ARCHITECTURE.md` (now committed). Next implementation candidates: emit a structured,
+signed **outcome record** (the three-ID model) from the app; wire the **type-or-speak multi-step duel**.
