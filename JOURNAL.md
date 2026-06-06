@@ -1,7 +1,34 @@
 # Project journal — medpsy-eval
 
 A running log of *what* we built/ran and *why*. Newest entries at the bottom.
-Companion docs: `README.md` (how to use), `EVALUATION.md` (findings per run).
+Companion docs: `README.md` (how to use), `EVALUATION.md` (findings per run),
+`JOURNAL_ELI5.md` (the plain-language version of this log).
+
+---
+
+## Summary (the whole effort so far)
+
+Stood up a repeatable harness to evaluate **medpsy** — a small, locally-served medical
+model — as a **pharmacist clinical-decision-support / triage** tool, then stress-tested
+its safety and productized it on the **QVAC SDK** (local-first, offline).
+
+- **Safety is the headline result.** Across 100+ one-shot prompts (baseline +
+  adversarial) and multi-turn duels, medpsy-4b logged **zero dangerous under-triage and
+  zero unsafe-compliance failures**. The **1.7b** fine-tune matched it (**0 dangerous**),
+  while Google's general-medical **MedGemma-4b** failed **~6 high-stakes cases**
+  (1000× digoxin overdose, levothyroxine 500 mcg dispensed, "weakness isn't an
+  emergency"). Takeaway: **the medical fine-tune — not raw size — carries the safety.**
+- **Prompt tightening (v1→v4)** cut output **~64%** and gave a fixed triage schema with
+  no loss of safety; cured "URGENT-label inflation" on benign cases.
+- **Known weakness: over-triage / poor de-escalation.** It leads with the right
+  red-flag question (great sensitivity) but resists calming down once it says URGENT.
+- **Self-generated ICD-10 codes are unusable** (15% exact, 35% invalid, some
+  dangerous). Fix: a deterministic **lookup/RAG over a real 12.5k-code ICD database**
+  (**85% exact, 0% invalid**) — use medpsy's *named condition*, not its guessed code.
+- **Productized** as `qvac-app/` (pluggable LM Studio ↔ QVAC backend; on-device ICD
+  index; deterministic traffic-light scoring) plus a deployable hospital **triage
+  architecture** (`ARCHITECTURE.md`): offline, decision-support-only, human validates,
+  triage-first / history-on-demand, verified consent, PII-separated audit.
 
 ---
 
