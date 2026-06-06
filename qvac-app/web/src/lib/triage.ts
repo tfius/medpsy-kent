@@ -43,10 +43,29 @@ export function bandFor(decision: string, severity: string): "RED" | "AMBER" | "
   return n >= 8 ? "RED" : n >= 5 ? "AMBER" : "GREEN";
 }
 
-const field = (t: string, k: string) => (t.match(new RegExp(`${k}:\\s*(.+)`, "i"))?.[1] || "").trim();
+const field = (t: string, k: string) =>
+  (t.match(new RegExp(`${k}:\\s*(.+)`, "i"))?.[1] || "").replace(/[*#`]/g, "").trim();
+
+// nudge to force a conclusion (turn cap or manual "Conclude now")
+export const CONCLUDE_NUDGE =
+  "You now have enough information. Stop asking and reply ONLY with the conclusion block " +
+  "(DECISION / SEVERITY / RED FLAGS / CONDITION / ICD-10 / ROUTING / SAFETY-NET).";
 
 export function isConclusion(text: string): boolean {
   return /DECISION:/i.test(text);
+}
+
+// Reasoning models sometimes leak untagged chain-of-thought before the actual question
+// ("Okay, let's see… Do you have X?"). Keep only the trailing question the patient should see.
+export function questionText(reply: string): string {
+  const q = reply.lastIndexOf("?");
+  if (q === -1) {
+    const lines = reply.split("\n").map((l) => l.trim()).filter(Boolean);
+    return lines[lines.length - 1] || reply.trim();
+  }
+  const head = reply.slice(0, q);
+  const cut = Math.max(head.lastIndexOf("\n"), head.lastIndexOf(". "), head.lastIndexOf("! "), head.lastIndexOf("? "));
+  return reply.slice(cut + 1, q + 1).trim();
 }
 
 export function parseTriage(text: string): Triage {

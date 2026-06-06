@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { chat, type Msg } from "../lib/openai";
-import { seed, isConclusion, parseTriage, type Triage as T } from "../lib/triage";
+import { seed, isConclusion, parseTriage, questionText, CONCLUDE_NUDGE, type Triage as T } from "../lib/triage";
 import { useEncounter } from "../store";
 
 type Turn = { who: "bot" | "me"; text: string };
+const CAP = 6; // max questions before we force a conclusion
 
 export default function Triage() {
   const { enc, setSituation, set } = useEncounter();
@@ -13,21 +14,36 @@ export default function Triage() {
   const [started, setStarted] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [turns, setTurns] = useState<Turn[]>([]);
+  const [asked, setAsked] = useState(0);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<T | null>(enc.outcome);
   const [err, setErr] = useState("");
 
-  async function runTurn(history: Msg[]) {
-    setBusy(true); setErr("");
+  async function runTurn(history: Msg[], force = false) {
+    setBusy(true);
+    setErr("");
+    const send: Msg[] = force ? [...history, { role: "user", content: CONCLUDE_NUDGE }] : history;
     try {
-      const reply = await chat(history);
+      let reply = await chat(send);
+      if (!reply && !force) {
+        // empty (reasoning consumed the budget) → retry once, asking to conclude
+        reply = await chat([...history, { role: "user", content: CONCLUDE_NUDGE }]);
+      }
+      if (!reply) {
+        setErr("The model returned no text — try again, or use “Conclude now”.");
+        return;
+      }
       if (isConclusion(reply)) {
+        setMsgs([...send, { role: "assistant", content: reply }]);
         const t = parseTriage(reply);
-        setResult(t); set({ outcome: t });
+        setResult(t);
+        set({ outcome: t });
       } else {
-        setTurns((x) => [...x, { who: "bot", text: reply }]);
-        setMsgs([...history, { role: "assistant", content: reply }]);
+        const q = questionText(reply); // strip any leaked reasoning → just the question
+        setMsgs([...send, { role: "assistant", content: q }]);
+        setTurns((x) => [...x, { who: "bot", text: q }]);
+        setAsked((n) => n + 1);
       }
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -51,14 +67,19 @@ export default function Triage() {
     setTurns((x) => [...x, { who: "me", text: a }]);
     const next: Msg[] = [...msgs, { role: "user", content: a }];
     setMsgs(next);
-    await runTurn(next);
+    await runTurn(next, asked + 1 >= CAP); // force conclusion once enough has been asked
+  }
+
+  function restart() {
+    setStarted(false); setMsgs([]); setTurns([]); setAsked(0);
+    setInput(""); setResult(null); setErr(""); set({ outcome: null });
   }
 
   return (
     <>
       <div className="eyebrow">Step 5 · Triage</div>
       <h1>Triage interview</h1>
-      <p className="lead">A guided, multi-step assessment. Answer each question by typing (voice coming in intake).</p>
+      <p className="lead">A guided, multi-step assessment — type your answers. medpsy reasons before each reply, so a turn can take a few seconds.</p>
 
       {!started ? (
         <div className="card">
@@ -72,31 +93,38 @@ export default function Triage() {
       ) : (
         <div className="card">
           <div className="chat">
-            {turns.map((t, i) => (
-              <div key={i} className={`bubble ${t.who}`}>{t.text}</div>
-            ))}
+            {turns.map((t, i) => <div key={i} className={`bubble ${t.who}`}>{t.text}</div>)}
             {busy && <div className="typing">medpsy is thinking…</div>}
           </div>
 
           {!result && (
-            <div className="row" style={{ marginTop: 4 }}>
-              <input value={input} placeholder="Type your answer…"
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && answer()} disabled={busy} />
-              <button className="btn" onClick={answer} disabled={busy || !input.trim()}>Send</button>
-            </div>
+            <>
+              <div className="row" style={{ marginTop: 4 }}>
+                <input value={input} placeholder="Type your answer…"
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && answer()} disabled={busy} />
+                <button className="btn" onClick={answer} disabled={busy || !input.trim()}>Send</button>
+              </div>
+              <div className="row" style={{ marginTop: 8 }}>
+                <button className="btn ghost" onClick={() => runTurn(msgs, true)} disabled={busy || msgs.length === 0}>
+                  Conclude now
+                </button>
+              </div>
+            </>
           )}
         </div>
       )}
 
       {err && <div className="card" style={{ borderColor: "var(--red)", color: "var(--red)" }}>⚠ {err}</div>}
 
-      {result && <Result t={result} onNext={() => nav(result.band === "GREEN" ? "/route" : "/history")} />}
+      {result && (
+        <Result t={result} onNext={() => nav(result.band === "GREEN" ? "/route" : "/history")} onRestart={restart} />
+      )}
     </>
   );
 }
 
-function Result({ t, onNext }: { t: T; onNext: () => void }) {
+function Result({ t, onNext, onRestart }: { t: T; onNext: () => void; onRestart: () => void }) {
   const band = t.band || "AMBER";
   return (
     <div className="result" style={{ marginBottom: 18 }}>
@@ -111,13 +139,12 @@ function Result({ t, onNext }: { t: T; onNext: () => void }) {
         <Field k="Routing" v={t.routing} />
         <Field k="Safety-net" v={t.safetyNet} />
         <div className="row">
-          <button className="btn block" onClick={onNext}>
+          <button className="btn" onClick={onNext}>
             {band === "GREEN" ? "Continue → routing" : "Continue → fetch history"}
           </button>
+          <button className="btn ghost" onClick={onRestart}>Restart</button>
         </div>
-        <p className="note" style={{ marginTop: 10 }}>
-          Decision-support only — a practitioner validates this outcome.
-        </p>
+        <p className="note" style={{ marginTop: 10 }}>Decision-support only — a practitioner validates this outcome.</p>
       </div>
     </div>
   );

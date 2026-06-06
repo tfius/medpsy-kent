@@ -15,11 +15,14 @@ export async function chat(
       model: MODEL,
       messages,
       temperature: opts.temperature ?? 0.3,
-      max_tokens: opts.maxTokens ?? 2048, // headroom: medpsy is a reasoning model
+      max_tokens: opts.maxTokens ?? 4096, // headroom: medpsy reasons before answering
       stream: false,
     }),
   });
   if (!res.ok) throw new Error(`LLM ${res.status}: ${await res.text()}`);
   const data = await res.json();
-  return (data.choices?.[0]?.message?.content || "").trim();
+  let content: string = data.choices?.[0]?.message?.content || "";
+  // reasoning models sometimes inline <think>…</think>; keep only the final answer
+  content = content.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+  return content;
 }
