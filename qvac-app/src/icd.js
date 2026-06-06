@@ -16,7 +16,7 @@ const INDEX_BIN = path.join(DATA, "icd10.index.bin");
 const INDEX_META = path.join(DATA, "icd10.index.meta.json");
 const GENERIC = ["unspecified", "not specified", ", nos", "site not specified"];
 
-const loadCodes = () => JSON.parse(fs.readFileSync(CODES_FILE, "utf8")); // [{code, description}]
+export const loadCodes = () => JSON.parse(fs.readFileSync(CODES_FILE, "utf8")); // [{code, description}]
 
 function normalize(vec) {
   let n = 0;
@@ -56,7 +56,7 @@ export async function loadOrBuildIndex(provider, onProgress) {
 }
 
 // Prefer the .9 / "unspecified" code within the best-matching category for a generic query.
-function preferUnspecified(query, ranked) {
+export function preferUnspecified(query, ranked) {
   if (!ranked.length || /\bwith\b|due to/i.test(query)) return ranked;
   const topCat = ranked[0].code.split(".")[0];
   const same = ranked.filter((r) => r.code.split(".")[0] === topCat);

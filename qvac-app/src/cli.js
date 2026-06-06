@@ -5,7 +5,7 @@
 //       verify ICD-10 against the on-device index -> print grounded result.
 import { getProvider } from "./backend.js";
 import { triage } from "./triage.js";
-import { loadOrBuildIndex, verifyIcd } from "./icd.js";
+import { loadOrBuildIndex, verifyIcd } from "./icd-index.js";
 import { extractCondition, extractField, bandFor, extractIcdCode } from "./prompt.js";
 
 const ANSI = { RED: "\x1b[91m", AMBER: "\x1b[93m", GREEN: "\x1b[92m", "": "" };

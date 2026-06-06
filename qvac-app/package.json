@@ -13,5 +13,8 @@
   },
   "dependencies": {
     "@qvac/sdk": "^0.11.0"
+  },
+  "optionalDependencies": {
+    "@sqliteai/sqlite-wasm": "*"
   }
 }

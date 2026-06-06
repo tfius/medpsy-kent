@@ -48,6 +48,14 @@ node src/cli.js "I'm 58 with crushing chest pressure for 40 min spreading to my 
 MEDPSY_BACKEND=qvac node src/cli.js "..."
 ```
 
+### ICD index backend
+The ICD-10 search uses a real vector DB by default and falls back to flat cosine:
+- `ICD_INDEX=sqlite` (default) — **SQLite-vector** (`@qvac/rag` style); `npm install @sqliteai/sqlite-wasm`.
+- `ICD_INDEX=flat` — in-process cosine, no extra deps (always works).
+
+Both reuse the same cached embeddings (`data/icd10.index.bin`), so switching only changes the
+search method, not the vectors.
+
 Example output:
 ```
 DECISION:   EMERGENCY
