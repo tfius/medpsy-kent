@@ -222,6 +222,17 @@ Chain: **Patient `1—*` Situation `1—*` Outcome.**
   grounded here), SNOMED CT (findings), LOINC (labs), RxNorm/dm+d (meds).  **Billing:** X12 270/271
   (eligibility), 837 (claim).
 
+## On-device memory (why it fits a kiosk)
+On edge hardware the **KV cache** — not the weights — is usually the memory bottleneck: it grows with
+`context × layers × heads × 2(K+V) × precision` and, for long contexts, can exceed the model itself.
+QVAC's **TurboQuant** quantizes the KV cache (≈2–4× smaller), which directly enables the things this
+design needs on a tablet: our **≥8k-token** reasoning generations, the **full interview + history-RAG**
+context, and **more concurrent kiosk sessions** (KV cache is per-session) — or running **medpsy-4b**
+rather than the 1.7b on the same device, with less need to fall back to P2P delegation.
+Caveat: KV-cache quantization can slightly affect quality on very long contexts → **re-run the
+adversarial safety bank** against the quantized on-device setup to confirm the 0-dangerous-failures
+result still holds (eval-as-gate).
+
 ## Security, safety, governance
 - **Network:** device ↔ hospital systems over LAN only; no outbound internet; TLS + mutual auth.
 - **Data:** PHI encrypted at rest on-device; ephemeral encounter context cleared after sign-off; minimal retention.

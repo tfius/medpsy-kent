@@ -647,3 +647,15 @@ Also added `JOURNAL_ELI5.md` — a plain-language overview of the whole project 
 - **Voice** (Web Speech TTS/STT) + **camera** red-flags in intake/triage.
 - Flesh out the scaffold pages: consent teach-back, conditional FHIR history + re-triage, routing/notify,
   practitioner-validation UI, signed outcome record, claim draft.
+
+---
+
+## 2026-06-08 — Note: QVAC SDK TurboQuant (KV-cache quant)
+
+New `@qvac/sdk` (pinned `^0.12.2`) adds **TurboQuant** — quantizes the KV cache so it takes far less
+memory. KV cache (not weights) is the usual edge bottleneck for long contexts, so this is a direct
+enabler for our on-device thesis: ≥8k-token reasoning generations, full interview + history-RAG context,
+and more concurrent kiosk sessions per device (or medpsy-4b instead of 1.7b). Action when we run the
+`qvac` backend on-device: **re-run the adversarial bank against the quantized setup** (KV quant can
+nudge quality on very long contexts) to confirm the safety floor holds. Documented in
+`qvac-app/ARCHITECTURE.md` (On-device memory).
