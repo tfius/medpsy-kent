@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { chat, type Msg } from "../lib/openai";
 import { seed, isConclusion, parseTriage, questionText, CONCLUDE_NUDGE, type Triage as T } from "../lib/triage";
@@ -135,7 +135,7 @@ function Result({ t, onNext, onRestart }: { t: T; onNext: () => void; onRestart:
       <div className="body">
         <Field k="Red flags" v={t.redFlags || "none identified"} />
         <Field k="Working diagnosis" v={t.condition} />
-        <Field k="ICD-10 (provisional — verified on-device next)" v={t.icd} />
+        <IcdField condition={t.condition} guess={t.icd} />
         <Field k="Routing" v={t.routing} />
         <Field k="Safety-net" v={t.safetyNet} />
         <div className="row">
@@ -155,6 +155,41 @@ function Field({ k, v }: { k: string; v: string }) {
     <div className="field">
       <div className="k">{k}</div>
       <div className="v">{v || "—"}</div>
+    </div>
+  );
+}
+
+// ICD-10 grounded on-device: look up the verified code for the named condition,
+// replacing medpsy's (often wrong) guess.
+function IcdField({ condition, guess }: { condition: string; guess: string }) {
+  const [verified, setVerified] = useState<{ code: string; description: string } | null>(null);
+  const [state, setState] = useState<"loading" | "ok" | "err">("loading");
+
+  useEffect(() => {
+    if (!condition) { setState("err"); return; }
+    let cancelled = false;
+    fetch("/api/icd", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ condition }) })
+      .then((r) => r.json())
+      .then((d) => { if (cancelled) return; const top = d.results?.[0]; top ? (setVerified(top), setState("ok")) : setState("err"); })
+      .catch(() => !cancelled && setState("err"));
+    return () => { cancelled = true; };
+  }, [condition]);
+
+  const guessCode = (guess.match(/[A-TV-Z][0-9]{2}(?:\.[0-9A-Z]{1,4})?/) || [""])[0];
+  const mismatch = verified && guessCode && guessCode.replace(".", "") !== verified.code.replace(".", "");
+
+  return (
+    <div className="field">
+      <div className="k">ICD-10 — verified on-device</div>
+      {state === "loading" && <div className="v note">grounding against the on-device ICD-10 index…</div>}
+      {state === "err" && <div className="v">{guess || "—"} <span className="note">(lookup unavailable — start the ICD API: <code>npm run serve</code>)</span></div>}
+      {state === "ok" && verified && (
+        <div className="v">
+          <span className="pill GREEN">✓ {verified.code}</span> {verified.description}
+          {mismatch && <div className="note" style={{ marginTop: 4 }}>medpsy guessed <s>{guessCode}</s> — replaced with the verified code</div>}
+        </div>
+      )}
     </div>
   );
 }

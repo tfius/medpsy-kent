@@ -9,7 +9,8 @@
   },
   "scripts": {
     "build-icd-index": "node src/build-index.js",
-    "triage": "node src/cli.js"
+    "triage": "node src/cli.js",
+    "serve": "node src/server.js"
   },
   "dependencies": {
     "@qvac/sdk": "^0.12.2"

@@ -21,4 +21,4 @@ export const QUERY_PREFIX = "search_query: ";
 
 // medpsy is a reasoning model — give completions plenty of room to think then answer.
 export const TEMPERATURE = 0.3;
-export const MAX_TOKENS = 4096;
+export const MAX_TOKENS = 8192; // >=8k headroom for reasoning models
