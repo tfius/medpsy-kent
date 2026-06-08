@@ -659,3 +659,19 @@ and more concurrent kiosk sessions per device (or medpsy-4b instead of 1.7b). Ac
 `qvac` backend on-device: **re-run the adversarial bank against the quantized setup** (KV quant can
 nudge quality on very long contexts) to confirm the safety floor holds. Documented in
 `qvac-app/ARCHITECTURE.md` (On-device memory).
+
+---
+
+## 2026-06-08 — Session 13: complete the kiosk flow (pages 1–9 functional)
+
+Fleshed out the remaining scaffold pages so the whole 9-step flow works end-to-end:
+- **Consent (2):** teach-back textarea (records the patient's own-words understanding; "I need help" → human pathway).
+- **Route & notify (7):** generates an **SBAR handover** (LLM) from the outcome + a severity-driven recipient + "notify" confirmation.
+- **Validation (8):** editable decision/severity + clinician note → **signed, immutable outcome record** (the three identities patient/situation/outcome + clinician + time, **SHA-256** content hash; ECDSA in prod).
+- **Billing (9):** claim draft from the *validated* diagnosis — verified ICD-10 (via /api/icd) + mock eligibility/claim.
+- Already done earlier this session: ICD grounding in the result, conditional history → re-triage.
+
+**Visibility of what's simulated:** added a consistent amber **`<Badge>`** ("MOCK" / "to productionise" /
+"mock payer" / "SHA-256 (ECDSA in prod)" etc.) on every stubbed part, so a viewer can tell real from
+simulated at a glance. **Real FHIR left as mock** (badged) per decision; the rest of the flow is live
+against LM Studio.
