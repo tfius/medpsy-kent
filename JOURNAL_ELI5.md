@@ -226,6 +226,25 @@ starting over.
 
 ---
 
+## Session 13 (cont.) — Can it listen and talk? (voice, on the device)
+
+We want the patient to be able to **speak** their answers and have the questions **read aloud** —
+all on the device, no cloud. Good news: the toolkit (QVAC) already has both **speech-to-text**
+(listening) and **text-to-speech** (talking) built in, running locally.
+
+For listening, QVAC uses an engine called **parakeet** — and a brand-new tiny model from NVIDIA,
+**Nemotron-3.5-ASR**, runs on it: it's small (fits a tablet), understands **40+ languages**, works in
+**real time** as you talk, and is **perfectly accurate** (matches the reference word-for-word). So a
+patient could speak in their own language and the screen understands them. We confirmed it *can* plug
+into QVAC (it's the same engine), with a small "make sure QVAC's copy is new enough" caveat — and even
+if not, QVAC already has other multilingual listening models we can use today.
+
+For talking, QVAC has a voice engine ("Chatterbox") that reads the questions out loud.
+
+So the plan: wire **speak + listen** into the kiosk, all offline.
+
+---
+
 ## The whole story in three sentences
 
 We built a tiny medical AI helper, tried our hardest to break it, and found its

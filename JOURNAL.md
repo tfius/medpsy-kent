@@ -675,3 +675,28 @@ Fleshed out the remaining scaffold pages so the whole 9-step flow works end-to-e
 "mock payer" / "SHA-256 (ECDSA in prod)" etc.) on every stubbed part, so a viewer can tell real from
 simulated at a glance. **Real FHIR left as mock** (badged) per decision; the rest of the flow is live
 against LM Studio.
+
+---
+
+## 2026-06-08 — Findings: on-device STT/TTS on QVAC (Parakeet / Nemotron-3.5-ASR)
+
+Researched whether NVIDIA's **Nemotron-3.5-ASR** (0.6B, 40+ langs, streaming) works with QVAC.
+- **QVAC's transcription is parakeet-cpp.** `transcription-parakeet` (`find_package(parakeet-cpp)`,
+  `ParakeetStreamingProcessor`) — same engine + feature set (CTC/TDT/EOU/Sortformer, GGUF, cache-aware
+  streaming) as **mudler/parakeet.cpp** (LocalAI team). SDK exports `transcribe` / `transcribeStream`.
+- **mudler/parakeet.cpp explicitly supports `nvidia/nemotron-3.5-asr-streaming-0.6b`** — RNNT streaming,
+  0.6B, 40+ locales, prompt-conditioned, `--lang`, WER 0 vs NeMo, published as **GGUF**
+  (mudler/parakeet-cpp-gguf). Also the whole Parakeet family (CTC/RNNT/TDT/hybrid, 110M/0.6B/1.1B).
+- **Verdict: usable, with a version caveat.** Path = stage the Nemotron GGUF → `modelType:
+  "parakeet-transcription"` → `transcribe`/`transcribeStream`. QVAC's *documented* variants top out at
+  TDT v3 (~25 langs) + EOU, so confirm the bundled parakeet-cpp is recent enough to recognise the
+  Nemotron checkpoint (`parakeet.model_variant` tag); it's RNNT-streaming, in-family with the supported
+  EOU/TDT, so likely a drop-in (maybe a parakeet-cpp bump). If not, QVAC already gives streaming
+  multilingual STT today via parakeet-tdt-0.6b-v3 / EOU — voice intake isn't blocked.
+- **TTS** is on-device too: `textToSpeech` / `textToSpeechStream` (Chatterbox GGML engine).
+- Why it fits: tiny 0.6B (CPU kiosk), real-time streaming, 40+ langs (our multilingual goal),
+  prompt-conditioned (clinical vocab), WER 0 — the ideal STT for "type or speak" + multilingual intake.
+
+API (verified from QVAC examples):
+- STT: `loadModel({modelSrc, modelType:"parakeet-transcription"})` → `transcribe({modelId, audioChunk})` (16kHz mono WAV).
+- TTS: `loadModel({modelSrc: TTS_*_CHATTERBOX, modelConfig:{ttsEngine:"chatterbox",...}})` → `textToSpeech({modelId, text}).buffer` (Int16 PCM @24kHz).
