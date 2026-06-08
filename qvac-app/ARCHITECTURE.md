@@ -156,8 +156,10 @@ The patient can **type or speak** their answers; questions are always on-screen 
 optionally spoken. Pick per patient/room — no modality is required.
 - **Text (default fallback):** questions on screen, patient types answers. Works everywhere, no audio.
 - **TTS — speak the questions** (QVAC Text-to-Speech / ONNX): accessibility, low literacy/vision, hands-free.
-- **STT — hear the answers** (QVAC Transcription: whisper.cpp / Parakeet): spoken replies → text that
-  drives the next triage turn; multilingual + on-device translation for non-native speakers.
+- **STT — hear the answers** (QVAC Transcription via parakeet-cpp; **Nemotron-3.5-ASR** 0.6B GGUF —
+  40+ languages, real-time cache-aware streaming, prompt-conditioned, WER 0): spoken replies → text that
+  drives the next triage turn; multilingual + on-device translation for non-native speakers. Implemented
+  in `src/speech.js` (`transcribe`) + `/api/stt`.
 - **Vision — camera snapshot** (QVAC OCR + image classification / vision-language):
   - OCR reads paper forms, prescriptions, ID/insurance cards into structured fields.
   - Image analysis surfaces *supportive* visual red-flags — facial asymmetry (FAST/stroke prompt),
@@ -184,8 +186,8 @@ red-flags] → medpsy re-triages → next question`. Everything local; nothing s
 |---------------|-----------------|-----|
 | Triage reasoning | LLM completion (medpsy GGUF) | `loadModel` + `completion` |
 | History RAG + ICD-10 grounding | Text embeddings + RAG | `embed` / `ragIngest` / `ragSearch` |
-| Speak questions | Text-to-Speech (ONNX) | TTS capability |
-| Hear answers | Transcription (whisper.cpp / Parakeet) | STT capability |
+| Speak questions | Text-to-Speech (Chatterbox GGML) | `textToSpeech` / `textToSpeechStream` |
+| Hear answers | Transcription — Parakeet / **Nemotron-3.5-ASR** (0.6B, 40+ langs, streaming, WER 0) | `transcribe` / `transcribeStream` (`parakeet-transcription`) |
 | Non-native speakers | Translation (NMT / Bergamot) | translation capability |
 | Read forms / ID cards | OCR (ONNX) | OCR capability |
 | Visual red-flags | Image classification / vision-language | classification / VLA |

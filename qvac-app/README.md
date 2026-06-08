@@ -68,6 +68,21 @@ ICD-10 (verified on-device):
   (medpsy's own guess was: I20.0 ... — replaced with the verified code)
 ```
 
+## On-device voice (STT / TTS)
+
+`src/speech.js` does speech **on-device via the QVAC SDK** — STT with the `parakeet-transcription`
+engine (Parakeet or **Nemotron-3.5-ASR** GGUF — 40+ langs, streaming) and TTS with Chatterbox.
+Needs `@qvac/sdk` + model files (lazy/optional — the rest of the app runs without it).
+
+```bash
+export MEDPSY_STT_GGUF=/path/to/nemotron-3.5-asr-streaming-0.6b.gguf   # 40+ langs; else default English Parakeet
+node src/speech.js tts "Do you have chest pain?" out.wav   # synthesize
+node src/speech.js stt clip.wav                            # transcribe (16 kHz mono WAV)
+```
+`npm run serve` also exposes **`POST /api/tts` {text}→audio/wav** and **`POST /api/stt` (WAV)→{text}**
+(503 if the SDK/model isn't present). The kiosk's 🔊 read-aloud calls `/api/tts` (browser-speech
+fallback); the 🎤 mic uses the browser recognizer in-page, with `/api/stt` for native clients.
+
 ## Architecture
 ```
 patient complaint

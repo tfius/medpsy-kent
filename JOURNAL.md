@@ -700,3 +700,12 @@ Researched whether NVIDIA's **Nemotron-3.5-ASR** (0.6B, 40+ langs, streaming) wo
 API (verified from QVAC examples):
 - STT: `loadModel({modelSrc, modelType:"parakeet-transcription"})` → `transcribe({modelId, audioChunk})` (16kHz mono WAV).
 - TTS: `loadModel({modelSrc: TTS_*_CHATTERBOX, modelConfig:{ttsEngine:"chatterbox",...}})` → `textToSpeech({modelId, text}).buffer` (Int16 PCM @24kHz).
+
+### Implemented: on-device STT/TTS (same session)
+- `qvac-app/src/speech.js` — QVAC SDK STT (`transcribe`, `parakeet-transcription`; `MEDPSY_STT_GGUF`
+  → Nemotron-3.5-ASR) + TTS (`textToSpeech`, Chatterbox) + PCM→WAV + a CLI (`tts`/`stt`). Lazy import
+  so the LM-Studio path needs no `@qvac/sdk`.
+- `src/server.js`: `POST /api/tts` ({text}→audio/wav) and `POST /api/stt` (WAV→{text}); 503 if the SDK/model isn't present.
+- Web kiosk: `lib/speech.ts` + Triage 🔊 read-aloud (uses `/api/tts`, Web Speech fallback) and 🎤
+  dictate (browser recognizer; `/api/stt` is the on-device path for native/Expo). "type or speak" is now real.
+- Not runnable here (needs `@qvac/sdk` + model files on a QVAC device); code verified by node --check / tsc.

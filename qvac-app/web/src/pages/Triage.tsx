@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { chat, type Msg } from "../lib/openai";
 import { seed, isConclusion, parseTriage, questionText, CONCLUDE_NUDGE, type Triage as T } from "../lib/triage";
+import { speak, listenOnce, sttSupported } from "../lib/speech";
 import { useEncounter } from "../store";
 
 type Turn = { who: "bot" | "me"; text: string };
@@ -93,16 +94,27 @@ export default function Triage() {
       ) : (
         <div className="card">
           <div className="chat">
-            {turns.map((t, i) => <div key={i} className={`bubble ${t.who}`}>{t.text}</div>)}
+            {turns.map((t, i) => t.who === "bot" ? (
+              <div key={i} className="bubble bot">
+                {t.text}
+                <button className="speak" title="Read aloud" onClick={() => speak(t.text)}>🔊</button>
+              </div>
+            ) : (
+              <div key={i} className="bubble me">{t.text}</div>
+            ))}
             {busy && <div className="typing">medpsy is thinking…</div>}
           </div>
 
           {!result && (
             <>
               <div className="row" style={{ marginTop: 4 }}>
-                <input value={input} placeholder="Type your answer…"
+                <input value={input} placeholder="Type or speak your answer…"
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && answer()} disabled={busy} />
+                {sttSupported() && (
+                  <button className="btn ghost" title="Speak your answer" disabled={busy}
+                    onClick={() => listenOnce((t) => setInput(t), (e) => setErr(e))}>🎤</button>
+                )}
                 <button className="btn" onClick={answer} disabled={busy || !input.trim()}>Send</button>
               </div>
               <div className="row" style={{ marginTop: 8 }}>

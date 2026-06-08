@@ -97,6 +97,9 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--b
 .bubble.bot { background: var(--brand-soft); color: var(--brand-ink); align-self: flex-start; border-bottom-left-radius: 4px; }
 .bubble.me { background: var(--ink); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
 .typing { color: var(--muted); font-style: italic; align-self: flex-start; }
+.bubble.bot { position: relative; }
+.bubble .speak { border: none; background: transparent; cursor: pointer; font-size: 14px; margin-left: 8px; opacity: .55; vertical-align: middle; }
+.bubble .speak:hover { opacity: 1; }
 
 /* ---------- triage result / severity ---------- */
 .result { border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); }
