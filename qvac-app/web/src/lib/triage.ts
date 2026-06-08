@@ -44,7 +44,7 @@ export function bandFor(decision: string, severity: string): "RED" | "AMBER" | "
 }
 
 const field = (t: string, k: string) =>
-  (t.match(new RegExp(`${k}:\\s*(.+)`, "i"))?.[1] || "").replace(/[*#`]/g, "").trim();
+  (t.match(new RegExp(`${k}:\\s*(.+)`, "i"))?.[1] || "").replace(/[*#`<>]/g, "").trim();
 
 // nudge to force a conclusion (turn cap or manual "Conclude now")
 export const CONCLUDE_NUDGE =
@@ -86,4 +86,21 @@ export function parseTriage(text: string): Triage {
 export const seed = (complaint: string, intake?: string): Msg[] => [
   { role: "system", content: TRIAGE_SYSTEM },
   { role: "user", content: intake ? `${complaint}\n\n(Patient-reported history: ${intake})` : complaint },
+];
+
+// Single-shot re-triage once the authoritative EHR record is retrieved (urgent cases).
+export const REFINE_SYSTEM = `You are a clinical decision-support tool. The patient has already been triaged from their presentation; now their hospital record is available. Re-evaluate and reply ONLY with the conclusion block:
+DECISION: <EMERGENCY | URGENT | PHARMACIST-LED | ROUTINE>
+SEVERITY: <0-10 integer>
+RED FLAGS: <those present, or "none identified">
+CONDITION: <single most likely working diagnosis, plain words>
+ICD-10: <best-guess code>
+ROUTING: <where this goes and why>
+SAFETY-NET: <what to watch for>
+
+Reflect the record: account for anticoagulants/interactions (e.g. on an anticoagulant → bleeding precautions; raise concern for bleeding-related complaints), comorbidities that raise risk, and allergies (avoid contraindicated drugs). Do NOT downgrade urgency below the presentation; you may escalate or add precautions. Be concise.`;
+
+export const refine = (complaint: string, intake: string, ehr: string): Msg[] => [
+  { role: "system", content: REFINE_SYSTEM },
+  { role: "user", content: `Presentation: ${complaint}\nPatient-reported: ${intake || "none"}\nHospital record: ${ehr}` },
 ];

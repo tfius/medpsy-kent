@@ -92,23 +92,6 @@ export function Intake() {
   );
 }
 
-export function History() {
-  const { enc } = useEncounter();
-  const urgent = enc.outcome && enc.outcome.band !== "GREEN";
-  return (
-    <Shell step="Step 6 · History" title="Hospital record" next="/route"
-      lead={urgent ? "Urgent/severe case — retrieving the authoritative record to refine the triage."
-        : "Routine case — the full record is not opened (data minimisation)."}>
-      {urgent ? (
-        <Todo>Production: fetch via <strong>FHIR</strong> over the hospital LAN (problems, meds, allergies, labs) →
-          <strong> re-triage</strong> with interactions/comorbidities (e.g. anticoagulant → bleeding precautions).</Todo>
-      ) : (
-        <Todo>Skipped for GREEN. Patient-reported history from intake already informed the triage.</Todo>
-      )}
-    </Shell>
-  );
-}
-
 export function Route() {
   const { enc } = useEncounter();
   const band = enc.outcome?.band || "";

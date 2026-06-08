@@ -1,6 +1,7 @@
 import { NavLink, Route, Routes, useLocation } from "react-router-dom";
 import Triage from "./pages/Triage";
-import { Identify, Consent, Context, Intake, History, Route as RoutePage, Validate, Billing } from "./pages/scaffolds";
+import History from "./pages/History";
+import { Identify, Consent, Context, Intake, Route as RoutePage, Validate, Billing } from "./pages/scaffolds";
 
 const STEPS = [
   { path: "/", label: "Identify", el: <Identify /> },
