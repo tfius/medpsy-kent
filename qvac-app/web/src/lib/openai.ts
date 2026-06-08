@@ -15,7 +15,7 @@ export async function chat(
       model: MODEL,
       messages,
       temperature: opts.temperature ?? 0.3,
-      max_tokens: opts.maxTokens ?? 4096, // headroom: medpsy reasons before answering
+      max_tokens: opts.maxTokens ?? 8192, // >=8k: reasoning models need room before answering
       stream: false,
     }),
   });

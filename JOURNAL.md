@@ -610,3 +610,40 @@ doc):
 
 Artifact: `qvac-app/ARCHITECTURE.md` (now committed). Next implementation candidates: emit a structured,
 signed **outcome record** (the three-ID model) from the app; wire the **type-or-speak multi-step duel**.
+
+---
+
+## 2026-06-08 — Session 12: kiosk web UI (9 pages) + working triage duel
+
+Built `qvac-app/web/` — the patient/clinician-facing kiosk UI, one page per phase of
+`ARCHITECTURE.md`, with **triage fully implemented as the multi-step duel**.
+
+**Frontend choice (reasoned):** Vite + React + TypeScript now — runs today against LM Studio via a
+`/v1` dev proxy, a fullscreen browser *is* a kiosk, Web Speech/`getUserMedia` ready for voice/camera,
+and it reuses our OpenAI-compatible backend unchanged. On-device productionization later = **Expo**
+(QVAC's supported runtime) or **Tauri** (Node sidecar running the SDK); the page flow + duel state
+machine + client are kept framework-light to port. (A browser → QVAC CLI server is one of QVAC's own
+modes, so it's not off-thesis.)
+
+**What's there:**
+- 9 routed pages + responsive step rail; clinical design (Inter, RAG colours); an encounter store
+  (`store.tsx`) modelling the three identities (patient / situation / outcome).
+- **Triage (step 5):** medpsy asks one question at a time, the patient types, it re-triages each turn,
+  and concludes with a colour-banded card (DECISION / SEVERITY 0–10 🔴🟡🟢 / RED FLAGS / CONDITION /
+  ICD-10 / ROUTING / SAFETY-NET). Other 8 pages scaffolded and wired into the flow.
+
+**Ran it:** `npm install` + `npm run dev` → served on `:5175` (5173/5174 were taken); the proxy reaches
+LM Studio (medpsy-4b + nomic); duel verified end-to-end (clean questions + parseable conclusion).
+
+**Hardened the duel for reliable simulation** (medpsy is a reasoning model):
+- `max_tokens` 4096 (the tight cap caused empty replies); strip `<think>` blocks **and** extract the
+  trailing question to drop untagged reasoning leakage ("Okay, let's see…").
+- empty-reply retry with a conclude nudge; turn-cap (6) auto-conclude; "Conclude now" + "Restart".
+
+Also added `JOURNAL_ELI5.md` — a plain-language overview of the whole project for non-technical readers.
+
+### Open next steps
+- Wire **on-device ICD-10 grounding** into the result card (show the verified code, not medpsy's guess).
+- **Voice** (Web Speech TTS/STT) + **camera** red-flags in intake/triage.
+- Flesh out the scaffold pages: consent teach-back, conditional FHIR history + re-triage, routing/notify,
+  practitioner-validation UI, signed outcome record, claim draft.

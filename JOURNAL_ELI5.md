@@ -203,6 +203,29 @@ The thoughtful bits:
 
 ---
 
+## Session 12 — A real screen you can click
+
+We turned the plan into an actual app with a screen for each step (like a check-in
+kiosk you'd see at a clinic). It has **9 pages** — sign in, agree, tell us what's
+wrong, a few questions, the triage, your record, where you're sent, the doctor's
+check, and billing.
+
+The big one — **the triage actually works**: you type what's bothering you, it asks
+you **one question at a time**, and after a few answers it shows a **traffic-light
+card** (red/amber/green) with how urgent you are and what to do. You can try it right
+now in a web browser.
+
+We had to teach it some manners so it doesn't look broken: the AI "thinks out loud"
+before answering, so we hide the thinking and only show the actual question, give it
+enough room to finish its thought, and add a "just decide now" button so it always
+reaches an answer.
+
+We picked a **web page** to build it because it works today and looks the same on a
+big kiosk or a phone; later it can move onto the tablet itself (fully offline) without
+starting over.
+
+---
+
 ## The whole story in three sentences
 
 We built a tiny medical AI helper, tried our hardest to break it, and found its
