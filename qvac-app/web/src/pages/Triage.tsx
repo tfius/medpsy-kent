@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { chat, type Msg } from "../lib/openai";
+import { chatStream, type Msg } from "../lib/openai";
 import { seed, isConclusion, parseTriage, questionText, CONCLUDE_NUDGE, type Triage as T } from "../lib/triage";
 import { speak, listenOnce, sttSupported } from "../lib/speech";
 import { useEncounter } from "../store";
@@ -18,19 +18,22 @@ export default function Triage() {
   const [asked, setAsked] = useState(0);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [stream, setStream] = useState(""); // live in-progress text
   const [result, setResult] = useState<T | null>(enc.outcome);
   const [err, setErr] = useState("");
 
   async function runTurn(history: Msg[], force = false) {
     setBusy(true);
     setErr("");
+    setStream("");
     const send: Msg[] = force ? [...history, { role: "user", content: CONCLUDE_NUDGE }] : history;
     try {
-      let reply = await chat(send);
+      let reply = await chatStream(send, setStream);
       if (!reply && !force) {
         // empty (reasoning consumed the budget) → retry once, asking to conclude
-        reply = await chat([...history, { role: "user", content: CONCLUDE_NUDGE }]);
+        reply = await chatStream([...history, { role: "user", content: CONCLUDE_NUDGE }], setStream);
       }
+      setStream("");
       if (!reply) {
         setErr("The model returned no text — try again, or use “Conclude now”.");
         return;
@@ -50,6 +53,7 @@ export default function Triage() {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
+      setStream("");
     }
   }
 
@@ -102,7 +106,8 @@ export default function Triage() {
             ) : (
               <div key={i} className="bubble me">{t.text}</div>
             ))}
-            {busy && <div className="typing">medpsy is thinking…</div>}
+            {busy && (stream ? <div className="typing">{stream}<span className="cursor">▋</span></div>
+                              : <div className="typing">medpsy is thinking…</div>)}
           </div>
 
           {!result && (
