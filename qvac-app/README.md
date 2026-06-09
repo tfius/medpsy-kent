@@ -16,31 +16,71 @@ code, flip one env var for the QVAC backend.
 - **CLI** (`src/cli.js`) — headless triage for one complaint.
 - **Speech** (`src/speech.js` + `scripts/*_worker.py`) — on-device STT & multilingual TTS.
 
-## Quick start (the kiosk)
+## Installation
 
-**Prerequisite (manual): LM Studio** — load `medpsy-4b` (or 1.7b) + `text-embedding-nomic-embed-text-v1.5`
-and enable the local server on `:1234`.
+**Prerequisites:** macOS (Apple Silicon) or Linux · **Node 18+** · **Python 3.9+** · `git`, `curl`,
+`cmake` + a C++17 compiler (only needed to build the STT engine) · **[LM Studio](https://lmstudio.ai)**.
 
 ```bash
-cd qvac-app
-npm install
-npm run check            # ▶ what's available? per-model status + sizes + how to get what's missing
-npm run download-models  # ▶ fetch the downloadable models (Nemotron GGUF ~940 MB, Kokoro ~340 MB)
-npm run start            # ▶ run it all: preflight → API server (:8787) → web kiosk (Vite)
+# 1) the kiosk itself
+git clone <this-repo> && cd medpsy-kent/qvac-app
+npm install                       # API server deps (@qvac/sdk is optional)
+( cd web && npm install )         # web kiosk deps
 ```
 
-`npm run start` prints the Vite URL — open it. (Vite proxies `/v1`→LM Studio `:1234`, `/api`→API `:8787`.)
+**2) LLM — LM Studio.** Install LM Studio, download **`medpsy-4b`** (or `medpsy-1.7b`) and
+**`text-embedding-nomic-embed-text-v1.5`**, and enable the local server on `:1234`.
+(For the on-device QVAC backend instead, set `MEDPSY_BACKEND=qvac` + `MEDPSY_GGUF`.)
 
-> **`npm run check`** is your friend — it reports exactly which models/engines are present, their sizes,
-> and how to get the missing ones. The parakeet.cpp **STT engine must be built** (it can't be downloaded —
-> see the `../nemotron-asr-test` harness); the **GGUF + Kokoro model files** can be auto-downloaded.
+**3) Speech engines (optional — the kiosk runs fine without; voice features just show as unavailable).**
+
+*STT — build parakeet.cpp* (produces `libparakeet.dylib` + `parakeet-cli`; can't be downloaded):
+```bash
+brew install cmake                # Linux: apt install cmake build-essential
+git clone --recursive https://github.com/mudler/parakeet.cpp && cd parakeet.cpp
+# if the ggml submodule is empty, fetch it directly into third_party/ggml first
+cmake -B build -DPARAKEET_BUILD_CLI=ON -DPARAKEET_SHARED=ON -DPARAKEET_GGML_METAL=ON   # drop METAL on Linux
+cmake --build build -j
+# point the kiosk at the outputs (or set MEDPSY_PARAKEET_LIB / MEDPSY_PARAKEET_BIN)
+ln -sf "$PWD/build/libparakeet.dylib"            ../models/
+ln -sf "$PWD/build/examples/cli/parakeet-cli"    ../models/
+```
+
+*TTS — kokoro-onnx* (Python; multilingual):
+```bash
+python3 -m venv ~/.kokoro-venv && ~/.kokoro-venv/bin/pip install kokoro-onnx
+export MEDPSY_KOKORO_PY="$HOME/.kokoro-venv/bin/python"   # add to your shell rc / .env
+```
+
+*Model files* (Nemotron GGUF + Kokoro ONNX + voices → `models/`):
+```bash
+npm run download-models           # Nemotron ~940 MB + Kokoro ~340 MB, via curl
+```
+
+> **Shortcut:** these speech engines + models are exactly what the sibling **`../nemotron-asr-test`**
+> harness builds. If you've set it up, the kiosk already symlinks to it — `npm run check` will say so.
+
+**4) Verify & run:**
+```bash
+npm run check                     # per-model status + sizes + how to fix anything missing
+npm run start                     # preflight → API (:8787) → web kiosk (prints the URL)
+```
+
+## Running
+
+Once installed, **one command** runs the whole stack (make sure LM Studio is up first):
+```bash
+npm run start     # preflight → API server (:8787) → web kiosk → prints the Vite URL
+```
+`npm run check` anytime to re-check model/dependency status. Vite proxies `/v1`→LM Studio `:1234`,
+`/api`→API `:8787`. Anything missing degrades gracefully (that feature just shows as unavailable).
 
 <details><summary>…or run the three processes manually</summary>
 
 ```bash
 npm run build-icd-index     # one-time: embed ~12k WHO ICD-10 descriptions (cached)
 npm run serve               # API server :8787 (ICD + speech; pre-warms STT/TTS models)
-cd web && npm install && npm run dev    # web kiosk, Vite free port (often :5175)
+cd web && npm run dev       # web kiosk, Vite free port (often :5175)
 ```
 </details>
 
