@@ -30,6 +30,19 @@ export const STT_MODEL_SRC = process.env.MEDPSY_STT_GGUF || null;
 export const TTS_MODEL_SRC = process.env.MEDPSY_TTS_GGUF || null; // Chatterbox by default
 export const SPEECH_LANG = process.env.MEDPSY_SPEECH_LANG || "auto";
 
+// --- STT engine selection ---
+// "parakeet-cli" runs the local parakeet.cpp binary on Nemotron-3.5-ASR (truly
+//   local, bypasses the @qvac native build — mirrors how Kokoro bypasses it for TTS).
+// "qvac" uses the @qvac SDK transcribe (on-device, needs the native worker).
+// "auto" picks parakeet-cli if its binary + GGUF are present, else qvac.
+export const STT_ENGINE = process.env.MEDPSY_STT_ENGINE || "auto";
+export const PARAKEET_BIN = process.env.MEDPSY_PARAKEET_BIN || path.join(MODELS, "parakeet-cli");
+export const STT_GGUF = process.env.MEDPSY_STT_GGUF || path.join(MODELS, "nemotron-3.5-asr-streaming-0.6b-q8_0.gguf");
+// "parakeet-server": a persistent Python worker keeps the model resident (fast,
+// no per-request reload). Needs python3 + libparakeet.dylib + the GGUF.
+export const PARAKEET_LIB = process.env.MEDPSY_PARAKEET_LIB || path.join(MODELS, "libparakeet.dylib");
+export const STT_WORKER = path.join(import.meta.dirname, "..", "scripts", "stt_worker.py");
+
 // --- TTS engine selection ---
 // "kokoro"    -> Kokoro 82M ONNX via kokoro-js (on-device, Node-native, no @qvac/sdk
 //                build needed; nice natural voice, ~real-time). Default.

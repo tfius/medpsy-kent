@@ -782,3 +782,40 @@ rename — clean the leftover `.bare-runtime*` temp dirs and retry. (2) `kokoro-
 `.bin` files locally and resolves them via `import.meta.dirname` — fine under `node <file>` (and the
 server), but breaks under `node -e` eval (resolves `../voices` against cwd). Don't smoke-test it with
 `-e`.
+
+---
+
+## 2026-06-09 — Hands-free voice triage: on-device STT + auto-speak + persistent model
+
+Turned the triage screen into a real spoken conversation, and made the STT genuinely on-device and fast.
+
+- **Auto-speak + auto-submit.** A "🔊 Auto-speak questions" toggle (persisted) reads each triage
+  question aloud as it arrives (Kokoro; only the answer, never the reasoning). Dictation now
+  **auto-submits** — no more pressing Send after speaking. `begin()/answer()` take the transcript
+  directly to avoid stale-state bugs.
+- **On-device STT (dropped the cloud Web Speech API).** The browser recognizer sends audio to Google,
+  so it's gone. The mic now records via `MediaRecorder`, resamples to 16 kHz mono with
+  `OfflineAudioContext`, encodes a WAV in-browser, and POSTs to `/api/stt` (Nemotron-3.5-ASR). Auto-stops
+  on ~1.2 s of silence (VAD via an `AnalyserNode`), with a transcribing state in the UI.
+- **STT actually works locally via parakeet.cpp** (the `@qvac` native worker is broken in dev, same as
+  Supertonic TTS). Added an STT engine chain (`MEDPSY_STT_ENGINE`: `parakeet-server` → `parakeet-cli` →
+  `qvac`). Symlinked the harness `parakeet-cli` + Nemotron GGUF + `libparakeet.dylib` into
+  `qvac-app/models/` (gitignored).
+- **Persistent model worker — the big perf win.** The CLI reloaded the 938 MB model *every request*
+  (~8 s, felt "stuck"). New `scripts/stt_worker.py` loads the model **once** via the parakeet.cpp C-API
+  (ctypes, like the harness), stays resident, and transcribes WAV paths fed over stdin. Result:
+  **first request ~8.7 s → subsequent ~0.13 s** (~65×). Pre-warmed at server boot (`prewarmStt()`), so
+  the user's first dictation is already fast. `os._exit()` + a SIGTERM handler dodge the ggml-metal
+  teardown assert on shutdown (same trick as the harness).
+- **Hands-free conversation.** Once you answer by voice, the mic auto-arms after each spoken question for
+  a natural back-and-forth; typing (takes over) or tapping the mic off exits. State mirrored into refs so
+  the async "arm after speaking" check is fresh.
+- **CSS fix:** the global `input { width:100% }` was stretching the auto-speak checkbox and wrapping its
+  label across 3 lines — fixed with `input[type=checkbox]{width:auto}` + `white-space:nowrap`.
+
+Verified: `tsc` + full `vite build` pass; `/api/stt` over HTTP returns correct transcripts in ~0.13 s and
+shuts down cleanly. The browser mic/hands-free loop is for on-device validation.
+
+**Known refinement (next):** in hands-free, the mic arms only *after* the question finishes speaking, so
+talking *over* the question loses the start (manual mic tap already barges in via `stopSpeaking`). Plan:
+arm during TTS and stop the question on detected speech (relying on `echoCancellation`).

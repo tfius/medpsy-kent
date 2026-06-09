@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { chatStream, type Msg } from "../lib/openai";
 import { seed, isConclusion, parseTriage, questionText, CONCLUDE_NUDGE, type Triage as T } from "../lib/triage";
-import { speak, listenOnce, sttSupported, fetchVoices, getVoice, setVoice, type Voice } from "../lib/speech";
+import { speak, stopSpeaking, listenLocal, sttSupported, fetchVoices, getVoice, setVoice, type Voice, type ListenControl } from "../lib/speech";
 import { useEncounter } from "../store";
 
 type Turn = { who: "bot" | "me"; text: string; reason?: string };
@@ -21,20 +21,58 @@ export default function Triage() {
   const [streamReason, setStreamReason] = useState(""); // live reasoning (collapsible)
   const [streamAnswer, setStreamAnswer] = useState(""); // live answer
   const [listening, setListening] = useState(false);
-  const stopRef = useRef<null | (() => void)>(null);
+  const [transcribing, setTranscribing] = useState(false);
+  const stopRef = useRef<null | ListenControl>(null);
   const [result, setResult] = useState<T | null>(enc.outcome);
   const [err, setErr] = useState("");
+  const [autoSpeak, setAutoSpeak] = useState<boolean>(() => {
+    try { return localStorage.getItem("medpsy.autoSpeak") !== "0"; } catch { return true; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("medpsy.autoSpeak", autoSpeak ? "1" : "0"); } catch { /* ignore */ }
+  }, [autoSpeak]);
 
-  function toggleMic(setTarget: (t: string) => void) {
-    if (listening) { stopRef.current?.(); setListening(false); return; }
-    setErr(""); setListening(true);
-    stopRef.current = listenOnce((t) => { setTarget(t); setListening(false); },
-      (e) => { setErr(e); setListening(false); });
+  // Hands-free: once you answer by voice we keep the mic on (auto-arm after each
+  // spoken question), for a natural back-and-forth. Typing or tapping the mic off
+  // exits it. Refs mirror state so the async "arm after speaking" check is fresh.
+  const [handsFree, setHandsFree] = useState(false);
+  const handsFreeRef = useRef(false);
+  const listeningRef = useRef(false);
+  const resultRef = useRef<T | null>(result);
+  useEffect(() => { handsFreeRef.current = handsFree; }, [handsFree]);
+  useEffect(() => { listeningRef.current = listening; }, [listening]);
+  useEffect(() => { resultRef.current = result; }, [result]);
+
+  function startListening(onText: (t: string) => void) {
+    if (listeningRef.current) return;
+    stopSpeaking(); // don't let a spoken question feed back into the mic
+    setErr(""); setHandsFree(true);
+    stopRef.current = listenLocal(
+      (t) => { setListening(false); setTranscribing(false); if (t) onText(t); },
+      (e) => { setErr(e); setListening(false); setTranscribing(false); },
+      (phase) => { setListening(phase === "recording"); setTranscribing(phase === "transcribing"); },
+    );
+  }
+  function exitHandsFree() {
+    setHandsFree(false);
+    if (listeningRef.current) { stopRef.current?.cancel(); setListening(false); }
+  }
+  function toggleMic(onText: (t: string) => void) {
+    if (listening) { exitHandsFree(); return; } // tap again = stop & leave hands-free
+    startListening(onText);
+  }
+  // Arm the mic for the next answer when in hands-free mode (after the question
+  // is spoken, or right away if auto-speak is off).
+  function armForAnswer() {
+    if (handsFreeRef.current && !listeningRef.current && !resultRef.current && sttSupported())
+      startListening((t) => answer(t));
   }
   const Mic = ({ onText, disabled }: { onText: (t: string) => void; disabled?: boolean }) =>
     sttSupported() ? (
-      <button type="button" className={`btn ghost mic${listening ? " listening" : ""}`} disabled={disabled}
-        title="Speak" onClick={() => toggleMic(onText)}>{listening ? "● Listening…" : "🎤"}</button>
+      <button type="button" className={`btn ghost mic${listening ? " listening" : ""}`}
+        disabled={disabled || transcribing}
+        title="Speak (on-device)" onClick={() => toggleMic(onText)}>
+        {listening ? "● Listening…" : transcribing ? "… transcribing" : "🎤"}</button>
     ) : null;
 
   async function runTurn(history: Msg[], force = false) {
@@ -65,6 +103,9 @@ export default function Triage() {
         setMsgs([...send, { role: "assistant", content: q }]);
         setTurns((x) => [...x, { who: "bot", text: q, reason: lastReason }]);
         setAsked((n) => n + 1);
+        // Read the question aloud, then (hands-free) auto-arm the mic for the answer.
+        if (autoSpeak) speak(q).then(armForAnswer);
+        else setTimeout(armForAnswer, 0);
       }
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -74,17 +115,19 @@ export default function Triage() {
     }
   }
 
-  async function begin() {
-    if (!complaint.trim()) return;
-    setSituation({ complaint });
+  async function begin(text: string = complaint) {
+    const c = text.trim();
+    if (!c) return;
+    setComplaint(c);
+    setSituation({ complaint: c });
     setStarted(true);
-    setTurns([{ who: "me", text: complaint }]);
-    await runTurn(seed(complaint, enc.situation.intake));
+    setTurns([{ who: "me", text: c }]);
+    await runTurn(seed(c, enc.situation.intake));
   }
 
-  async function answer() {
-    if (!input.trim() || busy) return;
-    const a = input.trim();
+  async function answer(text: string = input) {
+    const a = text.trim();
+    if (!a || busy) return;
     setInput("");
     setTurns((x) => [...x, { who: "me", text: a }]);
     const next: Msg[] = [...msgs, { role: "user", content: a }];
@@ -103,17 +146,23 @@ export default function Triage() {
       <h1>Triage interview</h1>
       <p className="lead">A guided, multi-step assessment — type or tap 🎤 to speak. medpsy reasons before each reply, so a turn can take a few seconds.</p>
 
-      <VoicePicker />
+      <div className="voice-controls">
+        <VoicePicker />
+        <label className="toggle" title="Read each triage question aloud as it arrives">
+          <input type="checkbox" checked={autoSpeak} onChange={(e) => setAutoSpeak(e.target.checked)} />
+          🔊 Auto-speak questions
+        </label>
+      </div>
 
       {!started ? (
         <div className="card">
           <label htmlFor="c">What's bringing you in today?</label>
-          <textarea id="c" value={complaint} onChange={(e) => setComplaint(e.target.value)}
+          <textarea id="c" value={complaint} onChange={(e) => { setComplaint(e.target.value); setHandsFree(false); }}
             placeholder="Type or tap 🎤 to speak your main symptom…" />
-          {listening && <div className="listening-bar">🔴 Listening… speak now, then pause</div>}
+          {(listening || transcribing) && <div className="listening-bar">{listening ? "🔴 Listening… speak, then pause" : "⏳ Transcribing on-device…"}</div>}
           <div className="row">
-            <Mic onText={setComplaint} />
-            <button className="btn" onClick={begin} disabled={!complaint.trim()}>Start triage</button>
+            <Mic onText={(t) => { setComplaint(t); begin(t); }} />
+            <button className="btn" onClick={() => begin()} disabled={!complaint.trim()}>Start triage</button>
           </div>
         </div>
       ) : (
@@ -152,16 +201,17 @@ export default function Triage() {
 
           {!result && (
             <>
-              {listening && <div className="listening-bar">🔴 Listening… speak now, then pause</div>}
+              {(listening || transcribing) && <div className="listening-bar">{listening ? "🔴 Listening… speak, then pause" : "⏳ Transcribing on-device…"}</div>}
               <div className="row" style={{ marginTop: 4 }}>
-                <input value={input} placeholder="Type or tap 🎤 to speak your answer…"
-                  onChange={(e) => setInput(e.target.value)}
+                <input value={input}
+                  placeholder={handsFree ? "Listening after each question — or type to take over…" : "Type or tap 🎤 to speak your answer…"}
+                  onChange={(e) => { setInput(e.target.value); exitHandsFree(); }}
                   onKeyDown={(e) => e.key === "Enter" && answer()} disabled={busy} />
-                <Mic onText={setInput} disabled={busy} />
-                <button className="btn" onClick={answer} disabled={busy || !input.trim()}>Send</button>
+                <Mic onText={(t) => answer(t)} disabled={busy} />
+                <button className="btn" onClick={() => answer()} disabled={busy || !input.trim()}>Send</button>
               </div>
               <div className="row" style={{ marginTop: 8 }}>
-                <button className="btn ghost" onClick={() => runTurn(msgs, true)} disabled={busy || msgs.length === 0}>
+                <button className="btn ghost" onClick={() => { exitHandsFree(); runTurn(msgs, true); }} disabled={busy || msgs.length === 0}>
                   Conclude now
                 </button>
               </div>

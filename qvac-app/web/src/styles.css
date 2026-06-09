@@ -140,7 +140,12 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--b
 .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; word-break: break-all; color: var(--muted); }
 .sbar { white-space: pre-wrap; background: var(--brand-soft); color: var(--brand-ink); border-radius: 12px; padding: 14px 16px; }
 
-.voice-picker { display: flex; align-items: center; gap: 8px; margin: -4px 0 16px; flex-wrap: wrap; }
+.voice-controls { display: flex; align-items: center; gap: 16px; margin: -4px 0 16px; flex-wrap: wrap; }
+.voice-controls .toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px;
+  color: var(--muted); cursor: pointer; white-space: nowrap; }
+/* the global `input { width:100% }` would stretch the checkbox and wrap the label */
+.voice-controls .toggle input[type="checkbox"] { width: auto; flex: 0 0 auto; margin: 0; }
+.voice-picker { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .voice-picker label { font-size: 13px; font-weight: 600; color: var(--muted); }
 .voice-picker select { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px;
   background: var(--surface); color: var(--ink); font-size: 13px; font-family: var(--font); }

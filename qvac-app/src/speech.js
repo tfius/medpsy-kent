@@ -12,10 +12,14 @@
 // CLI:  node src/speech.js tts "hello there" out.wav
 //       node src/speech.js stt clip.wav            # 16 kHz mono WAV
 import fs from "node:fs";
+import { execFile, spawn } from "node:child_process";
+import { promisify } from "node:util";
 import {
-  STT_MODEL_SRC, SPEECH_LANG,
+  STT_MODEL_SRC, SPEECH_LANG, STT_ENGINE, PARAKEET_BIN, STT_GGUF, PARAKEET_LIB, STT_WORKER,
   TTS_ENGINE, KOKORO_MODEL, KOKORO_DTYPE, KOKORO_VOICE,
 } from "./config.js";
+
+const execFileP = promisify(execFile);
 
 let sdk = null, sttId = null, ttsId = null, kokoro = null;
 const getSdk = async () => (sdk ??= await import("@qvac/sdk"));
@@ -28,11 +32,110 @@ export async function loadSTT(onProgress) {
   return sttId;
 }
 
-// audioChunk: a WAV file path (16 kHz mono PCM). Returns the transcript text.
-export async function transcribe(audioChunk) {
+// --- STT engine: persistent parakeet.cpp worker (model stays resident) ---
+// A long-lived python3 process loads Nemotron once and transcribes WAV paths fed
+// over stdin (see scripts/stt_worker.py). Requests are serialized FIFO.
+let sttWorker = null;
+function getSttWorker() {
+  if (sttWorker) return sttWorker;
+  const proc = spawn("python3", [STT_WORKER], {
+    env: { ...process.env, MEDPSY_PARAKEET_LIB: PARAKEET_LIB, MEDPSY_STT_GGUF: STT_GGUF, MEDPSY_SPEECH_LANG: SPEECH_LANG },
+    stdio: ["pipe", "pipe", "inherit"], // ggml/Metal logs -> server console (stderr)
+  });
+  const w = { proc, queue: [], buf: "", ready: false, readyWaiters: [] };
+  proc.stdout.setEncoding("utf8");
+  proc.stdout.on("data", (chunk) => {
+    w.buf += chunk;
+    let i;
+    while ((i = w.buf.indexOf("\n")) >= 0) {
+      const line = w.buf.slice(0, i); w.buf = w.buf.slice(i + 1);
+      if (line.startsWith("@@READY@@")) {
+        w.ready = true; w.readyWaiters.forEach((r) => r()); w.readyWaiters = [];
+      } else if (line.startsWith("@@STT@@")) {
+        const job = w.queue.shift();
+        if (job) {
+          try { const o = JSON.parse(line.slice("@@STT@@".length).trim());
+            o.error ? job.reject(new Error(o.error)) : job.resolve(o.text || ""); }
+          catch (e) { job.reject(e); }
+        }
+      } // any other stdout line is ignored
+    }
+  });
+  const fail = (err) => {
+    if (sttWorker === w) sttWorker = null;
+    w.queue.forEach((j) => j.reject(err)); w.queue = [];
+    w.readyWaiters.forEach((r) => r(err)); w.readyWaiters = [];
+  };
+  proc.on("exit", (code) => fail(new Error(`stt worker exited (code ${code})`)));
+  proc.on("error", (e) => fail(e));
+  sttWorker = w;
+  return w;
+}
+
+function transcribeParakeetServer(wavPath) {
+  const w = getSttWorker();
+  return new Promise((resolve, reject) => {
+    const send = () => { w.queue.push({ resolve, reject }); w.proc.stdin.write(wavPath + "\n"); };
+    if (w.ready) send();
+    else w.readyWaiters.push((err) => (err ? reject(err) : send()));
+  });
+}
+
+// Local Nemotron-3.5-ASR via the parakeet.cpp CLI (reloads the model each call —
+// the fallback when the persistent worker isn't available). Strips inline <lang> tags.
+async function transcribeParakeetCli(wavPath) {
+  const { stdout } = await execFileP(
+    PARAKEET_BIN,
+    ["transcribe", "--model", STT_GGUF, "--input", wavPath, "--lang", SPEECH_LANG],
+    { maxBuffer: 16 * 1024 * 1024 }, // stdout is just the transcript; ggml logs go to stderr
+  );
+  return stdout.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+}
+
+async function transcribeQvac(audioChunk) {
   const s = await getSdk();
   if (!sttId) await loadSTT();
   return s.transcribe({ modelId: sttId, audioChunk, lang: SPEECH_LANG });
+}
+
+const STT_BACKENDS = {
+  "parakeet-server": transcribeParakeetServer,
+  "parakeet-cli": transcribeParakeetCli,
+  "qvac": transcribeQvac,
+};
+
+// Preferred engine first, then fallbacks. "auto" prefers the persistent worker.
+function sttOrder() {
+  if (STT_ENGINE !== "auto") return [STT_ENGINE];
+  const order = [];
+  const haveModel = fs.existsSync(STT_GGUF);
+  if (haveModel && fs.existsSync(PARAKEET_LIB)) order.push("parakeet-server");
+  if (haveModel && fs.existsSync(PARAKEET_BIN)) order.push("parakeet-cli");
+  order.push("qvac");
+  return order;
+}
+
+// Spawn + warm the persistent STT worker ahead of the first request (call at
+// server start so the model is loaded before anyone speaks). Best-effort.
+export function prewarmStt() {
+  if (sttOrder()[0] === "parakeet-server") {
+    try { getSttWorker(); } catch { /* falls back at request time */ }
+  }
+}
+
+// audioChunk: a WAV file path (16 kHz mono PCM). Returns the transcript text.
+// Tries the preferred engine, falling back through the chain on failure.
+export async function transcribe(audioChunk) {
+  let lastErr;
+  for (const engine of sttOrder()) {
+    try {
+      return await STT_BACKENDS[engine](audioChunk);
+    } catch (e) {
+      lastErr = e;
+      console.warn(`[stt] ${engine} failed (${e?.message || e}); trying next engine`);
+    }
+  }
+  throw new Error(`all STT engines failed: ${lastErr?.message || lastErr}`);
 }
 
 // ---- TTS (Supertonic — general-purpose, no voice cloning, 44.1 kHz) ----

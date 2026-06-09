@@ -288,6 +288,30 @@ people wince.
 
 ---
 
+## Session 16 — A proper hands-free chat, and listening that stays on the device
+
+We made the triage feel like talking to a person:
+
+- It **reads each question out loud**, and the moment it finishes, it **turns the microphone on by
+  itself** — so you just answer, and it goes to the next question. No buttons. You can always type
+  instead, or tap the mic off.
+- **No more pressing "Send"** after you speak — it submits your answer automatically when you stop talking.
+- We **stopped using the browser's built-in dictation**, because that secretly sends your voice to
+  Google. Now the listening happens **entirely on the device** with the Nemotron model.
+
+The big fix: at first the listening "got stuck" for several seconds because it was **reloading the whole
+940 MB model every single time** you spoke. We changed it to load the model **once** and keep it ready
+(a little helper that stays running) — so after the first time, it transcribes in about a **tenth of a
+second** instead of eight seconds. And it loads while the app starts up, so by the time you speak it's
+already waiting.
+
+We also fixed a small cosmetic glitch where the "Auto-speak questions" label was awkwardly stacked into
+three lines.
+
+Bottom line: speak, hear, answer, repeat — hands-free, private, and fast.
+
+---
+
 ## The whole story in three sentences
 
 We built a tiny medical AI helper, tried our hardest to break it, and found its
