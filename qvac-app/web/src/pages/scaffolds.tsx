@@ -31,51 +31,45 @@ function Shell({ step, title, lead, children, next, nextLabel = "Continue" }:
 export function Identify() {
   const { set, enc } = useEncounter();
   const nav = useNavigate();
+  const T = useT();
   return (
     <>
-      <div className="eyebrow">Step 1 · Identify</div>
-      <h1>Welcome</h1>
-      <p className="lead">Sign in to begin. A practitioner is on hand throughout.</p>
+      <div className="eyebrow">{T("id.eyebrow")}</div>
+      <h1>{T("id.title")}</h1>
+      <p className="lead">{T("id.lead")}</p>
       <div className="card">
-        <label htmlFor="n">Your name</label>
-        <input id="n" defaultValue={enc.patient?.name || ""} placeholder="Scan card / QR, or type your name"
+        <label htmlFor="n">{T("id.name")}</label>
+        <input id="n" defaultValue={enc.patient?.name || ""} placeholder={T("id.namePh")}
           onChange={(e) => set({ patient: { id: "MRN-DEMO", name: e.target.value } })} />
         <Todo>Card / QR / biometric → resolve hospital MRN (the PII anchor / patient identity). <Badge>to productionise</Badge></Todo>
-        <div className="row"><button className="btn block" onClick={() => nav("/consent")} disabled={!enc.patient?.name}>Continue →</button></div>
+        <div className="row"><button className="btn block" onClick={() => nav("/consent")} disabled={!enc.patient?.name}>{T("continue")} →</button></div>
       </div>
     </>
   );
 }
 
-const CONSENT_SPOKEN =
-  "This assistant supports a pharmacist — it does not replace a doctor, and a practitioner reviews the result. " +
-  "You can stop anytime. If your case is urgent we'll retrieve your hospital record. " +
-  "Your result may be shared with the pharmacy, hospital, or paramedics as needed.";
-
 export function Consent() {
   const { set } = useEncounter();
   const nav = useNavigate();
   const { openHelp } = useHelp();
+  const T = useT();
   const [teachback, setTeachback] = useState("");
   return (
     <>
-      <div className="eyebrow">Step 2 · Consent &amp; capacity</div>
-      <h1>Before we start</h1>
-      <p className="lead">This assistant supports a pharmacist — it does <strong>not</strong> replace a doctor, and a
-        practitioner reviews the result. You can stop anytime. If your case is urgent we'll retrieve your hospital
-        record. Your result may be shared with the pharmacy, hospital, or paramedics as needed.</p>
-      <div className="row"><SpeakButton text={CONSENT_SPOKEN} label="Read this aloud" /></div>
+      <div className="eyebrow">{T("con.eyebrow")}</div>
+      <h1>{T("con.title")}</h1>
+      <p className="lead">{T("con.lead")}</p>
+      <div className="row"><SpeakButton text={T("con.lead")} label={T("con.readAloud")} /></div>
       <div className="card">
-        <label htmlFor="tb">In your own words, what is this and can you stop it?</label>
+        <label htmlFor="tb">{T("con.teachLabel")}</label>
         <VoiceTextarea value={teachback} onChange={setTeachback} id="tb"
-          placeholder="e.g. it's a helper that asks me questions, a real person checks it, and I can stop whenever…" />
-        <p className="note">Teach-back: we record your understanding (consent evidence). If you're unsure, ask for help —
-          you'll go to a person instead. <Badge>LLM-graded in production</Badge></p>
+          placeholder={T("con.teachPh")} />
+        <p className="note">{T("con.teachNote")} <Badge>LLM-graded in production</Badge></p>
         <div className="row">
-          <button className="btn ghost" onClick={() => openHelp(false)}>I have questions / need help</button>
+          <button className="btn ghost" onClick={() => openHelp(false)}>{T("con.haveQuestions")}</button>
           <button className="btn" disabled={teachback.trim().length < 8}
             onClick={() => { set({ consent: { understood: true, sharing: ["pharmacy", "hospital", "paramedics"] } }); nav("/context"); }}>
-            I understand &amp; agree →
+            {T("con.agree")} →
           </button>
         </div>
       </div>
@@ -85,12 +79,13 @@ export function Consent() {
 
 export function Context() {
   const { enc, setSituation } = useEncounter();
+  const T = useT();
   return (
-    <Shell step="Step 3 · Context" title="What brings you in?" next="/intake"
-      lead="A one-line reason for your visit. No medical record is opened yet.">
-      <label htmlFor="cc">Presenting complaint</label>
+    <Shell step={T("ctx.eyebrow")} title={T("ctx.title")} next="/intake" nextLabel={T("continue")}
+      lead={T("ctx.lead")}>
+      <label htmlFor="cc">{T("ctx.label")}</label>
       <VoiceTextarea value={enc.situation.complaint} id="cc"
-        placeholder="e.g. chest discomfort for the last hour"
+        placeholder={T("ctx.ph")}
         onChange={(v) => setSituation({ complaint: v })} />
       <p className="note">This becomes the <em>situation</em> identity for this episode.</p>
     </Shell>
@@ -102,11 +97,11 @@ export function Intake() {
   const T = useT();
   const add = (s: string) => setSituation({ intake: enc.situation.intake ? `${enc.situation.intake}; ${s}` : s });
   return (
-    <Shell step="Step 4 · Intake" title="A few details" next="/triage" nextLabel="Begin triage"
-      lead="Type, tap 🎤 to speak, or use a quick answer below. Tell us your medicines, conditions and allergies — this keeps triage safe without opening your full record.">
-      <label htmlFor="hx">Current medicines, conditions, allergies</label>
+    <Shell step={T("in.eyebrow")} title={T("in.title")} next="/triage" nextLabel={T("in.begin")}
+      lead={T("in.lead")}>
+      <label htmlFor="hx">{T("in.label")}</label>
       <VoiceTextarea value={enc.situation.intake} id="hx"
-        placeholder="e.g. on warfarin; penicillin allergy; type-2 diabetes"
+        placeholder={T("in.ph")}
         onChange={(v) => setSituation({ intake: v })} />
       <div className="chips">
         <button type="button" className="chip" onClick={() => add(T("none.meds"))}>{T("none.meds")}</button>
@@ -121,12 +116,13 @@ export function Intake() {
 export function Route() {
   const { enc } = useEncounter();
   const nav = useNavigate();
+  const T = useT();
   const o = enc.outcome;
   const band = o?.band || "";
-  const dest = band === "RED" ? "Emergency dept / EMS — paging the attending now"
-    : band === "AMBER" ? "Same-day GP/nurse — auto-booking a slot"
-    : band === "GREEN" ? "Pharmacist-led care — queued with a safety-net"
-    : "Pending triage";
+  const dest = band === "RED" ? T("rt.destRed")
+    : band === "AMBER" ? T("rt.destAmber")
+    : band === "GREEN" ? T("rt.destGreen")
+    : T("rt.destPending");
   const recipient = band === "RED" ? "Paramedics + attending" : band === "AMBER" ? "Duty GP/nurse" : "Pharmacist";
   const [sbar, setSbar] = useState("");
   const [busy, setBusy] = useState(false);
@@ -146,27 +142,27 @@ export function Route() {
 
   return (
     <>
-      <div className="eyebrow">Step 7 · Route &amp; notify</div>
-      <h1>Where this goes</h1>
+      <div className="eyebrow">{T("rt.eyebrow")}</div>
+      <h1>{T("rt.title")}</h1>
       <div className="card">
         {band && <p><span className={`pill ${band}`}>{o?.decision}</span></p>}
         <p className="v" style={{ fontSize: 18, fontWeight: 600 }}>{dest}</p>
         {!sbar ? (
-          <div className="row"><button className="btn" onClick={handover} disabled={!o || busy}>{busy ? "Drafting handover…" : "Generate SBAR handover"}</button></div>
+          <div className="row"><button className="btn" onClick={handover} disabled={!o || busy}>{busy ? T("rt.drafting") : T("rt.genSbar")}</button></div>
         ) : (
           <>
-            <div className="k" style={{ marginTop: 12 }}>SBAR handover</div>
+            <div className="k" style={{ marginTop: 12 }}>{T("rt.sbar")}</div>
             <div className="sbar" style={{ marginTop: 6 }}>{sbar}</div>
             <div className="row">
               <button className="btn" onClick={() => setSent(true)} disabled={sent}>
-                {sent ? `✅ Notified: ${recipient}` : `Notify ${recipient}`}
+                {sent ? `✅ ${T("rt.notified")}: ${recipient}` : `${T("rt.notify")} ${recipient}`}
               </button>
             </div>
             {sent && <p className="note">Notification delivered <Badge>mock send</Badge> — production: EHR task inbox / pager / secure message.</p>}
           </>
         )}
       </div>
-      <div className="row"><button className="btn block ghost" onClick={() => nav("/validate")}>Send for validation →</button></div>
+      <div className="row"><button className="btn block ghost" onClick={() => nav("/validate")}>{T("rt.sendValidation")} →</button></div>
     </>
   );
 }
@@ -174,6 +170,7 @@ export function Route() {
 export function Validate() {
   const { enc, set } = useEncounter();
   const nav = useNavigate();
+  const T = useT();
   const o = enc.outcome;
   const [decision, setDecision] = useState(o?.decision || "");
   const [severity, setSeverity] = useState((o?.severity.match(/\d+/) || [""])[0]);
@@ -196,20 +193,20 @@ export function Validate() {
 
   return (
     <>
-      <div className="eyebrow">Step 8 · Validation</div>
-      <h1>Practitioner sign-off</h1>
-      <p className="lead">The always-signed-in clinician reviews, edits, and confirms — the human-in-the-loop gate.</p>
+      <div className="eyebrow">{T("val.eyebrow")}</div>
+      <h1>{T("val.title")}</h1>
+      <p className="lead">{T("val.lead")}</p>
       {o && <div style={{ marginBottom: 16 }}><TriageResult t={o} view="clinician" /></div>}
       <div className="card">
-        <label>Decision</label>
+        <label>{T("val.decision")}</label>
         <select value={decision} onChange={(e) => setDecision(e.target.value)}>
           {["EMERGENCY", "URGENT", "PHARMACIST-LED", "ROUTINE", "INSUFFICIENT-DATA"].map((d) => <option key={d}>{d}</option>)}
         </select>
-        <label>Severity (0–10)</label>
+        <label>{T("val.severity")}</label>
         <input value={severity} onChange={(e) => setSeverity(e.target.value)} />
-        <label>Clinician note (optional)</label>
-        <VoiceTextarea value={notes} onChange={setNotes} placeholder="Any change or rationale…" />
-        <div className="row"><button className="btn" onClick={signOff}>Confirm &amp; sign</button></div>
+        <label>{T("val.note")}</label>
+        <VoiceTextarea value={notes} onChange={setNotes} placeholder={T("val.notePh")} />
+        <div className="row"><button className="btn" onClick={signOff}>{T("val.sign")}</button></div>
 
         {record && (
           <div style={{ marginTop: 14 }}>
@@ -219,13 +216,14 @@ export function Validate() {
           </div>
         )}
       </div>
-      {record && <div className="row"><button className="btn block" onClick={() => nav("/billing")}>Confirm &amp; code →</button></div>}
+      {record && <div className="row"><button className="btn block" onClick={() => nav("/billing")}>{T("val.codeNext")} →</button></div>}
     </>
   );
 }
 
 export function Billing() {
   const { enc } = useEncounter();
+  const T = useT();
   const o = enc.outcome;
   const [icd, setIcd] = useState<{ code: string; description: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -252,12 +250,12 @@ export function Billing() {
 
   return (
     <>
-      <div className="eyebrow">Step 9 · Code &amp; bill</div>
-      <h1>Coding &amp; billing</h1>
-      <p className="lead">From the <strong>validated</strong> diagnosis — not the AI draft.</p>
+      <div className="eyebrow">{T("bil.eyebrow")}</div>
+      <h1>{T("bil.title")}</h1>
+      <p className="lead">{T("bil.lead")}</p>
       <div className="card">
-        <div className="field"><div className="k">Working diagnosis</div><div className="v">{o?.condition || "—"}</div></div>
-        <div className="row"><button className="btn" onClick={generate} disabled={!o || busy}>{busy ? "Grounding code & drafting claim…" : "Generate claim"}</button></div>
+        <div className="field"><div className="k">{T("bil.dx")}</div><div className="v">{o?.condition || "—"}</div></div>
+        <div className="row"><button className="btn" onClick={generate} disabled={!o || busy}>{busy ? T("bil.gening") : T("bil.gen")}</button></div>
         {claim && (
           <div style={{ marginTop: 14 }}>
             <div className="field"><div className="k">Encounter</div><div className="v mono">{claim.encounter}</div></div>

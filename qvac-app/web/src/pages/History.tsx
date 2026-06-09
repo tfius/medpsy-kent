@@ -5,6 +5,7 @@ import { refine, parseTriage, type Triage } from "../lib/triage";
 import { getMockEhr, ehrText, type EhrRecord } from "../lib/mockEhr";
 import { useEncounter } from "../store";
 import { TriageResult, useHelp } from "../lib/ui";
+import { useT } from "../lib/prefs";
 
 // Step 6 — conditional history. For urgent/severe cases, retrieve the authoritative
 // record and RE-TRIAGE: the record can add precautions or escalate. Routine cases skip.
@@ -12,6 +13,7 @@ export default function History() {
   const { enc, set } = useEncounter();
   const nav = useNavigate();
   const { openHelp } = useHelp();
+  const T = useT();
   const original = enc.outcome;
   const urgent = !!original && original.band !== "GREEN";
 
@@ -34,31 +36,31 @@ export default function History() {
 
   return (
     <>
-      <div className="eyebrow">Step 6 · History</div>
-      <h1>Hospital record</h1>
+      <div className="eyebrow">{T("his.eyebrow")}</div>
+      <h1>{T("his.title")}</h1>
 
       {!urgent ? (
         <>
-          <p className="lead">Routine case — the full record is <strong>not</strong> opened (data minimisation). Patient-reported history already informed the triage.</p>
-          <div className="row"><button className="btn block" onClick={() => nav("/route")}>Continue → routing</button></div>
+          <p className="lead">{T("his.routineLead")}</p>
+          <div className="row"><button className="btn block" onClick={() => nav("/route")}>{T("his.continueRouting")} →</button></div>
         </>
       ) : (
         <>
-          <p className="lead">Urgent/severe case — retrieve the authoritative record (FHIR) and re-triage with interactions, comorbidities and allergies.</p>
+          <p className="lead">{T("his.urgentLead")}</p>
 
           {!ehr ? (
             <div className="card">
               <div className="placeholder">Mock FHIR fetch over the hospital LAN. In production this pulls the real record for {enc.patient?.name || "the patient"}.</div>
-              <div className="row"><button className="btn block" onClick={() => setEhr(getMockEhr(enc.patient?.name))}>Retrieve hospital record</button></div>
+              <div className="row"><button className="btn block" onClick={() => setEhr(getMockEhr(enc.patient?.name))}>{T("his.retrieve")}</button></div>
             </div>
           ) : (
             <div className="card">
-              <div className="field"><div className="k">Medications</div><div className="v">{ehr.meds.join(", ")}</div></div>
-              <div className="field"><div className="k">Conditions</div><div className="v">{ehr.conditions.join(", ")}</div></div>
-              <div className="field"><div className="k">Allergies</div><div className="v">{ehr.allergies.join(", ")}</div></div>
+              <div className="field"><div className="k">{T("his.meds")}</div><div className="v">{ehr.meds.join(", ")}</div></div>
+              <div className="field"><div className="k">{T("his.conditions")}</div><div className="v">{ehr.conditions.join(", ")}</div></div>
+              <div className="field"><div className="k">{T("his.allergies")}</div><div className="v">{ehr.allergies.join(", ")}</div></div>
               <div className="row">
                 <button className="btn block" onClick={() => reTriage(ehr)} disabled={busy}>
-                  {busy ? "Re-triaging with history…" : "Re-triage with history"}
+                  {busy ? T("his.retriaging") : T("his.retriage")}
                 </button>
               </div>
             </div>
@@ -69,7 +71,7 @@ export default function History() {
           {refined && original && (
             <>
               <div className="card">
-                <div className="k">Triage updated by history</div>
+                <div className="k">{T("his.updated")}</div>
                 <div className="v" style={{ marginTop: 6 }}>
                   <span className={`pill ${original.band || "AMBER"}`}>{original.decision} · {sev(original)}</span>
                   {"  →  "}

@@ -343,6 +343,26 @@ one tap away, plain words, big text, and a voice on every step.
 
 ---
 
+## Session 18 — Speaking everyone's language, and showing its work
+
+Two improvements:
+
+**Real translations, everywhere.** Before, only a few buttons changed language. Now **every page** — the
+welcome, the consent, "what's wrong", your medicines, the questions, the result, all of it — is properly
+translated. We added **Mandarin** and **Cantonese** on top of Slovenian and Spanish. To do it well and
+fast, we sent the whole list of on-screen words to **four helpers (one per language) at the same time**,
+each a careful translator, and put their work back into the app. The Cantonese is real, natural Cantonese
+(the way people actually speak in Hong Kong), not just Mandarin in fancy characters. Pick a language at
+the top and the whole thing follows.
+
+**Show your work.** When the assistant gives its final answer (how urgent you are), you couldn't see
+*why* it decided that. Now there's a little **"How medpsy reached this"** you can open to read its
+thinking behind the decision — so a person can check the reasoning, not just the verdict.
+
+Bottom line: more people can use it in their own language, and you can see the "why" behind the result.
+
+---
+
 ## The whole story in three sentences
 
 We built a tiny medical AI helper, tried our hardest to break it, and found its

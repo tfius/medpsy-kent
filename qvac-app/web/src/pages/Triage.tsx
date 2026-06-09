@@ -6,6 +6,7 @@ import { speak, stopSpeaking, listenLocal, sttSupported, fetchVoices, getVoice, 
 import { SpeakButton } from "../lib/voice";
 import { TriageResult, useHelp } from "../lib/ui";
 import { useEncounter } from "../store";
+import { useT } from "../lib/prefs";
 
 type Turn = { who: "bot" | "me"; text: string; reason?: string };
 const CAP = 6; // max questions before we force a conclusion
@@ -14,6 +15,7 @@ export default function Triage() {
   const { enc, setSituation, set } = useEncounter();
   const nav = useNavigate();
   const { openHelp } = useHelp();
+  const T = useT();
   const [complaint, setComplaint] = useState(enc.situation.complaint);
   const [started, setStarted] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -27,6 +29,7 @@ export default function Triage() {
   const [transcribing, setTranscribing] = useState(false);
   const stopRef = useRef<null | ListenControl>(null);
   const [result, setResult] = useState<T | null>(enc.outcome);
+  const [resultReason, setResultReason] = useState(""); // reasoning behind the final verdict
   const [err, setErr] = useState("");
   const [autoSpeak, setAutoSpeak] = useState<boolean>(() => {
     try { return localStorage.getItem("medpsy.autoSpeak") !== "0"; } catch { return true; }
@@ -97,13 +100,14 @@ export default function Triage() {
       }
       setStreamReason(""); setStreamAnswer("");
       if (!reply) {
-        setErr("The model returned no text — try again, or use “Conclude now”.");
+        setErr(T("tri.noText"));
         return;
       }
       if (isConclusion(reply)) {
         setMsgs([...send, { role: "assistant", content: reply }]);
         const t = parseTriage(reply);
         setResult(t);
+        setResultReason(lastReason); // keep the reasoning that produced the verdict
         set({ outcome: t });
       } else {
         const q = questionText(reply); // strip any leaked reasoning → just the question
@@ -145,32 +149,32 @@ export default function Triage() {
 
   function restart() {
     setStarted(false); setMsgs([]); setTurns([]); setAsked(0);
-    setInput(""); setResult(null); setErr(""); set({ outcome: null });
+    setInput(""); setResult(null); setResultReason(""); setErr(""); set({ outcome: null });
   }
 
   return (
     <>
-      <div className="eyebrow">Step 5 · Triage</div>
-      <h1>Triage interview</h1>
-      <p className="lead">A guided, multi-step assessment — type or tap 🎤 to speak. medpsy reasons before each reply, so a turn can take a few seconds.</p>
+      <div className="eyebrow">{T("tri.eyebrow")}</div>
+      <h1>{T("tri.title")}</h1>
+      <p className="lead">{T("tri.lead")}</p>
 
       <div className="voice-controls">
         <VoicePicker />
         <label className="toggle" title="Read each triage question aloud as it arrives">
           <input type="checkbox" checked={autoSpeak} onChange={(e) => setAutoSpeak(e.target.checked)} />
-          🔊 Auto-speak questions
+          🔊 {T("tri.autospeak")}
         </label>
       </div>
 
       {!started ? (
         <div className="card">
-          <label htmlFor="c">What's bringing you in today?</label>
+          <label htmlFor="c">{T("tri.complaintQ")}</label>
           <textarea id="c" value={complaint} onChange={(e) => { setComplaint(e.target.value); setHandsFree(false); }}
-            placeholder="Type or tap 🎤 to speak your main symptom…" />
+            placeholder={T("tri.mainPh")} />
           {(listening || transcribing) && <div className="listening-bar">{listening ? "🔴 Listening… speak, then pause" : "⏳ Transcribing on-device…"}</div>}
           <div className="row">
             <Mic onText={(t) => { setComplaint(t); begin(t); }} />
-            <button className="btn" onClick={() => begin()} disabled={!complaint.trim()}>Start triage</button>
+            <button className="btn" onClick={() => begin()} disabled={!complaint.trim()}>{T("tri.start")}</button>
           </div>
         </div>
       ) : (
@@ -180,7 +184,7 @@ export default function Triage() {
               <div key={i}>
                 {t.reason && (
                   <details className="thinking">
-                    <summary>🧠 reasoning</summary>
+                    <summary>🧠 {T("tri.reasoning")}</summary>
                     <div className="think-body">{t.reason}</div>
                   </details>
                 )}
@@ -202,7 +206,7 @@ export default function Triage() {
                 )}
                 {streamAnswer
                   ? <div className="bubble bot">{streamAnswer}<span className="cursor">▋</span></div>
-                  : (!streamReason && <div className="typing">medpsy is thinking…</div>)}
+                  : (!streamReason && <div className="typing">{T("tri.thinking")}</div>)}
               </>
             )}
           </div>
@@ -212,15 +216,15 @@ export default function Triage() {
               {(listening || transcribing) && <div className="listening-bar">{listening ? "🔴 Listening… speak, then pause" : "⏳ Transcribing on-device…"}</div>}
               <div className="row" style={{ marginTop: 4 }}>
                 <input value={input}
-                  placeholder={handsFree ? "Listening after each question — or type to take over…" : "Type or tap 🎤 to speak your answer…"}
+                  placeholder={handsFree ? T("tri.handsfreePh") : T("tri.answerPh")}
                   onChange={(e) => { setInput(e.target.value); exitHandsFree(); }}
                   onKeyDown={(e) => e.key === "Enter" && answer()} disabled={busy} />
                 <Mic onText={(t) => answer(t)} disabled={busy} />
-                <button className="btn" onClick={() => answer()} disabled={busy || !input.trim()}>Send</button>
+                <button className="btn" onClick={() => answer()} disabled={busy || !input.trim()}>{T("tri.send")}</button>
               </div>
               <div className="row" style={{ marginTop: 8 }}>
                 <button className="btn ghost" onClick={() => { exitHandsFree(); runTurn(msgs, true); }} disabled={busy || msgs.length === 0}>
-                  Conclude now
+                  {T("tri.conclude")}
                 </button>
               </div>
             </>
@@ -232,10 +236,16 @@ export default function Triage() {
 
       {result && (
         <>
+          {resultReason && (
+            <details className="thinking" style={{ marginBottom: 10 }}>
+              <summary>🧠 {T("tri.howReached")}</summary>
+              <div className="think-body">{resultReason}</div>
+            </details>
+          )}
           <TriageResult t={result} view="patient"
             onNext={() => nav(result.band === "GREEN" ? "/route" : "/history")}
             onEmergency={() => openHelp(true)} />
-          <div className="row"><button className="btn ghost" onClick={restart}>↻ Restart</button></div>
+          <div className="row"><button className="btn ghost" onClick={restart}>↻ {T("tri.restart")}</button></div>
         </>
       )}
     </>
