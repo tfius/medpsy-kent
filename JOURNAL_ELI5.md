@@ -312,6 +312,37 @@ Bottom line: speak, hear, answer, repeat — hands-free, private, and fast.
 
 ---
 
+## Session 17 — Voice on every screen, talking back, and a big polish pass
+
+Two things this round: we put the microphone everywhere it helps, and we made the whole thing feel
+safe and easy for a real, possibly-scared patient.
+
+**Voice on every screen.** You can now **speak** your answers not just in the questions, but also when
+you confirm you understand, describe what's wrong, list your medicines, and (for the clinician) write a
+note. The consent text can be **read aloud** too. And you can now **talk over** a question — the moment
+you start speaking, it stops reading and listens (it cancels the speaker sound out of the microphone so
+it doesn't hear itself). We also fixed read-aloud buttons that used to **stack up** into overlapping
+voices — now there's only ever one voice, with a clear "loading… / stop" state.
+
+**A real polish pass for patients.** We looked hard at how a stressed person would actually use this and
+fixed the biggest gaps:
+- A **"Get help" button is always on screen**, and if it's an emergency there's a big **"Call emergency
+  services"** button. Scary results no longer say "Continue" — they say call for help.
+- The **progress bar across the top is now honest**: you can't jump into empty or staff-only screens.
+- The **result is written for the patient** — how urgent (with a clear color + symbol), what to do, and
+  when to get help — instead of dumping medical codes and a diagnosis. The full clinical detail is kept
+  for the clinician.
+- **Accessibility:** a **text-size** control, **calmer animations** for motion-sensitive people,
+  **color-blind-friendly** symbols on the urgency colors, and better support for screen readers.
+- **Languages:** a language picker (English, Slovenian, Spanish) for the main on-screen text, and the
+  listening already understands many languages. Plus quick "No medicines / No allergies" buttons and a
+  friendly message if the microphone is blocked.
+
+Bottom line: the kiosk now behaves like something a real, worried person could safely use — with help
+one tap away, plain words, big text, and a voice on every step.
+
+---
+
 ## The whole story in three sentences
 
 We built a tiny medical AI helper, tried our hardest to break it, and found its

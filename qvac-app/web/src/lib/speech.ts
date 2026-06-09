@@ -18,48 +18,88 @@ export async function fetchVoices(): Promise<Voice[]> {
   return [];
 }
 
-export async function speak(text: string, voice?: string): Promise<void> {
-  if (!text) return;
-  try {
-    const r = await fetch("/api/tts", {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text, voice: voice || getVoice() || undefined }),
-    });
-    if (r.ok && (r.headers.get("content-type") || "").includes("audio")) {
-      await playBlob(await r.blob()); // on-device TTS (Kokoro, with fallback)
-      return;
-    }
-    throw new Error("tts endpoint unavailable");
-  } catch {
-    if ("speechSynthesis" in window) {
-      await new Promise<void>((resolve) => {
-        const u = new SpeechSynthesisUtterance(text);
-        u.onend = () => resolve();
-        u.onerror = () => resolve();
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(u);
-      });
-    }
-  }
+// --- TTS playback state: ONE active utterance app-wide, observable for the UI.
+// `id` identifies which control owns the current playback so a button can show its
+// own loading/speaking state. Subscribe with subscribeSpeak / read with getSpeakState.
+export type SpeakStatus = "idle" | "loading" | "speaking";
+let speakState: { status: SpeakStatus; id: string | null } = { status: "idle", id: null };
+const speakListeners = new Set<() => void>();
+export function getSpeakState() { return speakState; }
+export function subscribeSpeak(cb: () => void): () => void { speakListeners.add(cb); return () => { speakListeners.delete(cb); }; }
+function setSpeakState(status: SpeakStatus, id: string | null) {
+  speakState = { status, id };
+  speakListeners.forEach((l) => l());
 }
 
 let currentAudio: HTMLAudioElement | null = null;
-function playBlob(blob: Blob): Promise<void> {
+let currentAbort: AbortController | null = null;
+let speakSeq = 0; // bumped on every speak()/stopSpeaking() so stale calls bail out
+
+function playBlob(blob: Blob, signal: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
     const a = new Audio(URL.createObjectURL(blob));
     currentAudio = a;
     const done = () => { if (currentAudio === a) currentAudio = null; resolve(); };
     a.onended = done;
     a.onerror = done;
+    signal.addEventListener("abort", () => { a.pause(); done(); }, { once: true });
     a.play().catch(done);
   });
 }
 
-// Stop any in-progress speech (Kokoro audio + Web Speech). Call before listening
-// so a spoken question doesn't bleed back into the recognizer.
+// Speak `text` on-device (Kokoro via /api/tts; Web Speech fallback). Only ONE
+// utterance plays at a time — a new speak() (or stopSpeaking()) cancels the
+// previous one's pending fetch + audio, so rapid taps never overlap.
+export async function speak(text: string, opts: { voice?: string; id?: string } = {}): Promise<void> {
+  if (!text) return;
+  stopSpeaking();                 // cancel anything currently playing/pending
+  const seq = ++speakSeq;
+  const id = opts.id ?? "tts";
+  const abort = new AbortController();
+  currentAbort = abort;
+  setSpeakState("loading", id);
+  const finish = () => { if (seq === speakSeq) setSpeakState("idle", null); };
+  try {
+    const r = await fetch("/api/tts", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text, voice: opts.voice || getVoice() || undefined }),
+      signal: abort.signal,
+    });
+    if (seq !== speakSeq) return;  // superseded while fetching
+    if (r.ok && (r.headers.get("content-type") || "").includes("audio")) {
+      setSpeakState("speaking", id);
+      await playBlob(await r.blob(), abort.signal);
+      finish();
+      return;
+    }
+    throw new Error("tts endpoint unavailable");
+  } catch {
+    if (abort.signal.aborted || seq !== speakSeq) return; // intentional cancel
+    if ("speechSynthesis" in window) {                    // fallback voice
+      setSpeakState("speaking", id);
+      await new Promise<void>((resolve) => {
+        const u = new SpeechSynthesisUtterance(text);
+        u.onend = () => resolve();
+        u.onerror = () => resolve();
+        abort.signal.addEventListener("abort", () => { window.speechSynthesis.cancel(); resolve(); }, { once: true });
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(u);
+      });
+    }
+    finish();
+  }
+}
+
+// Stop any in-progress speech (Kokoro audio + Web Speech). Also called before
+// listening so a spoken question doesn't bleed into the mic.
 export function stopSpeaking(): void {
-  try { currentAudio?.pause(); currentAudio = null; } catch { /* ignore */ }
+  speakSeq++;                     // invalidate any in-flight speak()
+  try { currentAbort?.abort(); } catch { /* ignore */ }
+  currentAbort = null;
+  try { currentAudio?.pause(); } catch { /* ignore */ }
+  currentAudio = null;
   try { if ("speechSynthesis" in window) window.speechSynthesis.cancel(); } catch { /* ignore */ }
+  setSpeakState("idle", null);
 }
 
 // STT here is fully on-device: we record the mic, encode a 16 kHz mono WAV in the
@@ -82,6 +122,7 @@ export function listenLocal(
   onText: (t: string) => void,
   onErr?: (e: string) => void,
   onPhase?: (p: ListenPhase) => void,
+  onSpeechStart?: () => void, // fires once when the user actually starts speaking (barge-in)
 ): ListenControl {
   let cancelled = false;
   let mr: MediaRecorder | null = null;
@@ -126,25 +167,40 @@ export function listenLocal(
       const an = ac.createAnalyser(); an.fftSize = 2048;
       ac.createMediaStreamSource(stream).connect(an);
       const data = new Float32Array(an.fftSize);
-      const SILENCE_MS = 1200, MIN_MS = 500, MAX_MS = 15000, RMS_TH = 0.012;
+      // RMS_TH + a few sustained frames distinguish real speech from a transient or
+      // residual TTS (echoCancellation keeps the speaker out of the captured signal),
+      // so onSpeechStart only fires when the user genuinely begins talking.
+      // Timeouts are measured from speech ONSET (not arm time) so arming during a
+      // spoken question never truncates a late answer; PREARM caps a never-answered mic.
+      const SILENCE_MS = 1200, MAX_MS = 20000, PREARM_MS = 20000, RMS_TH = 0.012, ONSET_FRAMES = 3;
       const start = performance.now();
-      let lastLoud = start, spoke = false;
+      let lastLoud = start, onsetAt = 0, spoke = false, loud = 0;
       const tick = () => {
         if (!mr || mr.state !== "recording") return;
         an.getFloatTimeDomainData(data);
         let sum = 0; for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
         const rms = Math.sqrt(sum / data.length);
         const now = performance.now();
-        if (rms > RMS_TH) { lastLoud = now; spoke = true; }
-        if (now - start > MAX_MS || (spoke && now - start > MIN_MS && now - lastLoud > SILENCE_MS)) {
-          mr.stop(); return;
-        }
+        if (rms > RMS_TH) {
+          lastLoud = now; loud++;
+          if (!spoke && loud >= ONSET_FRAMES) { spoke = true; onsetAt = now; onSpeechStart?.(); }
+        } else loud = 0;
+        const done = spoke
+          ? (now - lastLoud > SILENCE_MS || now - onsetAt > MAX_MS) // ended talking, or hit the cap
+          : (now - start > PREARM_MS);                              // armed but nobody spoke
+        if (done) { mr.stop(); return; }
         raf = requestAnimationFrame(tick);
       };
       raf = requestAnimationFrame(tick);
     } catch (e) {
       cleanup();
-      onErr?.(e instanceof Error ? e.message : String(e));
+      const name = (e as DOMException)?.name;
+      const msg = name === "NotAllowedError" || name === "SecurityError"
+        ? "Microphone is blocked — allow mic access in your browser, or just type instead."
+        : name === "NotFoundError" || name === "NotReadableError"
+          ? "No microphone available — please type instead."
+          : (e instanceof Error ? e.message : String(e));
+      onErr?.(msg);
     }
   })();
 

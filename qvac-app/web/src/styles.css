@@ -30,8 +30,8 @@ body {
 /* ---------- layout ---------- */
 .app { min-height: 100%; display: flex; flex-direction: column; }
 .topbar {
-  display: flex; align-items: center; gap: 12px;
-  padding: 14px clamp(16px, 4vw, 32px);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 12px clamp(16px, 4vw, 32px);
   background: var(--surface); border-bottom: 1px solid var(--line);
   position: sticky; top: 0; z-index: 10;
 }
@@ -146,10 +146,72 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--b
 /* the global `input { width:100% }` would stretch the checkbox and wrap the label */
 .voice-controls .toggle input[type="checkbox"] { width: auto; flex: 0 0 auto; margin: 0; }
 .voice-picker { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* reusable dictation field (consent, complaint, intake, clinician note) */
+.voice-field { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.voice-field textarea { width: 100%; }
+.voice-field .btn.mic { padding: 8px 12px; width: auto; }
+.speak-btn { padding: 6px 12px; font-size: 13px; width: auto; }
+.speak-btn.speaking { color: var(--brand); border-color: var(--brand); background: var(--brand-soft); }
+.bubble .speak.speaking { opacity: 1; color: var(--brand); }
 .voice-picker label { font-size: 13px; font-weight: 600; color: var(--muted); }
 .voice-picker select { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px;
   background: var(--surface); color: var(--ink); font-size: 13px; font-family: var(--font); }
 .voice-picker .btn.ghost { padding: 6px 10px; font-size: 13px; }
+
+/* ---------- topbar controls (language, text size, new patient, help) ---------- */
+.topbar-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lang-select { width: auto; padding: 8px 10px; border-radius: 10px; font-size: 14px; min-height: 40px; }
+.textsize { display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--line); border-radius: 10px; padding: 2px; background: var(--bg); }
+.textsize .ts { border: none; background: transparent; cursor: pointer; color: var(--muted); line-height: 1;
+  width: 34px; min-height: 34px; border-radius: 8px; font-weight: 700; display: grid; place-items: center; }
+.textsize .ts.active { background: var(--surface); color: var(--brand-ink); box-shadow: var(--shadow); }
+.btn.newpt { padding: 8px 12px; min-height: 40px; font-size: 14px; }
+.btn.danger { background: var(--red); color: #fff; }
+.btn.danger:hover { background: #b91c1c; }
+.help-btn { padding: 9px 14px; min-height: 40px; }
+
+/* a screen-reader-only label */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+/* trust bar under the rail */
+.trust-bar { max-width: 820px; margin: 10px auto -6px; padding: 0 clamp(16px, 4vw, 32px);
+  color: var(--muted); font-size: 13px; }
+
+/* rail: gated + clinician steps */
+.step.locked { opacity: .45; pointer-events: none; }
+.step.clinician { border-style: dashed; }
+.step.clinician .num { background: var(--brand-soft); color: var(--brand-ink); }
+
+/* quick-answer chips */
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.chip { border: 1px solid var(--line); background: var(--bg); color: var(--brand-ink); cursor: pointer;
+  border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 14px; min-height: 38px; }
+.chip:hover { border-color: var(--brand); background: var(--brand-soft); }
+
+/* modal / help-emergency */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(16,39,51,.45); display: grid; place-items: center;
+  padding: 20px; z-index: 50; }
+.modal { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px;
+  max-width: 460px; width: 100%; }
+.modal h2 { margin-top: 0; }
+.modal:focus { outline: none; }
+.help-ok { background: var(--green-soft); color: var(--green); border-radius: 12px; padding: 12px 14px; font-weight: 600; }
+.help-emergency { border: 1px solid var(--red-soft); background: #fffafa; border-radius: 12px; padding: 14px; margin: 12px 0; }
+.help-emergency p { margin-top: 0; color: var(--ink); }
+.help-calling { color: var(--red); font-weight: 700; }
+
+/* triage result banner: icon + text spacing already via .banner gap */
+.banner span[aria-hidden] { font-size: 1.1em; }
+
+/* ---------- text size (accessibility) ---------- */
+/* the UI is px/clamp-based, so scale the content area with zoom (kiosk-friendly) */
+html[data-scale="lg"] .content { zoom: 1.15; }
+html[data-scale="xl"] .content { zoom: 1.32; }
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+}
 
 /* ---------- responsive ---------- */
 @media (max-width: 560px) {
@@ -157,4 +219,6 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--b
   .step { padding: 8px; }
   .bubble { max-width: 95%; }
   .btn { width: 100%; justify-content: center; }
+  .topbar-controls .btn, .textsize, .lang-select { width: auto; }
+  .topbar { gap: 8px; }
 }

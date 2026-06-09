@@ -15,6 +15,7 @@ type Store = {
   enc: Encounter;
   set: (patch: Partial<Encounter>) => void;
   setSituation: (patch: Partial<Encounter["situation"]>) => void;
+  reset: () => void; // clear the encounter for the next patient (kiosk turnover)
 };
 
 const empty: Encounter = {
@@ -32,6 +33,7 @@ export function EncounterProvider({ children }: { children: ReactNode }) {
     enc,
     set: (patch) => setEnc((e) => ({ ...e, ...patch })),
     setSituation: (patch) => setEnc((e) => ({ ...e, situation: { ...e.situation, ...patch } })),
+    reset: () => setEnc({ patient: null, consent: null, situation: { complaint: "", intake: "" }, outcome: null }),
   }), [enc]);
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
 }

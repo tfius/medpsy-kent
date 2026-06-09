@@ -4,12 +4,14 @@ import { chat } from "../lib/openai";
 import { refine, parseTriage, type Triage } from "../lib/triage";
 import { getMockEhr, ehrText, type EhrRecord } from "../lib/mockEhr";
 import { useEncounter } from "../store";
+import { TriageResult, useHelp } from "../lib/ui";
 
 // Step 6 — conditional history. For urgent/severe cases, retrieve the authoritative
 // record and RE-TRIAGE: the record can add precautions or escalate. Routine cases skip.
 export default function History() {
   const { enc, set } = useEncounter();
   const nav = useNavigate();
+  const { openHelp } = useHelp();
   const original = enc.outcome;
   const urgent = !!original && original.band !== "GREEN";
 
@@ -75,7 +77,7 @@ export default function History() {
                   {changed(original, refined) ? "" : <span className="note"> (unchanged)</span>}
                 </div>
               </div>
-              <ResultCard t={refined} onNext={() => nav("/route")} />
+              <TriageResult t={refined} view="patient" onNext={() => nav("/route")} onEmergency={() => openHelp(true)} />
             </>
           )}
         </>
@@ -86,22 +88,3 @@ export default function History() {
 
 const sev = (t: Triage) => `sev ${(t.severity.match(/\d+/) || ["?"])[0]}`;
 const changed = (a: Triage, b: Triage) => a.band !== b.band || (a.severity.match(/\d+/)?.[0] !== b.severity.match(/\d+/)?.[0]);
-
-function ResultCard({ t, onNext }: { t: Triage; onNext: () => void }) {
-  const band = t.band || "AMBER";
-  return (
-    <div className="result" style={{ marginBottom: 18 }}>
-      <div className={`banner ${band}`}>{t.decision || "TRIAGE"}<span className="sev">{sev(t)}/10 · {band}</span></div>
-      <div className="body">
-        <Row k="Red flags" v={t.redFlags || "none identified"} />
-        <Row k="Working diagnosis" v={t.condition} />
-        <Row k="Routing" v={t.routing} />
-        <Row k="Safety-net" v={t.safetyNet} />
-        <div className="row"><button className="btn block" onClick={onNext}>Continue → routing</button></div>
-      </div>
-    </div>
-  );
-}
-const Row = ({ k, v }: { k: string; v: string }) => (
-  <div className="field"><div className="k">{k}</div><div className="v">{v || "—"}</div></div>
-);

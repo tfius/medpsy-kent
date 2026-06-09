@@ -819,3 +819,44 @@ shuts down cleanly. The browser mic/hands-free loop is for on-device validation.
 **Known refinement (next):** in hands-free, the mic arms only *after* the question finishes speaking, so
 talking *over* the question loses the start (manual mic tap already barges in via `stopSpeaking`). Plan:
 arm during TTS and stop the question on detected speech (relying on `echoCancellation`).
+
+---
+
+## 2026-06-09 — Voice everywhere, barge-in, and a patient-grade UX/UI pass
+
+Two threads: pushed voice across the whole kiosk, then did a real UX/UI audit + overhaul.
+
+**Voice everywhere + barge-in (shared, not triage-only):**
+- Extracted reusable `MicButton` / `VoiceTextarea` / `SpeakButton` (`web/src/lib/voice.tsx`) over the
+  same on-device STT/TTS, and dropped dictation into the other free-text stages: **consent teach-back,
+  presenting complaint, intake meds/allergies, clinician note** (plus a "Read this aloud" on consent).
+- **Barge-in is now a property of the shared `listenLocal`:** a speech-onset detector (sustained-frame
+  debounce) fires `onSpeechStart`, which `stopSpeaking()`s. Triage hands-free arms the mic *during* the
+  spoken question, so you can answer over it; `echoCancellation` keeps the TTS out of the captured audio.
+  Detector timeouts measured from onset (not arm) so a late answer isn't truncated.
+- **Serialized TTS controller** fixed overlapping read-alouds: `speak()` aborts the prior fetch + audio
+  (AbortController + seq guard) and exposes observable state (`idle|loading|speaking` + owner id). Every
+  read-aloud is the same stateful `SpeakButton` (⏳ loading → ⏹ stop), so taps can't stack.
+
+**UX/UI overhaul (audit → four clusters):**
+- **Safety & flow:** always-on `🆘 Get help` in the topbar → accessible modal (staff notified +
+  📞 emergency); RED results surface the emergency CTA; the step rail is now a **gated progress
+  indicator** (`reached()` unlocks by data; clinician steps dashed/gated); `↺ New patient` reset
+  (`store.reset()`) for kiosk turnover; replaced the Consent `alert()`.
+- **Patient-friendly results:** one shared `TriageResult` with **patient** (urgency + plain "what to do
+  / when to get help", no ICD/dx/severity) vs **clinician** (full detail + verified ICD) views — deduped
+  the two old copies. De-jargoned the rail labels.
+- **Accessibility:** `prefers-reduced-motion`, colorblind-safe band icons (🛑/⏱️/✅), text-size control
+  (A/A+/A++ via content `zoom`), `aria-live` + focus-to-heading on navigation, `sr-only` labels.
+- **Multilingual + voice polish:** language selector (en/sl/es) driving a lightweight i18n
+  (`web/src/lib/prefs.tsx`, graceful English fallback) + STT auto-detect; friendly mic-permission
+  errors ("allow mic access, or just type instead"); quick-answer chips on Intake.
+
+New: `lib/voice.tsx`, `lib/ui.tsx`, `lib/prefs.tsx`; `store.reset()`; `PrefsProvider` in `main.tsx`.
+Verified by `tsc` + full `vite build` (46 modules). Live UI verification was blocked — the headless
+browser tools wait for network-idle and the page never settles (on-device voices/model fetch stays
+pending); the app runs at **:5173** (5174 is a different project).
+
+**Deferred (noted, not done):** full UI translation (only core patient strings are localized),
+auto-switching the TTS voice per language, and a hands-free "tap-to-edit" grace window before
+auto-submit (conflicts with the no-Send flow).

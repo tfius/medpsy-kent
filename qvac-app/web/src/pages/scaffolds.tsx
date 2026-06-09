@@ -7,6 +7,9 @@ import { useNavigate } from "react-router-dom";
 import { useEncounter } from "../store";
 import { chat } from "../lib/openai";
 import { sha256Hex, newId } from "../lib/sign";
+import { VoiceTextarea, SpeakButton } from "../lib/voice";
+import { useHelp, TriageResult } from "../lib/ui";
+import { useT } from "../lib/prefs";
 
 const Badge = ({ children = "MOCK" }: { children?: ReactNode }) => <span className="badge">{children}</span>;
 const Todo = ({ children }: { children: ReactNode }) => <div className="placeholder">{children}</div>;
@@ -44,9 +47,15 @@ export function Identify() {
   );
 }
 
+const CONSENT_SPOKEN =
+  "This assistant supports a pharmacist — it does not replace a doctor, and a practitioner reviews the result. " +
+  "You can stop anytime. If your case is urgent we'll retrieve your hospital record. " +
+  "Your result may be shared with the pharmacy, hospital, or paramedics as needed.";
+
 export function Consent() {
   const { set } = useEncounter();
   const nav = useNavigate();
+  const { openHelp } = useHelp();
   const [teachback, setTeachback] = useState("");
   return (
     <>
@@ -55,14 +64,15 @@ export function Consent() {
       <p className="lead">This assistant supports a pharmacist — it does <strong>not</strong> replace a doctor, and a
         practitioner reviews the result. You can stop anytime. If your case is urgent we'll retrieve your hospital
         record. Your result may be shared with the pharmacy, hospital, or paramedics as needed.</p>
+      <div className="row"><SpeakButton text={CONSENT_SPOKEN} label="Read this aloud" /></div>
       <div className="card">
         <label htmlFor="tb">In your own words, what is this and can you stop it?</label>
-        <textarea id="tb" value={teachback} onChange={(e) => setTeachback(e.target.value)}
+        <VoiceTextarea value={teachback} onChange={setTeachback} id="tb"
           placeholder="e.g. it's a helper that asks me questions, a real person checks it, and I can stop whenever…" />
         <p className="note">Teach-back: we record your understanding (consent evidence). If you're unsure, ask for help —
           you'll go to a person instead. <Badge>LLM-graded in production</Badge></p>
         <div className="row">
-          <button className="btn ghost" onClick={() => alert("Routes to the human/proxy pathway (architecture: separate pathway).")}>I have questions / need help</button>
+          <button className="btn ghost" onClick={() => openHelp(false)}>I have questions / need help</button>
           <button className="btn" disabled={teachback.trim().length < 8}
             onClick={() => { set({ consent: { understood: true, sharing: ["pharmacy", "hospital", "paramedics"] } }); nav("/context"); }}>
             I understand &amp; agree →
@@ -79,9 +89,9 @@ export function Context() {
     <Shell step="Step 3 · Context" title="What brings you in?" next="/intake"
       lead="A one-line reason for your visit. No medical record is opened yet.">
       <label htmlFor="cc">Presenting complaint</label>
-      <textarea id="cc" defaultValue={enc.situation.complaint}
+      <VoiceTextarea value={enc.situation.complaint} id="cc"
         placeholder="e.g. chest discomfort for the last hour"
-        onChange={(e) => setSituation({ complaint: e.target.value })} />
+        onChange={(v) => setSituation({ complaint: v })} />
       <p className="note">This becomes the <em>situation</em> identity for this episode.</p>
     </Shell>
   );
@@ -89,14 +99,21 @@ export function Context() {
 
 export function Intake() {
   const { enc, setSituation } = useEncounter();
+  const T = useT();
+  const add = (s: string) => setSituation({ intake: enc.situation.intake ? `${enc.situation.intake}; ${s}` : s });
   return (
     <Shell step="Step 4 · Intake" title="A few details" next="/triage" nextLabel="Begin triage"
-      lead="Answer by typing now. Tell us your medicines, conditions and allergies — this keeps triage safe without opening your full record.">
+      lead="Type, tap 🎤 to speak, or use a quick answer below. Tell us your medicines, conditions and allergies — this keeps triage safe without opening your full record.">
       <label htmlFor="hx">Current medicines, conditions, allergies</label>
-      <textarea id="hx" defaultValue={enc.situation.intake}
+      <VoiceTextarea value={enc.situation.intake} id="hx"
         placeholder="e.g. on warfarin; penicillin allergy; type-2 diabetes"
-        onChange={(e) => setSituation({ intake: e.target.value })} />
-      <Todo>🔊 TTS reads prompts · 🎤 STT captures spoken answers · 📷 camera for visual red-flags. <Badge>to productionise</Badge> This is the <strong>patient-reported history</strong> layer.</Todo>
+        onChange={(v) => setSituation({ intake: v })} />
+      <div className="chips">
+        <button type="button" className="chip" onClick={() => add(T("none.meds"))}>{T("none.meds")}</button>
+        <button type="button" className="chip" onClick={() => add(T("none.allergies"))}>{T("none.allergies")}</button>
+        <button type="button" className="chip" onClick={() => add(T("dontknow"))}>{T("dontknow")}</button>
+      </div>
+      <Todo>🎤 On-device speech (Nemotron-3.5-ASR) is live · 📷 camera for visual red-flags still to come. <Badge>to productionise</Badge> This is the <strong>patient-reported history</strong> layer.</Todo>
     </Shell>
   );
 }
@@ -182,6 +199,7 @@ export function Validate() {
       <div className="eyebrow">Step 8 · Validation</div>
       <h1>Practitioner sign-off</h1>
       <p className="lead">The always-signed-in clinician reviews, edits, and confirms — the human-in-the-loop gate.</p>
+      {o && <div style={{ marginBottom: 16 }}><TriageResult t={o} view="clinician" /></div>}
       <div className="card">
         <label>Decision</label>
         <select value={decision} onChange={(e) => setDecision(e.target.value)}>
@@ -190,7 +208,7 @@ export function Validate() {
         <label>Severity (0–10)</label>
         <input value={severity} onChange={(e) => setSeverity(e.target.value)} />
         <label>Clinician note (optional)</label>
-        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any change or rationale…" />
+        <VoiceTextarea value={notes} onChange={setNotes} placeholder="Any change or rationale…" />
         <div className="row"><button className="btn" onClick={signOff}>Confirm &amp; sign</button></div>
 
         {record && (

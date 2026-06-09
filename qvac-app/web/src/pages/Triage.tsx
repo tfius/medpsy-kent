@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { chatStream, type Msg } from "../lib/openai";
 import { seed, isConclusion, parseTriage, questionText, CONCLUDE_NUDGE, type Triage as T } from "../lib/triage";
 import { speak, stopSpeaking, listenLocal, sttSupported, fetchVoices, getVoice, setVoice, type Voice, type ListenControl } from "../lib/speech";
+import { SpeakButton } from "../lib/voice";
+import { TriageResult, useHelp } from "../lib/ui";
 import { useEncounter } from "../store";
 
 type Turn = { who: "bot" | "me"; text: string; reason?: string };
@@ -11,6 +13,7 @@ const CAP = 6; // max questions before we force a conclusion
 export default function Triage() {
   const { enc, setSituation, set } = useEncounter();
   const nav = useNavigate();
+  const { openHelp } = useHelp();
   const [complaint, setComplaint] = useState(enc.situation.complaint);
   const [started, setStarted] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -43,14 +46,18 @@ export default function Triage() {
   useEffect(() => { listeningRef.current = listening; }, [listening]);
   useEffect(() => { resultRef.current = result; }, [result]);
 
-  function startListening(onText: (t: string) => void) {
+  // bargeIn: arm the mic while the question is still being spoken (don't cut the TTS
+  // up front) — onSpeechStart stops it only once the user actually starts talking.
+  // Otherwise (manual tap) cut any speech immediately and record.
+  function startListening(onText: (t: string) => void, { bargeIn = false } = {}) {
     if (listeningRef.current) return;
-    stopSpeaking(); // don't let a spoken question feed back into the mic
+    if (!bargeIn) stopSpeaking();
     setErr(""); setHandsFree(true);
     stopRef.current = listenLocal(
       (t) => { setListening(false); setTranscribing(false); if (t) onText(t); },
       (e) => { setErr(e); setListening(false); setTranscribing(false); },
       (phase) => { setListening(phase === "recording"); setTranscribing(phase === "transcribing"); },
+      () => stopSpeaking(), // user started speaking -> stop the question (barge-in)
     );
   }
   function exitHandsFree() {
@@ -65,7 +72,7 @@ export default function Triage() {
   // is spoken, or right away if auto-speak is off).
   function armForAnswer() {
     if (handsFreeRef.current && !listeningRef.current && !resultRef.current && sttSupported())
-      startListening((t) => answer(t));
+      startListening((t) => answer(t), { bargeIn: true });
   }
   const Mic = ({ onText, disabled }: { onText: (t: string) => void; disabled?: boolean }) =>
     sttSupported() ? (
@@ -103,9 +110,10 @@ export default function Triage() {
         setMsgs([...send, { role: "assistant", content: q }]);
         setTurns((x) => [...x, { who: "bot", text: q, reason: lastReason }]);
         setAsked((n) => n + 1);
-        // Read the question aloud, then (hands-free) auto-arm the mic for the answer.
-        if (autoSpeak) speak(q).then(armForAnswer);
-        else setTimeout(armForAnswer, 0);
+        // Read the question aloud AND (hands-free) arm the mic now — you can answer
+        // over the question (barge-in stops it) or wait; the mic is already listening.
+        if (autoSpeak) speak(q);
+        armForAnswer();
       }
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -178,7 +186,7 @@ export default function Triage() {
                 )}
                 <div className="bubble bot">
                   {t.text}
-                  <button className="speak" title="Read aloud" onClick={() => speak(t.text)}>🔊</button>
+                  <SpeakButton text={t.text} compact />
                 </div>
               </div>
             ) : (
@@ -223,35 +231,14 @@ export default function Triage() {
       {err && <div className="card" style={{ borderColor: "var(--red)", color: "var(--red)" }}>⚠ {err}</div>}
 
       {result && (
-        <Result t={result} onNext={() => nav(result.band === "GREEN" ? "/route" : "/history")} onRestart={restart} />
+        <>
+          <TriageResult t={result} view="patient"
+            onNext={() => nav(result.band === "GREEN" ? "/route" : "/history")}
+            onEmergency={() => openHelp(true)} />
+          <div className="row"><button className="btn ghost" onClick={restart}>↻ Restart</button></div>
+        </>
       )}
     </>
-  );
-}
-
-function Result({ t, onNext, onRestart }: { t: T; onNext: () => void; onRestart: () => void }) {
-  const band = t.band || "AMBER";
-  return (
-    <div className="result" style={{ marginBottom: 18 }}>
-      <div className={`banner ${band}`}>
-        {t.decision || "TRIAGE"}
-        <span className="sev">Severity {(t.severity.match(/\d+/) || ["?"])[0]}/10 · {band}</span>
-      </div>
-      <div className="body">
-        <Field k="Red flags" v={t.redFlags || "none identified"} />
-        <Field k="Working diagnosis" v={t.condition} />
-        <IcdField condition={t.condition} guess={t.icd} />
-        <Field k="Routing" v={t.routing} />
-        <Field k="Safety-net" v={t.safetyNet} />
-        <div className="row">
-          <button className="btn" onClick={onNext}>
-            {band === "GREEN" ? "Continue → routing" : "Continue → fetch history"}
-          </button>
-          <button className="btn ghost" onClick={onRestart}>Restart</button>
-        </div>
-        <p className="note" style={{ marginTop: 10 }}>Decision-support only — a practitioner validates this outcome.</p>
-      </div>
-    </div>
   );
 }
 
@@ -284,52 +271,7 @@ function VoicePicker() {
       <select id="voice" value={sel} onChange={(e) => { setSel(e.target.value); setVoice(e.target.value); }}>
         {voices.map((v) => <option key={v.id} value={v.id}>{label(v)}</option>)}
       </select>
-      <button type="button" className="btn ghost" title="Preview voice"
-        onClick={() => speak("Hello, this is medpsy. How can I help you today?", sel)}>▶ Preview</button>
-    </div>
-  );
-}
-
-function Field({ k, v }: { k: string; v: string }) {
-  return (
-    <div className="field">
-      <div className="k">{k}</div>
-      <div className="v">{v || "—"}</div>
-    </div>
-  );
-}
-
-// ICD-10 grounded on-device: look up the verified code for the named condition,
-// replacing medpsy's (often wrong) guess.
-function IcdField({ condition, guess }: { condition: string; guess: string }) {
-  const [verified, setVerified] = useState<{ code: string; description: string } | null>(null);
-  const [state, setState] = useState<"loading" | "ok" | "err">("loading");
-
-  useEffect(() => {
-    if (!condition) { setState("err"); return; }
-    let cancelled = false;
-    fetch("/api/icd", { method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ condition }) })
-      .then((r) => r.json())
-      .then((d) => { if (cancelled) return; const top = d.results?.[0]; top ? (setVerified(top), setState("ok")) : setState("err"); })
-      .catch(() => !cancelled && setState("err"));
-    return () => { cancelled = true; };
-  }, [condition]);
-
-  const guessCode = (guess.match(/[A-TV-Z][0-9]{2}(?:\.[0-9A-Z]{1,4})?/) || [""])[0];
-  const mismatch = verified && guessCode && guessCode.replace(".", "") !== verified.code.replace(".", "");
-
-  return (
-    <div className="field">
-      <div className="k">ICD-10 — verified on-device</div>
-      {state === "loading" && <div className="v note">grounding against the on-device ICD-10 index…</div>}
-      {state === "err" && <div className="v">{guess || "—"} <span className="note">(lookup unavailable — start the ICD API: <code>npm run serve</code>)</span></div>}
-      {state === "ok" && verified && (
-        <div className="v">
-          <span className="pill GREEN">✓ {verified.code}</span> {verified.description}
-          {mismatch && <div className="note" style={{ marginTop: 4 }}>medpsy guessed <s>{guessCode}</s> — replaced with the verified code</div>}
-        </div>
-      )}
+      <SpeakButton text="Hello, this is medpsy. How can I help you today?" voice={sel} label="Preview" />
     </div>
   );
 }
