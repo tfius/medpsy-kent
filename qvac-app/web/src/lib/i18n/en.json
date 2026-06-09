@@ -112,5 +112,8 @@
   "bil.lead": "From the validated diagnosis — not the AI draft.",
   "bil.dx": "Working diagnosis",
   "bil.gen": "Generate claim",
-  "bil.gening": "Grounding code & drafting claim…"
+  "bil.gening": "Grounding code & drafting claim…",
+  "voice": "Voice",
+  "preview": "Preview",
+  "greeting": "Hello, this is medpsy. How can I help you today?"
 }

@@ -112,5 +112,8 @@
   "bil.lead": "Iz potrjene diagnoze – ne iz osnutka UI.",
   "bil.dx": "Delovna diagnoza",
   "bil.gen": "Pripravi zahtevek",
-  "bil.gening": "Utemeljujem kodo in pripravljam zahtevek…"
+  "bil.gening": "Utemeljujem kodo in pripravljam zahtevek…",
+  "voice": "Glas",
+  "preview": "Poslušaj",
+  "greeting": "Pozdravljeni, sem medpsy. Kako vam lahko danes pomagam?"
 }

@@ -52,3 +52,10 @@ export const TTS_ENGINE = process.env.MEDPSY_TTS_ENGINE || "kokoro";
 export const KOKORO_MODEL = process.env.MEDPSY_KOKORO_MODEL || "onnx-community/Kokoro-82M-v1.0-ONNX";
 export const KOKORO_DTYPE = process.env.MEDPSY_KOKORO_DTYPE || "q8"; // fp32|fp16|q8|q4
 export const KOKORO_VOICE = process.env.MEDPSY_TTS_VOICE || "af_heart";
+// Multilingual TTS runs through a persistent Python kokoro-onnx worker (kokoro-js
+// is English-only and mis-pronounces other languages). Needs python + kokoro-onnx
+// + the Kokoro v1.0 ONNX model and voices .bin.
+export const KOKORO_PY = process.env.MEDPSY_KOKORO_PY || "/Users/tex/repos/tfius/nemotron-asr-test/.venv/bin/python";
+export const KOKORO_ONNX = process.env.MEDPSY_KOKORO_ONNX || path.join(MODELS, "kokoro-v1.0.onnx");
+export const KOKORO_VOICES_BIN = process.env.MEDPSY_KOKORO_VOICES || path.join(MODELS, "voices-v1.0.bin");
+export const TTS_WORKER = path.join(import.meta.dirname, "..", "scripts", "tts_worker.py");

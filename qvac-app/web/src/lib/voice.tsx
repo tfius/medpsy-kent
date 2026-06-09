@@ -3,7 +3,8 @@
 // Kokoro) as the triage screen. Triage keeps its own hands-free mic; these are the
 // simple press-to-dictate / read-aloud controls for single fields.
 import { useEffect, useId, useRef, useState } from "react";
-import { listenLocal, speak, stopSpeaking, sttSupported, getSpeakState, subscribeSpeak, type ListenControl } from "./speech";
+import { listenLocal, speak, stopSpeaking, sttSupported, getSpeakState, subscribeSpeak, fetchVoices, getVoice, setVoice, type ListenControl, type Voice } from "./speech";
+import { useT, usePrefs, LANG_SUPPORT, VOICE_FOR_LANG } from "./prefs";
 
 // Subscribe to the app-wide TTS playback state (idle/loading/speaking + owner id).
 function useSpeakState() {
@@ -80,5 +81,61 @@ export function SpeakButton({ text, label = "Read aloud", voice, compact = false
       title={mine ? "Stop" : "Read aloud"} onClick={onClick}>
       {loading ? "⏳ Loading…" : mine ? "⏹ Stop" : `🔊 ${label}`}
     </button>
+  );
+}
+
+// Language-aware TTS voice picker (welcome step). Shows Kokoro voices for the
+// current UI language, falling back to English when that language has no voice.
+export function VoicePicker() {
+  const T = useT();
+  const { lang } = usePrefs();
+  const [voices, setVoices] = useState<Voice[]>([]);
+  const [sel, setSel] = useState(getVoice());
+
+  useEffect(() => { let c = false; fetchVoices().then((vs) => { if (!c) setVoices(vs); }); return () => { c = true; }; }, []);
+
+  const prefixes = LANG_SUPPORT[lang].ttsPrefixes;
+  const matching = prefixes.length ? voices.filter((v) => prefixes.some((p) => v.id.startsWith(p))) : [];
+  const shown = matching.length ? matching : voices.filter((v) => v.id.startsWith("a") || v.id.startsWith("b"));
+
+  // keep the selected voice within the shown set as the language changes
+  useEffect(() => {
+    if (!shown.length || shown.some((v) => v.id === sel)) return;
+    const def = shown.find((v) => v.id === VOICE_FOR_LANG[lang]) || shown[0];
+    setSel(def.id); setVoice(def.id);
+  }); // runs each render; cheap and keeps sel valid
+
+  if (!voices.length) return null;
+  const optLabel = (v: Voice) => `${v.name || v.id} — ${v.gender || "?"}${v.grade ? ` (${v.grade})` : ""}`;
+  const note = LANG_SUPPORT[lang].ttsNote;
+  return (
+    <div className="voice-picker">
+      <label className="picker-label" htmlFor="voice">🔊 {T("voice")}{note && <span className="note"> · {note}</span>}</label>
+      <div className="voice-picker-row">
+        <select id="voice" value={sel} onChange={(e) => { setSel(e.target.value); setVoice(e.target.value); }}>
+          {shown.map((v) => <option key={v.id} value={v.id}>{optLabel(v)}</option>)}
+        </select>
+        <SpeakButton text={T("greeting")} voice={sel} label={T("preview")} />
+      </div>
+    </div>
+  );
+}
+
+// Quick "can we hear/speak your language?" info for the welcome step.
+export function SpeechSupport() {
+  const { lang } = usePrefs();
+  const s = LANG_SUPPORT[lang];
+  const stt = (s.stt === "full" || s.stt === "broad")
+    ? { cls: "ok", txt: "✓ supported" }
+    : s.stt === "adapt" ? { cls: "warn", txt: `≈ ${s.sttNote || "beta"}` }
+    : { cls: "bad", txt: `✕ ${s.sttNote || "not supported"}` };
+  const tts = (s.ttsPrefixes.length && !s.ttsNote)
+    ? { cls: "ok", txt: "✓ supported" }
+    : { cls: "warn", txt: `≈ ${s.ttsNote || "uses English"}` };
+  return (
+    <div className="speech-support">
+      <span className={`sup ${stt.cls}`}>🎤 Speech&#8209;to&#8209;text: {stt.txt}</span>
+      <span className={`sup ${tts.cls}`}>🔊 Read&#8209;aloud: {tts.txt}</span>
+    </div>
   );
 }

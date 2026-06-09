@@ -10,16 +10,22 @@ import sl from "./i18n/sl.json";
 import es from "./i18n/es.json";
 import zh from "./i18n/zh.json";
 import yue from "./i18n/yue.json";
+import de from "./i18n/de.json";
+import it from "./i18n/it.json";
+import fr from "./i18n/fr.json";
 
-export type Lang = "en" | "sl" | "es" | "zh" | "yue";
+export type Lang = "en" | "de" | "fr" | "es" | "it" | "sl" | "zh" | "yue";
 export type UiScale = "base" | "lg" | "xl";
 
-export const LANGS: { code: Lang; label: string; flag: string }[] = [
+export const LANGS: { code: Lang; label: string; flag: string; limited?: boolean }[] = [
   { code: "en", label: "English", flag: "🇬🇧" },
-  { code: "sl", label: "Slovenščina", flag: "🇸🇮" },
+  { code: "fr", label: "Français", flag: "🇫🇷" },
   { code: "es", label: "Español", flag: "🇪🇸" },
+  { code: "it", label: "Italiano", flag: "🇮🇹" },
   { code: "zh", label: "中文（普通话）", flag: "🇨🇳" },
-  { code: "yue", label: "粵語（廣東話）", flag: "🇭🇰" },
+  { code: "de", label: "Deutsch", flag: "🇩🇪", limited: true }, // no German Kokoro voice (uses English)
+  { code: "sl", label: "Slovenščina", flag: "🇸🇮", limited: true }, // no native voice (beta STT)
+  { code: "yue", label: "粵語（廣東話）", flag: "🇭🇰", limited: true }, // no Cantonese voice/STT yet
 ];
 
 // Default Kokoro voice per UI language (used when the user hasn't picked one).
@@ -27,11 +33,29 @@ export const LANGS: { code: Lang; label: string; flag: string }[] = [
 // Mandarin voice — it reads the text with Mandarin pronunciation.
 export const VOICE_FOR_LANG: Record<Lang, string> = {
   en: "af_heart", sl: "af_heart", es: "ef_dora", zh: "zf_xiaoxiao", yue: "zf_xiaoxiao",
+  de: "af_heart", fr: "ff_siwis", it: "if_sara",
+};
+
+// Per UI language: which on-device speech we can actually do.
+//  ttsPrefixes — Kokoro voice-id prefixes for this language ([] = no native voice)
+//  stt         — Nemotron-3.5-ASR support tier (40 locales, 3 tiers)
+export type SttTier = "full" | "broad" | "adapt" | "none";
+export const LANG_SUPPORT: Record<Lang, { ttsPrefixes: string[]; ttsNote?: string; stt: SttTier; sttNote?: string }> = {
+  en:  { ttsPrefixes: ["a", "b"], stt: "full" },
+  de:  { ttsPrefixes: [],         stt: "full",  ttsNote: "no German voice — uses English" },
+  fr:  { ttsPrefixes: ["f"],      stt: "full" },
+  es:  { ttsPrefixes: ["e"],      stt: "full" },
+  it:  { ttsPrefixes: ["i"],      stt: "full" },
+  zh:  { ttsPrefixes: ["z"],      stt: "broad" },
+  yue: { ttsPrefixes: ["z"],      stt: "none",  ttsNote: "Mandarin voice (no Cantonese voice)", sttNote: "Cantonese isn't supported — speech may mis-transcribe" },
+  sl:  { ttsPrefixes: [],         stt: "adapt", ttsNote: "no Slovenian voice — uses English", sttNote: "recognized but beta-quality" },
 };
 
 type Prefs = {
   lang: Lang; setLang: (l: Lang) => void;
   scale: UiScale; setScale: (s: UiScale) => void;
+  demo: boolean; setDemo: (b: boolean) => void;        // testing: unlock all steps in the rail
+  autoSpeak: boolean; setAutoSpeak: (b: boolean) => void; // read triage questions aloud
 };
 const Ctx = createContext<Prefs | null>(null);
 const read = (k: string, d: string) => { try { return localStorage.getItem(k) || d; } catch { return d; } };
@@ -39,9 +63,13 @@ const read = (k: string, d: string) => { try { return localStorage.getItem(k) ||
 export function PrefsProvider({ children }: { children: ReactNode }) {
   const [lang, setLang] = useState<Lang>(read("medpsy.lang", "en") as Lang);
   const [scale, setScale] = useState<UiScale>(read("medpsy.scale", "base") as UiScale);
+  const [demo, setDemo] = useState<boolean>(read("medpsy.demo", "0") === "1");
+  const [autoSpeak, setAutoSpeak] = useState<boolean>(read("medpsy.autoSpeak", "1") !== "0");
   useEffect(() => { try { localStorage.setItem("medpsy.lang", lang); } catch { /* ignore */ } document.documentElement.lang = lang; }, [lang]);
   useEffect(() => { try { localStorage.setItem("medpsy.scale", scale); } catch { /* ignore */ } document.documentElement.dataset.scale = scale; }, [scale]);
-  return <Ctx.Provider value={{ lang, setLang, scale, setScale }}>{children}</Ctx.Provider>;
+  useEffect(() => { try { localStorage.setItem("medpsy.demo", demo ? "1" : "0"); } catch { /* ignore */ } }, [demo]);
+  useEffect(() => { try { localStorage.setItem("medpsy.autoSpeak", autoSpeak ? "1" : "0"); } catch { /* ignore */ } }, [autoSpeak]);
+  return <Ctx.Provider value={{ lang, setLang, scale, setScale, demo, setDemo, autoSpeak, setAutoSpeak }}>{children}</Ctx.Provider>;
 }
 
 export function usePrefs(): Prefs {
@@ -51,7 +79,7 @@ export function usePrefs(): Prefs {
 }
 
 type Dict = Record<string, string>;
-const STRINGS: Record<Lang, Dict> = { en, sl, es, zh, yue };
+const STRINGS: Record<Lang, Dict> = { en, sl, es, zh, yue, de, it, fr };
 
 export function useT(): (key: string) => string {
   const { lang } = usePrefs();

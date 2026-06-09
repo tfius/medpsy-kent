@@ -140,12 +140,19 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--b
 .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; word-break: break-all; color: var(--muted); }
 .sbar { white-space: pre-wrap; background: var(--brand-soft); color: var(--brand-ink); border-radius: 12px; padding: 14px 16px; }
 
-.voice-controls { display: flex; align-items: center; gap: 16px; margin: -4px 0 16px; flex-wrap: wrap; }
-.voice-controls .toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px;
-  color: var(--muted); cursor: pointer; white-space: nowrap; }
-/* the global `input { width:100% }` would stretch the checkbox and wrap the label */
-.voice-controls .toggle input[type="checkbox"] { width: auto; flex: 0 0 auto; margin: 0; }
-.voice-picker { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* checkbox toggle (auto-speak) — the global input{width:100%} would stretch the box */
+.toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ink); cursor: pointer; }
+.toggle input[type="checkbox"] { width: auto; flex: 0 0 auto; margin: 0; }
+/* welcome-step: quick speech-support info + language-aware voice picker */
+.speech-support { display: flex; flex-direction: column; gap: 4px; margin: 12px 0; font-size: 13px; }
+.speech-support .sup { display: inline-flex; align-items: center; gap: 6px; }
+.speech-support .sup.ok { color: var(--green); }
+.speech-support .sup.warn { color: var(--amber); }
+.speech-support .sup.bad { color: var(--red); }
+/* secondary "Language & voice" card on the welcome step (de-emphasised) */
+.settings-card { background: #fbfdfe; box-shadow: none; }
+.voice-picker { display: block; margin-bottom: 4px; }
+.voice-picker-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 /* reusable dictation field (consent, complaint, intake, clinician note) */
 .voice-field { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .voice-field textarea { width: 100%; }
@@ -153,10 +160,9 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--b
 .speak-btn { padding: 6px 12px; font-size: 13px; width: auto; }
 .speak-btn.speaking { color: var(--brand); border-color: var(--brand); background: var(--brand-soft); }
 .bubble .speak.speaking { opacity: 1; color: var(--brand); }
-.voice-picker label { font-size: 13px; font-weight: 600; color: var(--muted); }
-.voice-picker select { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px;
-  background: var(--surface); color: var(--ink); font-size: 13px; font-family: var(--font); }
-.voice-picker .btn.ghost { padding: 6px 10px; font-size: 13px; }
+.voice-picker select { padding: 8px 12px; border: 1.5px solid var(--line); border-radius: 10px;
+  background: var(--surface); color: var(--ink); font-size: 14px; font-family: var(--font); width: auto; max-width: 100%; }
+.voice-picker .btn.ghost { padding: 8px 12px; font-size: 14px; }
 
 /* ---------- topbar controls (language, text size, new patient, help) ---------- */
 .topbar-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -202,6 +208,31 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--b
 
 /* triage result banner: icon + text spacing already via .banner gap */
 .banner span[aria-hidden] { font-size: 1.1em; }
+
+/* welcome-step language picker (segmented, clean clinical look) */
+.picker-label { display: block; font-weight: 600; margin: 0 0 8px; }
+.lang-picker-wrap { display: flex; flex-direction: column; gap: 10px; }
+.lang-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+/* languages without a native voice yet — set apart on their own line */
+.lang-picker.limited { align-items: center; gap: 8px 10px; padding: 8px 10px;
+  background: var(--bg); border: 1px dashed var(--line); border-radius: 12px; }
+.lang-picker.limited .lang-opt { background: transparent; }
+.lang-note { font-size: 12px; color: var(--muted); }
+.lang-opt { display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  border: 1.5px solid var(--line); background: var(--surface); color: var(--ink);
+  border-radius: 12px; padding: 10px 14px; font: inherit; font-size: 15px; min-height: 46px; }
+.lang-opt .flag { font-size: 18px; line-height: 1; }
+.lang-opt:hover { border-color: var(--brand); }
+.lang-opt.active { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-ink);
+  font-weight: 600; box-shadow: 0 0 0 3px var(--brand-soft); }
+
+/* demo unlock toggle — a thin site-wide footer bar pinned to the bottom of the page */
+.app-footer { border-top: 1px solid var(--line); background: var(--surface);
+  padding: 10px clamp(16px, 4vw, 32px); display: flex; justify-content: center; }
+.demo-toggle { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+  font-size: 13px; color: var(--muted); cursor: pointer; }
+.demo-toggle .badge { margin-left: 0; }
+.demo-toggle input[type="checkbox"] { width: auto; flex: 0 0 auto; margin: 0; }
 
 /* ---------- text size (accessibility) ---------- */
 /* the UI is px/clamp-based, so scale the content area with zoom (kiosk-friendly) */

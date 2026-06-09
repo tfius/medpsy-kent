@@ -31,7 +31,7 @@ const index = await loadOrBuildIndex(provider, (d, t) => {
 console.log(`\n[icd-api] ready on http://localhost:${PORT}`);
 
 // Warm the on-device STT model now so the first dictation isn't "stuck" loading.
-getSpeech().then((sp) => sp.prewarmStt?.()).catch(() => {});
+getSpeech().then((sp) => { sp.prewarmStt?.(); sp.prewarmTts?.(); }).catch(() => {});
 
 const cors = (res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");

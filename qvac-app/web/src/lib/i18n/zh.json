@@ -112,5 +112,8 @@
   "bil.lead": "依据经过审核的诊断——而非 AI 草稿。",
   "bil.dx": "初步诊断",
   "bil.gen": "生成账单",
-  "bil.gening": "正在确定编码并起草账单……"
+  "bil.gening": "正在确定编码并起草账单……",
+  "voice": "语音",
+  "preview": "试听",
+  "greeting": "您好，我是 medpsy。今天有什么可以帮您？"
 }

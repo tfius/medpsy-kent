@@ -16,12 +16,12 @@ import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import {
   STT_MODEL_SRC, SPEECH_LANG, STT_ENGINE, PARAKEET_BIN, STT_GGUF, PARAKEET_LIB, STT_WORKER,
-  TTS_ENGINE, KOKORO_MODEL, KOKORO_DTYPE, KOKORO_VOICE,
+  TTS_ENGINE, KOKORO_VOICE, KOKORO_PY, KOKORO_ONNX, KOKORO_VOICES_BIN, TTS_WORKER,
 } from "./config.js";
 
 const execFileP = promisify(execFile);
 
-let sdk = null, sttId = null, ttsId = null, kokoro = null;
+let sdk = null, sttId = null, ttsId = null;
 const getSdk = async () => (sdk ??= await import("@qvac/sdk"));
 
 // ---- STT (Parakeet / Nemotron-3.5-ASR) ----
@@ -178,31 +178,73 @@ async function synthesizeWavSupertonic(text /*, opts */) {
   return pcmToWav(pcm, TTS_SAMPLE_RATE);
 }
 
-// ---- TTS (Kokoro — kokoro-js, on-device ONNX, no @qvac/sdk build) ----
-// 82M model + voices download from the HF hub on first load and are cached by
-// transformers.js. `generate` returns a RawAudio whose toWav() gives a full WAV.
-async function loadKokoro(onProgress) {
-  const { KokoroTTS } = await import("kokoro-js");
-  kokoro ??= await KokoroTTS.from_pretrained(KOKORO_MODEL, {
-    dtype: KOKORO_DTYPE,          // q8 = small + fast, good quality
-    device: "cpu",               // onnxruntime-node; kiosk-friendly
-    progress_callback: onProgress,
+// ---- TTS (Kokoro — multilingual, via a persistent Python kokoro-onnx worker) ----
+// Kokoro voice-id prefix -> kokoro-onnx language code (for correct phonemization).
+const KOKORO_LANG = { a: "en-us", b: "en-gb", e: "es", f: "fr-fr", h: "hi", i: "it", j: "ja", p: "pt-br", z: "cmn" };
+const KOKORO_LANG_LABEL = { a: "en-us", b: "en-gb", e: "es", f: "fr", h: "hi", i: "it", j: "ja", p: "pt", z: "zh" };
+const voiceLang = (v) => KOKORO_LANG[(v || "a")[0]] || "en-us";
+// Multilingual voices we offer (id prefix encodes language + gender).
+const KOKORO_VOICE_IDS = [
+  "af_heart", "af_bella", "af_nicole", "am_michael", "am_eric", "am_puck", "bf_emma", "bm_george",
+  "ef_dora", "em_alex", "ff_siwis", "if_sara", "im_nicola",
+  "zf_xiaoxiao", "zf_xiaobei", "zm_yunxi", "zm_yunyang",
+  "hf_alpha", "pf_dora", "jf_alpha",
+];
+
+let ttsWorker = null;
+function getTtsWorker() {
+  if (ttsWorker) return ttsWorker;
+  const proc = spawn(KOKORO_PY, [TTS_WORKER], {
+    env: { ...process.env, MEDPSY_KOKORO_ONNX: KOKORO_ONNX, MEDPSY_KOKORO_VOICES: KOKORO_VOICES_BIN },
+    stdio: ["pipe", "pipe", "inherit"],
   });
-  return kokoro;
+  const w = { proc, queue: [], buf: "", ready: false, readyWaiters: [] };
+  proc.stdout.setEncoding("utf8");
+  proc.stdout.on("data", (chunk) => {
+    w.buf += chunk;
+    let i;
+    while ((i = w.buf.indexOf("\n")) >= 0) {
+      const line = w.buf.slice(0, i); w.buf = w.buf.slice(i + 1);
+      if (line.startsWith("@@READY@@")) {
+        w.ready = true; w.readyWaiters.forEach((r) => r()); w.readyWaiters = [];
+      } else if (line.startsWith("@@TTS@@")) {
+        const job = w.queue.shift();
+        if (job) {
+          try { const o = JSON.parse(line.slice("@@TTS@@".length).trim());
+            o.error ? job.reject(new Error(o.error)) : job.resolve(o.wav); }
+          catch (e) { job.reject(e); }
+        }
+      }
+    }
+  });
+  const fail = (err) => {
+    if (ttsWorker === w) ttsWorker = null;
+    w.queue.forEach((j) => j.reject(err)); w.queue = [];
+    w.readyWaiters.forEach((r) => r(err)); w.readyWaiters = [];
+  };
+  proc.on("exit", (code) => fail(new Error(`tts worker exited (code ${code})`)));
+  proc.on("error", (e) => fail(e));
+  ttsWorker = w;
+  return w;
 }
 
 async function synthesizeWavKokoro(text, { voice } = {}) {
-  const tts = await loadKokoro();
-  const audio = await tts.generate(text, { voice: voice || KOKORO_VOICE });
-  // audio.audio is Float32 in [-1,1]; emit 16-bit PCM WAV like the Supertonic
-  // path (format tag 1) for consistent, broadly-compatible output.
-  const f32 = audio.audio;
-  const pcm16 = new Int16Array(f32.length);
-  for (let i = 0; i < f32.length; i++) {
-    const s = Math.max(-1, Math.min(1, f32[i]));
-    pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  const v = voice || KOKORO_VOICE;
+  const w = getTtsWorker();
+  const wavPath = await new Promise((resolve, reject) => {
+    const send = () => { w.queue.push({ resolve, reject }); w.proc.stdin.write(JSON.stringify({ text, voice: v, lang: voiceLang(v) }) + "\n"); };
+    if (w.ready) send();
+    else w.readyWaiters.push((err) => (err ? reject(err) : send()));
+  });
+  try { return fs.readFileSync(wavPath); }
+  finally { try { fs.unlinkSync(wavPath); } catch { /* ignore */ } }
+}
+
+// Spawn + warm the TTS worker ahead of the first read-aloud (call at server start).
+export function prewarmTts() {
+  if (TTS_ENGINE === "kokoro" && fs.existsSync(KOKORO_ONNX)) {
+    try { getTtsWorker(); } catch { /* falls back at request time */ }
   }
-  return pcmToWav(Buffer.from(pcm16.buffer), audio.sampling_rate);
 }
 
 // Engine -> synth fn. synthesizeWav tries the configured engine first, then the
@@ -230,20 +272,16 @@ export async function synthesizeWav(text, opts = {}) {
   throw new Error(`all TTS engines failed: ${lastErr?.message || lastErr}`);
 }
 
-// List selectable Kokoro voices: [{ id, name, language, gender, grade }, ...].
-// Returns [] if Kokoro isn't the active engine or fails to load.
+// List selectable Kokoro voices: [{ id, name, language, gender }, ...].
+// Multilingual — id prefix encodes the language + gender.
 export async function listVoices() {
   if (TTS_ENGINE !== "kokoro") return [];
-  try {
-    const tts = await loadKokoro();
-    return Object.entries(tts.voices || {}).map(([id, v]) => ({
-      id, name: v?.name, language: v?.language, gender: v?.gender,
-      grade: v?.overallGrade,
-    }));
-  } catch (e) {
-    console.warn(`[tts] listVoices failed (${e?.message || e})`);
-    return [];
-  }
+  return KOKORO_VOICE_IDS.map((id) => ({
+    id,
+    name: id.split("_")[1].replace(/^\w/, (c) => c.toUpperCase()),
+    language: KOKORO_LANG_LABEL[id[0]] || "?",
+    gender: id[1] === "m" ? "Male" : "Female",
+  }));
 }
 
 function pcmToWav(pcm, rate) {

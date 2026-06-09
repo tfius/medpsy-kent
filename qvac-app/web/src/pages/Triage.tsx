@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { chatStream, type Msg } from "../lib/openai";
 import { seed, isConclusion, parseTriage, questionText, CONCLUDE_NUDGE, type Triage as T } from "../lib/triage";
-import { speak, stopSpeaking, listenLocal, sttSupported, fetchVoices, getVoice, setVoice, type Voice, type ListenControl } from "../lib/speech";
+import { speak, stopSpeaking, listenLocal, sttSupported, type ListenControl } from "../lib/speech";
 import { SpeakButton } from "../lib/voice";
 import { TriageResult, useHelp } from "../lib/ui";
 import { useEncounter } from "../store";
-import { useT } from "../lib/prefs";
+import { useT, usePrefs } from "../lib/prefs";
 
 type Turn = { who: "bot" | "me"; text: string; reason?: string };
 const CAP = 6; // max questions before we force a conclusion
@@ -16,6 +16,7 @@ export default function Triage() {
   const nav = useNavigate();
   const { openHelp } = useHelp();
   const T = useT();
+  const { autoSpeak } = usePrefs();
   const [complaint, setComplaint] = useState(enc.situation.complaint);
   const [started, setStarted] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -31,12 +32,6 @@ export default function Triage() {
   const [result, setResult] = useState<T | null>(enc.outcome);
   const [resultReason, setResultReason] = useState(""); // reasoning behind the final verdict
   const [err, setErr] = useState("");
-  const [autoSpeak, setAutoSpeak] = useState<boolean>(() => {
-    try { return localStorage.getItem("medpsy.autoSpeak") !== "0"; } catch { return true; }
-  });
-  useEffect(() => {
-    try { localStorage.setItem("medpsy.autoSpeak", autoSpeak ? "1" : "0"); } catch { /* ignore */ }
-  }, [autoSpeak]);
 
   // Hands-free: once you answer by voice we keep the mic on (auto-arm after each
   // spoken question), for a natural back-and-forth. Typing or tapping the mic off
@@ -158,14 +153,6 @@ export default function Triage() {
       <h1>{T("tri.title")}</h1>
       <p className="lead">{T("tri.lead")}</p>
 
-      <div className="voice-controls">
-        <VoicePicker />
-        <label className="toggle" title="Read each triage question aloud as it arrives">
-          <input type="checkbox" checked={autoSpeak} onChange={(e) => setAutoSpeak(e.target.checked)} />
-          🔊 {T("tri.autospeak")}
-        </label>
-      </div>
-
       {!started ? (
         <div className="card">
           <label htmlFor="c">{T("tri.complaintQ")}</label>
@@ -249,39 +236,5 @@ export default function Triage() {
         </>
       )}
     </>
-  );
-}
-
-// On-device TTS voice selector (Kokoro). Hidden if the speech server offers no
-// voices (e.g. not running). The chosen voice is persisted and used by `speak`.
-function VoicePicker() {
-  const [voices, setVoices] = useState<Voice[]>([]);
-  const [sel, setSel] = useState(getVoice());
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchVoices().then((vs) => {
-      if (cancelled) return;
-      setVoices(vs);
-      if (vs.length && !vs.some((v) => v.id === sel)) {
-        const def = vs.find((v) => v.id === "af_heart") || vs[0];
-        setSel(def.id); setVoice(def.id);
-      }
-    });
-    return () => { cancelled = true; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (!voices.length) return null;
-  const label = (v: Voice) =>
-    `${v.name || v.id} — ${v.gender || "?"}, ${v.language || "?"}${v.grade ? ` (${v.grade})` : ""}`;
-
-  return (
-    <div className="voice-picker">
-      <label htmlFor="voice">🔊 Voice</label>
-      <select id="voice" value={sel} onChange={(e) => { setSel(e.target.value); setVoice(e.target.value); }}>
-        {voices.map((v) => <option key={v.id} value={v.id}>{label(v)}</option>)}
-      </select>
-      <SpeakButton text="Hello, this is medpsy. How can I help you today?" voice={sel} label="Preview" />
-    </div>
   );
 }

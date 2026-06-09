@@ -4,7 +4,7 @@ import Triage from "./pages/Triage";
 import History from "./pages/History";
 import { Identify, Consent, Context, Intake, Route as RoutePage, Validate, Billing } from "./pages/scaffolds";
 import { useEncounter, type Encounter } from "./store";
-import { usePrefs, useT, LANGS, type Lang, type UiScale } from "./lib/prefs";
+import { usePrefs, useT, type UiScale } from "./lib/prefs";
 import { HelpProvider, HelpButton } from "./lib/ui";
 
 type Step = { path: string; key: string; el: ReactNode; clinician?: boolean };
@@ -40,7 +40,7 @@ export default function App() {
   const { pathname } = useLocation();
   const nav = useNavigate();
   const { enc, reset } = useEncounter();
-  const { lang, setLang, scale, setScale } = usePrefs();
+  const { scale, setScale, demo, setDemo } = usePrefs();
   const T = useT();
   const current = Math.max(0, STEPS.findIndex((s) => s.path === pathname));
 
@@ -61,11 +61,6 @@ export default function App() {
         <header className="topbar">
           <div className="brand"><span className="dot" /> MedPsy&nbsp;Triage <small>· local-first · QVAC</small></div>
           <div className="topbar-controls">
-            <label className="sr-only" htmlFor="lang">{T("language")}</label>
-            <select id="lang" className="lang-select" value={lang}
-              onChange={(e) => setLang(e.target.value as Lang)} title={T("language")}>
-              {LANGS.map((l) => <option key={l.code} value={l.code}>{l.flag} {l.label}</option>)}
-            </select>
             <div className="textsize" role="group" aria-label={T("textSize")} title={T("textSize")}>
               {SCALES.map((s, i) => (
                 <button key={s} type="button" className={`ts${scale === s ? " active" : ""}`}
@@ -80,7 +75,7 @@ export default function App() {
 
         <nav className="rail" aria-label="Progress">
           {STEPS.map((s, i) => {
-            const enabled = reached(enc, i) || i === current;
+            const enabled = demo || reached(enc, i) || i === current;
             const done = i < current && reached(enc, i);
             const cls = `step${i === current ? " active" : ""}${done ? " done" : ""}${s.clinician ? " clinician" : ""}${enabled ? "" : " locked"}`;
             const inner = (<><span className="num">{done ? "✓" : i + 1}</span><span className="lbl">{T(`step.${s.key}`)}</span></>);
@@ -97,6 +92,13 @@ export default function App() {
             {STEPS.map((s) => <Route key={s.path} path={s.path} element={s.el} />)}
           </Routes>
         </main>
+
+        <footer className="app-footer">
+          <label className="demo-toggle">
+            <input type="checkbox" checked={demo} onChange={(e) => setDemo(e.target.checked)} />
+            🔓 Unlock all steps <span className="badge">demo</span>
+          </label>
+        </footer>
       </div>
     </HelpProvider>
   );

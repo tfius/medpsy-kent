@@ -860,3 +860,45 @@ pending); the app runs at **:5173** (5174 is a different project).
 **Deferred (noted, not done):** full UI translation (only core patient strings are localized),
 auto-switching the TTS voice per language, and a hands-free "tap-to-edit" grace window before
 auto-submit (conflicts with the no-Send flow).
+
+---
+
+## 2026-06-09 — Multilingual TTS that actually works, 8 languages, welcome-page redesign
+
+A long polish pass that turned the multilingual story from "translated UI" into "the
+kiosk genuinely speaks and listens in your language" — plus the fix that made it real.
+
+**The TTS bug + fix (the headline).** Voice settings had been on the triage screen (step
+5) — nonsensical when the flow starts at step 1 and read-aloud is used from consent (step
+2) on. Moving them to step 1 surfaced the real problem: **kokoro-js (the Node TTS) is
+English-only.** Its voice metadata lists only English voices and its JS phonemizer has no
+Chinese/Japanese G2P — so French was read with English phonemes and Mandarin was read
+character-by-character. Fix: route server TTS through a **persistent Python `kokoro-onnx`
+worker** (`scripts/tts_worker.py`), mirroring the STT worker — loads Kokoro-v1.0 once,
+stays warm, and synthesizes with the **correct language derived from the voice id**
+(`ff_siwis`→fr-fr, `zf_xiaoxiao`→cmn, `if_sara`→it…). Verified over HTTP: French/Mandarin/
+Italian/Spanish all produce distinct, correctly-phonemized audio in ~0.8 s warm. `listVoices`
+now returns the real multilingual set (20 voices across en/es/fr/it/zh/hi/pt/ja). Same
+dev-coupling caveat as STT (harness Python env + Kokoro v1.0 model, symlinked into models/,
+env-overridable).
+
+**8 languages.** Added German, Italian, French (full UI translations via 3 parallel
+translation agents, formal register) on top of en/sl/es/zh/yue. The voice picker is now
+**language-aware** — filters Kokoro voices to the chosen language and auto-switches the
+default voice. A **speech-support panel** on step 1 shows, per language, whether STT
+(Nemotron, 40 locales) and TTS (Kokoro) are supported.
+
+**Speech reality per language** (now accurate in the UI): en/fr/es/it ✓ both; zh ✓ (Mandarin);
+**de** STT✓ but no Kokoro voice → English voice; **sl** STT beta + no voice; **yue** STT
+unsupported + Mandarin voice. The picker now puts the no-native-voice languages (de, sl, yue)
+on a **separate, dashed-box line** marked "🔊 voice not available yet".
+
+**Welcome-page redesign.** Split the cramped step-1 card into two: a clean **sign-in card**
+(name + Continue) and a separate **"Language & voice" card** below (language picker, speech
+support, voice picker, auto-speak). `autoSpeak` lifted from local Triage state into shared
+prefs so it's a start-of-session choice.
+
+**Demo unlock.** The gated rail blocked testers; added a persisted **demo** pref + a
+site-wide **footer toggle** ("🔓 Unlock all steps") that lets the rail bypass the data gating.
+
+New: `scripts/tts_worker.py`, i18n `de/it/fr.json`. Verified `tsc` + `vite build` + HTTP TTS.

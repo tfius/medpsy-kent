@@ -1,8 +1,34 @@
 // Shared UI: accessible modal, the app-wide Help/Emergency system, triage-band
 // helpers, and the unified TriageResult (patient vs clinician views).
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { useT } from "./prefs";
+import { useT, usePrefs, LANGS } from "./prefs";
 import type { Triage } from "./triage";
+
+// Segmented language picker (start-of-session choice; lives on the welcome step).
+// Fully-supported languages sit on the first line; languages without a native voice
+// yet (beta) are set apart on a second line with a note.
+export function LanguagePicker() {
+  const { lang, setLang } = usePrefs();
+  const opt = (l: typeof LANGS[number]) => (
+    <button key={l.code} type="button" aria-pressed={lang === l.code}
+      className={`lang-opt${lang === l.code ? " active" : ""}`} onClick={() => setLang(l.code)}>
+      <span className="flag" aria-hidden="true">{l.flag}</span>
+      <span className="name">{l.label}</span>
+    </button>
+  );
+  const limited = LANGS.filter((l) => l.limited);
+  return (
+    <div className="lang-picker-wrap" role="group" aria-label="Language">
+      <div className="lang-picker">{LANGS.filter((l) => !l.limited).map(opt)}</div>
+      {limited.length > 0 && (
+        <div className="lang-picker limited">
+          {limited.map(opt)}
+          <span className="lang-note">🔊 voice not available yet</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------- Modal
 export function Modal({ title, onClose, children }:

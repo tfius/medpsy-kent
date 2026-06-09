@@ -7,9 +7,9 @@ import { useNavigate } from "react-router-dom";
 import { useEncounter } from "../store";
 import { chat } from "../lib/openai";
 import { sha256Hex, newId } from "../lib/sign";
-import { VoiceTextarea, SpeakButton } from "../lib/voice";
-import { useHelp, TriageResult } from "../lib/ui";
-import { useT } from "../lib/prefs";
+import { VoiceTextarea, SpeakButton, VoicePicker, SpeechSupport } from "../lib/voice";
+import { useHelp, TriageResult, LanguagePicker } from "../lib/ui";
+import { useT, usePrefs } from "../lib/prefs";
 
 const Badge = ({ children = "MOCK" }: { children?: ReactNode }) => <span className="badge">{children}</span>;
 const Todo = ({ children }: { children: ReactNode }) => <div className="placeholder">{children}</div>;
@@ -32,17 +32,30 @@ export function Identify() {
   const { set, enc } = useEncounter();
   const nav = useNavigate();
   const T = useT();
+  const { autoSpeak, setAutoSpeak } = usePrefs();
   return (
     <>
       <div className="eyebrow">{T("id.eyebrow")}</div>
       <h1>{T("id.title")}</h1>
       <p className="lead">{T("id.lead")}</p>
+
       <div className="card">
         <label htmlFor="n">{T("id.name")}</label>
         <input id="n" defaultValue={enc.patient?.name || ""} placeholder={T("id.namePh")}
           onChange={(e) => set({ patient: { id: "MRN-DEMO", name: e.target.value } })} />
         <Todo>Card / QR / biometric → resolve hospital MRN (the PII anchor / patient identity). <Badge>to productionise</Badge></Todo>
         <div className="row"><button className="btn block" onClick={() => nav("/consent")} disabled={!enc.patient?.name}>{T("continue")} →</button></div>
+      </div>
+
+      <div className="card settings-card">
+        <label className="picker-label">🌐 {T("language")}</label>
+        <LanguagePicker />
+        <SpeechSupport />
+        <VoicePicker />
+        <label className="toggle" style={{ marginTop: 12 }}>
+          <input type="checkbox" checked={autoSpeak} onChange={(e) => setAutoSpeak(e.target.checked)} />
+          🔊 {T("tri.autospeak")}
+        </label>
       </div>
     </>
   );

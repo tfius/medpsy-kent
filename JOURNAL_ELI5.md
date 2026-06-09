@@ -363,6 +363,29 @@ Bottom line: more people can use it in their own language, and you can see the "
 
 ---
 
+## Session 19 — Making it really speak your language (and a tidier welcome)
+
+We discovered the voices weren't actually speaking the right language. If you picked French, it read the
+French words with an English mouth; if you picked Chinese, it read the characters one by one. The little
+voice engine we were using only really knows English. So we swapped in a better engine (the same one our
+test app uses) that genuinely speaks French, Spanish, Italian and Chinese — and we checked: now French
+sounds French and Chinese sounds Chinese.
+
+We also **added three more languages** — German, French and Italian — so the kiosk now offers **eight**.
+And we made it honest about what works: a little panel shows, for the language you picked, whether it can
+**listen** to you and **read aloud** in that language. The languages that don't have a real voice yet
+(German, Slovenian, Cantonese) are now shown on their own line with a clear "voice not available yet" note,
+instead of pretending.
+
+Two tidy-ups: we **moved the voice and language settings to the very first screen** (where you start),
+since that's where it makes sense — and split that screen into a clean "sign in" card plus a separate
+"language & voice" card, so it's not cramped. And we added a small **"unlock all steps"** switch at the
+bottom (for testing) so you can jump around the screens freely.
+
+Bottom line: it now truly speaks (and listens) in many languages, and tells you honestly which ones work.
+
+---
+
 ## The whole story in three sentences
 
 We built a tiny medical AI helper, tried our hardest to break it, and found its
