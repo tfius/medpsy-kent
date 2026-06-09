@@ -10,7 +10,10 @@
   "scripts": {
     "build-icd-index": "node src/build-index.js",
     "triage": "node src/cli.js",
-    "serve": "node src/server.js"
+    "serve": "node src/server.js",
+    "check": "node scripts/preflight.mjs",
+    "download-models": "node scripts/preflight.mjs --download",
+    "start": "bash scripts/start.sh"
   },
   "dependencies": {
     "@qvac/sdk": "^0.12.2",
