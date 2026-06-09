@@ -13,7 +13,9 @@
     "serve": "node src/server.js"
   },
   "dependencies": {
-    "@qvac/sdk": "^0.12.2"
+    "@qvac/sdk": "^0.12.2",
+    "kokoro-js": "^1.2.1",
+    "onnxruntime-node": "^1.26.0"
   },
   "optionalDependencies": {
     "@sqliteai/sqlite-wasm": "*"

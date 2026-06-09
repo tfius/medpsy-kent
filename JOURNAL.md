@@ -709,3 +709,76 @@ API (verified from QVAC examples):
 - Web kiosk: `lib/speech.ts` + Triage 🔊 read-aloud (uses `/api/tts`, Web Speech fallback) and 🎤
   dictate (browser recognizer; `/api/stt` is the on-device path for native/Expo). "type or speak" is now real.
 - Not runnable here (needs `@qvac/sdk` + model files on a QVAC device); code verified by node --check / tsc.
+
+---
+
+## 2026-06-08 — Proof: actually ran Nemotron-3.5-ASR on-device (parakeet.cpp harness)
+
+The STT/TTS entry above was research + code we couldn't execute (no QVAC device). So I built a
+throwaway mic→text harness against the *same engine* QVAC uses — **mudler/parakeet.cpp** — to confirm
+the model actually runs locally before we trust it in the kiosk. Lives at
+`/Users/tex/repos/tfius/nemotron-asr-test` (sibling of this repo). **It works: real-time, offline,
+on Apple-Silicon Metal.**
+
+- **It loads and transcribes correctly.** `nemotron-3.5-asr-streaming-0.6b-q8_0.gguf` (~940 MB, from
+  `mudler/parakeet-cpp-gguf`) transcribed the sample clip word-perfect. Confirms the "usable" verdict
+  in practice, not just on paper.
+- **Latency is comfortably real-time:** decode real-time factor ≈ **0.13×** (7.4 s of audio in ~0.9 s).
+  First call pays a one-time Metal-kernel compile (~10 s) that's cached afterwards → second run 0.67 s.
+- **`--lang` (default `auto`) works** on both the CLI and the streaming API; the model emits inline
+  language tags like `<en-US>` in the text — **strip these downstream** before showing/parsing.
+- **Key integration learning for qvac-app:** the CLI's `--stream` flag **only replays a finished WAV
+  file** — it does *not* capture a live mic. Genuine live streaming requires the C-API
+  `parakeet_capi_stream_*` (`stream_begin_lang` / `feed` / `finalize`), feeding 16 kHz mono float PCM
+  block-by-block. That's exactly the shape of QVAC's `transcribeStream` — so our voice intake should
+  target the streaming API, not one-shot `transcribe`, for the "partial text as you speak" UX.
+- **Two gotchas worth remembering:** (1) parakeet.cpp's `third_party/ggml` submodule fails the recursive
+  clone ("invalid index-pack") — clone it directly at the pinned commit. (2) The ggml-Metal backend
+  **asserts on teardown** (`GGML_ASSERT rsets->data count == 0`) when you free the C-API context; on a
+  short-lived process just skip the frees and hard-exit. **Flag for the long-lived qvac-app process** —
+  if the bundled parakeet-cpp has the same bug, model unload/reload could crash the kiosk.
+- Build that gave both the CLI (batch) and the shared lib (streaming):
+  `cmake -B build -DPARAKEET_BUILD_CLI=ON -DPARAKEET_SHARED=ON -DPARAKEET_GGML_METAL=ON`.
+
+Net: voice intake is de-risked. The exact model + flags + latency we'd wire into `qvac-app/src/speech.js`
+are now confirmed on real hardware.
+
+---
+
+## 2026-06-08 — Voice loop (STT→medpsy→TTS) + Kokoro TTS, in the test harness and qvac-app
+
+Extended the throwaway harness into a full **speak → think → reply → speak** loop, then ported the nice
+parts (TTS engine) into the real `qvac-app`.
+
+**Test harness (`nemotron-asr-test`):**
+- **Turn-taking is free.** The streaming model's **end-of-utterance (`[EOU]`) event *is* the pause
+  signal** — no separate VAD. On each EOU the finalized utterance goes to **medpsy** on LM Studio
+  (`/v1/chat/completions`, `medpsy-4b`), reply streamed back. New flags: `--llm`, `--speak`,
+  `--tts {auto,kokoro,say,off}`, `--voice`, `--llm-model/--llm-url`.
+- **Reasoning vs answer:** LM Studio puts medpsy's thinking on a separate `reasoning_content` SSE
+  channel and the answer on `content`. We print thinking under `[thinking]` and the answer under
+  `[medpsy]`, and **only the answer is spoken** — never the thinking.
+- After each reply we discard mic audio captured during synthesis (kills speaker echo) so the next turn
+  starts clean.
+
+**TTS upgrade — Kokoro (replaces robotic macOS `say`):**
+- macOS `say` is bad and Mac-only → demoted to last-resort fallback. **Kokoro 82M** is now primary,
+  played cross-platform through sounddevice. In the harness via `kokoro-onnx` (no PyTorch); synth ≈
+  **0.24× real-time**.
+
+**qvac-app integration (`src/speech.js`, `config.js`, `server.js`, web):**
+- Wired Kokoro via **`kokoro-js`** (Node-native ONNX/transformers.js — **no `@qvac/sdk` native build
+  needed**, so TTS works even in the LM-Studio dev path). `synthesizeWav` is now a **fallback chain**
+  (`MEDPSY_TTS_ENGINE` default `kokoro` → `supertonic`), so a missing engine degrades instead of
+  erroring. Kokoro's float samples are converted to **16-bit PCM WAV** (same format as the Supertonic
+  path), so `/api/tts` and the web player are unchanged.
+- **Voice picker in the web UI:** `/api/tts` now takes `{text, voice}`, new `GET /api/tts/voices` lists
+  the **28 Kokoro voices**; Triage page gets a `<VoicePicker>` (dropdown + ▶ Preview), persisted in
+  `localStorage`, hidden when the server offers no voices. Verified over HTTP (voices list + voiced
+  synth → valid 24 kHz WAV) and `tsc --noEmit` clean.
+
+**Gotchas:** (1) `kokoro-js` needs `onnxruntime-node`; npm kept failing on an `@qvac/sdk` `bare-runtime`
+rename — clean the leftover `.bare-runtime*` temp dirs and retry. (2) `kokoro-js` bundles all voice
+`.bin` files locally and resolves them via `import.meta.dirname` — fine under `node <file>` (and the
+server), but breaks under `node -e` eval (resolves `../voices` against cwd). Don't smoke-test it with
+`-e`.

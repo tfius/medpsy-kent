@@ -29,3 +29,13 @@ export const MAX_TOKENS = 8192; // >=8k headroom for reasoning models
 export const STT_MODEL_SRC = process.env.MEDPSY_STT_GGUF || null;
 export const TTS_MODEL_SRC = process.env.MEDPSY_TTS_GGUF || null; // Chatterbox by default
 export const SPEECH_LANG = process.env.MEDPSY_SPEECH_LANG || "auto";
+
+// --- TTS engine selection ---
+// "kokoro"    -> Kokoro 82M ONNX via kokoro-js (on-device, Node-native, no @qvac/sdk
+//                build needed; nice natural voice, ~real-time). Default.
+// "supertonic"-> QVAC SDK Supertonic engine (the previous on-device path).
+export const TTS_ENGINE = process.env.MEDPSY_TTS_ENGINE || "kokoro";
+// kokoro-js pulls quantized ONNX from the HF hub on first use and caches it.
+export const KOKORO_MODEL = process.env.MEDPSY_KOKORO_MODEL || "onnx-community/Kokoro-82M-v1.0-ONNX";
+export const KOKORO_DTYPE = process.env.MEDPSY_KOKORO_DTYPE || "q8"; // fp32|fp16|q8|q4
+export const KOKORO_VOICE = process.env.MEDPSY_TTS_VOICE || "af_heart";

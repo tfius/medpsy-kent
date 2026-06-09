@@ -27,11 +27,24 @@ export async function chat(
   return content;
 }
 
-// Streaming variant: calls onDelta with the accumulated text as tokens arrive; returns
-// the final (think-stripped) content. Used by the triage duel for a live feel.
+// Separate a (possibly streaming/unclosed) content string into reasoning vs answer.
+// Handles <think>…</think> blocks (closed and trailing-open).
+export function splitThink(content: string): { reasoning: string; answer: string } {
+  let reasoning = "";
+  let answer = content.replace(/<think>([\s\S]*?)<\/think>/gi, (_m, inner) => { reasoning += inner; return ""; });
+  const open = answer.indexOf("<think>");
+  if (open !== -1) { reasoning += answer.slice(open + 7); answer = answer.slice(0, open); }
+  return { reasoning: reasoning.trim(), answer: answer.trim() };
+}
+
+export type StreamProgress = { reasoning: string; answer: string };
+
+// Streaming variant: onProgress fires with the accumulated {reasoning, answer} as tokens
+// arrive (reasoning from delta.reasoning_content and/or <think> blocks). Returns the final
+// answer (reasoning stripped). Used by the triage duel for a live feel.
 export async function chatStream(
   messages: Msg[],
-  onDelta: (accumulated: string) => void,
+  onProgress: (p: StreamProgress) => void,
   opts: { temperature?: number; maxTokens?: number } = {},
 ): Promise<string> {
   const res = await fetch("/v1/chat/completions", {
@@ -47,7 +60,7 @@ export async function chatStream(
   if (!res.ok || !res.body) throw new Error(`LLM ${res.status}: ${await res.text().catch(() => "")}`);
   const reader = res.body.getReader();
   const dec = new TextDecoder();
-  let buf = "", full = "";
+  let buf = "", content = "", reasoningField = "";
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -60,10 +73,15 @@ export async function chatStream(
       const payload = l.slice(5).trim();
       if (payload === "[DONE]") continue;
       try {
-        const delta = JSON.parse(payload).choices?.[0]?.delta?.content;
-        if (delta) { full += delta; onDelta(full); }
+        const delta = JSON.parse(payload).choices?.[0]?.delta || {};
+        if (delta.reasoning_content) reasoningField += delta.reasoning_content;
+        if (delta.content) content += delta.content;
+        if (delta.reasoning_content || delta.content) {
+          const { reasoning, answer } = splitThink(content);
+          onProgress({ reasoning: (reasoningField + "\n" + reasoning).trim(), answer });
+        }
       } catch { /* ignore keep-alives / partial frames */ }
     }
   }
-  return full.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+  return splitThink(content).answer;
 }

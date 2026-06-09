@@ -3,15 +3,30 @@
 // is running. STT uses the browser SpeechRecognition for the demo; the on-device QVAC
 // path is POST /api/stt (16 kHz WAV) for native/Expo clients.
 
-export async function speak(text: string): Promise<void> {
+// Selectable on-device TTS voice (Kokoro). Persisted so the choice sticks.
+export interface Voice { id: string; name?: string; language?: string; gender?: string; grade?: string }
+const VOICE_KEY = "medpsy.ttsVoice";
+export function getVoice(): string { try { return localStorage.getItem(VOICE_KEY) || ""; } catch { return ""; } }
+export function setVoice(v: string): void { try { localStorage.setItem(VOICE_KEY, v); } catch { /* ignore */ } }
+
+// Fetch the voices the on-device engine offers (empty if the server/engine has none).
+export async function fetchVoices(): Promise<Voice[]> {
+  try {
+    const r = await fetch("/api/tts/voices");
+    if (r.ok) return (await r.json()).voices || [];
+  } catch { /* server not running */ }
+  return [];
+}
+
+export async function speak(text: string, voice?: string): Promise<void> {
   if (!text) return;
   try {
     const r = await fetch("/api/tts", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, voice: voice || getVoice() || undefined }),
     });
     if (r.ok && (r.headers.get("content-type") || "").includes("audio")) {
-      await playBlob(await r.blob()); // on-device QVAC (Chatterbox) TTS
+      await playBlob(await r.blob()); // on-device TTS (Kokoro, with fallback)
       return;
     }
     throw new Error("tts endpoint unavailable");

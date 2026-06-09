@@ -60,17 +60,29 @@ http.createServer(async (req, res) => {
     });
     return;
   }
-  // On-device TTS: POST {text} -> audio/wav
+  // On-device TTS: POST {text, voice?} -> audio/wav
   if (req.method === "POST" && req.url === "/api/tts") {
     const buf = await readBody(req);
     try {
-      const { text } = JSON.parse(buf.toString() || "{}");
-      const wav = await (await getSpeech()).synthesizeWav(text || "");
+      const { text, voice } = JSON.parse(buf.toString() || "{}");
+      const wav = await (await getSpeech()).synthesizeWav(text || "", { voice });
       res.writeHead(200, { "content-type": "audio/wav" });
       res.end(wav);
     } catch (e) {
       res.writeHead(503, { "content-type": "application/json" });
       res.end(JSON.stringify({ error: `on-device TTS unavailable (@qvac/sdk + model): ${e}` }));
+    }
+    return;
+  }
+  // Selectable TTS voices (Kokoro): GET -> [{ id, name, language, gender, grade }]
+  if (req.method === "GET" && req.url === "/api/tts/voices") {
+    try {
+      const voices = await (await getSpeech()).listVoices();
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ voices }));
+    } catch (e) {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ voices: [], error: String(e) }));
     }
     return;
   }

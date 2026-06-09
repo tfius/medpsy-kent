@@ -245,6 +245,49 @@ So the plan: wire **speak + listen** into the kiosk, all offline.
 
 ---
 
+## Session 14 — We actually tried the listening, and it works
+
+Last time we said the listening model *should* work. Talk is cheap, so this time we **actually ran it**
+on a laptop — no internet — and it really does work. We spoke a sentence; the screen printed it back,
+correctly, almost instantly.
+
+A few things we learned by doing it for real:
+
+- **It's fast enough.** It "hears" about 7× faster than real time — so it easily keeps up with someone
+  talking. (The very first time it's slow for a few seconds while it warms up, then it's quick.)
+- **It writes as you speak**, word by word — but only if you feed it the microphone the *live* way.
+  There's a shortcut that only works on an already-recorded clip; for "watch the words appear as I talk"
+  you have to use the proper live path. Handy to know before we build the microphone screen.
+- **A couple of rough edges** we wrote down so future-us doesn't trip on them: one part of the toolkit
+  needed a manual nudge to download, and the speech engine throws a harmless tantrum when you shut it
+  down — fine for a quick test, but something to watch when it runs all day on a kiosk.
+
+Bottom line: "speak your symptoms" is no longer a maybe — we've seen it work with our own eyes, so
+wiring it into the kiosk is now low-risk.
+
+---
+
+## Session 15 — A real back-and-forth voice chat, in a nicer voice
+
+We connected the pieces into an actual conversation: you **speak**, and the moment you **pause**, it
+sends your words to the medical AI, which **talks back** — then you speak again. The clever bit: the
+listening model already knows when you've stopped talking (it has a built-in "they finished" signal), so
+we didn't need anything extra to take turns.
+
+Because the AI "thinks out loud" before answering, we show its thinking on screen **but only read the
+final answer aloud** — you don't want to hear it mumbling its reasoning.
+
+Then the voice itself. The robotic built-in Mac voice was rough, so we switched to a small, friendly
+neural voice called **Kokoro** — it sounds natural, runs on the device, and is quick. You liked it, so we
+also added it to the **real kiosk app**: it's now the default voice there, and if it ever fails the app
+quietly falls back to the previous engine. We even added a little **voice menu** in the app — 28 voices
+(American, British, and more, male and female) with a **Preview** button — and your pick is remembered.
+
+Bottom line: the kiosk can now genuinely **listen, think, and speak back** — in a voice that doesn't make
+people wince.
+
+---
+
 ## The whole story in three sentences
 
 We built a tiny medical AI helper, tried our hardest to break it, and found its

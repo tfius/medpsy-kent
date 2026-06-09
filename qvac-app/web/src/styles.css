@@ -99,6 +99,21 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--b
 .typing { color: var(--muted); font-style: italic; align-self: flex-start; white-space: pre-wrap; }
 .cursor { animation: blink 1s steps(2) infinite; font-style: normal; }
 @keyframes blink { 50% { opacity: 0; } }
+
+/* collapsible reasoning — a thin line, collapsed by default */
+.thinking { align-self: flex-start; max-width: 88%; font-size: 13px; }
+.thinking > summary { cursor: pointer; color: var(--muted); list-style: none; padding: 4px 0; user-select: none; }
+.thinking > summary::-webkit-details-marker { display: none; }
+.thinking > summary::before { content: "▸ "; color: var(--muted); }
+.thinking[open] > summary::before { content: "▾ "; }
+.think-body { white-space: pre-wrap; color: var(--muted); background: var(--bg); border-left: 3px solid var(--line);
+  border-radius: 8px; padding: 8px 12px; margin-top: 4px; max-height: 180px; overflow-y: auto; }
+
+/* mic + listening indicator */
+.btn.mic.listening { background: var(--red); color: #fff; border-color: var(--red); animation: pulse 1.1s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(220,38,38,.45); } 50% { box-shadow: 0 0 0 8px rgba(220,38,38,0); } }
+.listening-bar { display: flex; align-items: center; gap: 8px; margin: 8px 0; padding: 8px 14px; border-radius: 12px;
+  background: var(--red-soft); color: var(--red); font-weight: 600; animation: pulse 1.1s ease-in-out infinite; }
 .bubble.bot { position: relative; }
 .bubble .speak { border: none; background: transparent; cursor: pointer; font-size: 14px; margin-left: 8px; opacity: .55; vertical-align: middle; }
 .bubble .speak:hover { opacity: 1; }
@@ -124,6 +139,12 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--b
   color: var(--amber); background: var(--amber-soft); border: 1px solid #f3d9a6; border-radius: 6px; padding: 1px 7px; margin-left: 8px; vertical-align: middle; }
 .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; word-break: break-all; color: var(--muted); }
 .sbar { white-space: pre-wrap; background: var(--brand-soft); color: var(--brand-ink); border-radius: 12px; padding: 14px 16px; }
+
+.voice-picker { display: flex; align-items: center; gap: 8px; margin: -4px 0 16px; flex-wrap: wrap; }
+.voice-picker label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.voice-picker select { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); color: var(--ink); font-size: 13px; font-family: var(--font); }
+.voice-picker .btn.ghost { padding: 6px 10px; font-size: 13px; }
 
 /* ---------- responsive ---------- */
 @media (max-width: 560px) {
