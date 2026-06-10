@@ -10,7 +10,7 @@ exception is the browser Web Speech TTS fallback, used only if the `:8787` API i
 | # | Capability | Model (quant) | Runs / served on | Library / provider | QVAC SDK? | Own code? |
 |---|---|---|---|---|---|---|
 | 1 | **LLM triage reasoning** | medpsy-4b (`q4_k_m-imat`); medpsy-1.7b (`q5_k_m`) available | **dev:** LM Studio `:1234` · **prod:** on-device | OpenAI `/v1` (dev) / QVAC `completion` (llama.cpp) | ✅ prod path | provider abstraction |
-| 2 | **Embeddings** (ICD grounding) | **dev:** nomic-embed-text-v1.5 (768-d) · **prod:** GTE-large (fp16, 1024-d) | same backends as LLM | LM Studio `/v1/embeddings` / QVAC `embed` | ✅ prod path | — |
+| 2 | **Embeddings** (ICD grounding) | **nomic-embed-text-v1.5 (768-d)** — dev via LM Studio, prod via a **local nomic gguf** (no P2P; not GTE-large) | same backends as LLM | LM Studio `/v1/embeddings` / QVAC `embed` (local gguf) | ✅ prod path | — |
 | 3 | **ICD-10 vector search** | — (cosine over 12,246 vectors) | Node, in-process `:8787` | **own** flat-cosine; optional SQLite-vector (`@sqliteai`) | ❌ (roadmap: `@qvac/rag`) | ✅ `icd.js` |
 | 4 | **ICD-10 knowledge base** | WHO ICD-10, 12,246 codes (768-d index, 37 MB) | static files in `data/` | exported via `simple-icd-10` | ❌ | ✅ |
 | 5 | **STT (speech→text)** | Nemotron-3.5-ASR-streaming-0.6b (`q8_0`); **Cantonese → SenseVoice-Small** (int8) | `:8787` → subprocess | **own** parakeet.cpp (lib/CLI) → QVAC fallback; **sherpa-onnx** for yue | ✅ fallback only | ✅ engine chain |

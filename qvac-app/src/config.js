@@ -15,7 +15,10 @@ import fs from "node:fs";
 const ROOT = path.join(import.meta.dirname, "..");
 const MODELS = path.join(ROOT, "models");
 export const QVAC_LLM_GGUF = process.env.MEDPSY_GGUF || path.join(MODELS, "medpsy-4b.gguf");
-export const QVAC_EMBED_GGUF = process.env.MEDPSY_EMBED_GGUF || null; // null -> registry embed model
+// Embeddings: same model as the LM Studio dev path (nomic-embed-text-v1.5, 768-d) but as a
+// LOCAL gguf — so dev and on-device share one embedder + the one 768-d ICD index, with no
+// P2P registry download (we deliberately do NOT use the registry GTE-large 1024-d model).
+export const QVAC_EMBED_GGUF = process.env.MEDPSY_EMBED_GGUF || path.join(MODELS, "nomic-embed-text-v1.5.Q8_0.gguf");
 
 // nomic-style prefixes help retrieval models separate corpus vs query.
 export const DOC_PREFIX = "search_document: ";

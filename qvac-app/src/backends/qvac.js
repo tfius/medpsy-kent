@@ -5,7 +5,7 @@ import { QVAC_LLM_GGUF, QVAC_EMBED_GGUF, TEMPERATURE } from "../config.js";
 
 export async function makeQvacProvider() {
   const sdk = await import("@qvac/sdk"); // dynamic so LM-Studio mode needs no native build
-  const { loadModel, completion, embed, unloadModel, GTE_LARGE_FP16 } = sdk;
+  const { loadModel, completion, embed, unloadModel } = sdk;
   let llmId, embId;
 
   return {
@@ -13,10 +13,8 @@ export async function makeQvacProvider() {
 
     async init(onProgress) {
       llmId = await loadModel({ modelSrc: QVAC_LLM_GGUF, modelType: "llm", onProgress });
-      embId = await loadModel({
-        modelSrc: QVAC_EMBED_GGUF || GTE_LARGE_FP16,
-        modelType: "embeddings", onProgress,
-      });
+      // Local nomic gguf (no registry/P2P) — matches the 768-d ICD index.
+      embId = await loadModel({ modelSrc: QVAC_EMBED_GGUF, modelType: "embeddings", onProgress });
     },
 
     async complete(history, { temperature = TEMPERATURE } = {}) {

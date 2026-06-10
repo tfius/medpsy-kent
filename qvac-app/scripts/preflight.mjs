@@ -9,7 +9,7 @@ import path from "node:path";
 import { spawnSync, execFileSync } from "node:child_process";
 import {
   STT_GGUF, PARAKEET_BIN, PARAKEET_LIB, KOKORO_ONNX, KOKORO_VOICES_BIN, KOKORO_PY,
-  LMSTUDIO_URL, LMSTUDIO_LLM,
+  LMSTUDIO_URL, LMSTUDIO_LLM, QVAC_LLM_GGUF, QVAC_EMBED_GGUF,
   SHERPA_PY, SENSEVOICE_ONNX, CANTO_TTS_ONNX,
 } from "../src/config.js";
 
@@ -23,6 +23,8 @@ const mb = (p) => { try { return `${(fs.statSync(p).size / 1e6).toFixed(0)} MB`;
 const DOWNLOADS = [
   { label: "Nemotron-3.5-ASR GGUF (STT model)", dest: STT_GGUF, size: "~940 MB",
     url: "https://huggingface.co/mudler/parakeet-cpp-gguf/resolve/main/nemotron-3.5-asr-streaming-0.6b-q8_0.gguf?download=true" },
+  { label: "nomic-embed-text-v1.5 GGUF (QVAC embeddings, 768-d)", dest: QVAC_EMBED_GGUF, size: "~146 MB",
+    url: "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.Q8_0.gguf?download=true" },
   { label: "Kokoro v1.0 ONNX (TTS model)", dest: KOKORO_ONNX, size: "~310 MB",
     url: "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx" },
   { label: "Kokoro voices (TTS)", dest: KOKORO_VOICES_BIN, size: "~27 MB",
@@ -87,6 +89,11 @@ async function main() {
   console.log(`${c.b}LLM${c.x} — medpsy via LM Studio (or QVAC SDK)`);
   const lm = await lmStudioOk();
   ok &= row(lm.ok, "LM Studio", lm.detail, "start LM Studio, load medpsy-4b + nomic-embed, enable server on :1234");
+
+  console.log(`\n${c.b}QVAC on-device backend${c.x} ${c.d}(optional; MEDPSY_BACKEND=qvac — no LM Studio, no P2P)${c.x}`);
+  const qLlm = ex(QVAC_LLM_GGUF), qEmb = ex(QVAC_EMBED_GGUF);
+  row(qLlm, "medpsy LLM gguf (local)", qLlm ? mb(QVAC_LLM_GGUF) : "symlink models/medpsy-4b.gguf", "point MEDPSY_GGUF at a local medpsy gguf");
+  row(qEmb, "nomic embeddings gguf (local, 768-d)", qEmb ? mb(QVAC_EMBED_GGUF) : "~146 MB", "npm run download-models");
 
   console.log(`\n${c.b}ICD-10 grounding${c.x}`);
   const idx = path.join(ROOT, "data", "icd10.index.bin");
