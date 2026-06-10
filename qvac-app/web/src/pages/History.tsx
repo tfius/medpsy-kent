@@ -2,10 +2,11 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { chat } from "../lib/openai";
 import { refine, parseTriage, type Triage } from "../lib/triage";
+import { toEnglish, localizeTriage } from "../lib/translate";
 import { getMockEhr, ehrText, type EhrRecord } from "../lib/mockEhr";
 import { useEncounter } from "../store";
 import { TriageResult, useHelp } from "../lib/ui";
-import { useT } from "../lib/prefs";
+import { useT, usePrefs } from "../lib/prefs";
 
 // Step 6 — conditional history. For urgent/severe cases, retrieve the authoritative
 // record and RE-TRIAGE: the record can add precautions or escalate. Routine cases skip.
@@ -14,6 +15,7 @@ export default function History() {
   const nav = useNavigate();
   const { openHelp } = useHelp();
   const T = useT();
+  const { lang } = usePrefs();
   const original = enc.outcome;
   const urgent = !!original && original.band !== "GREEN";
 
@@ -25,10 +27,12 @@ export default function History() {
   async function reTriage(record: EhrRecord) {
     setBusy(true); setErr("");
     try {
-      const reply = await chat(refine(enc.situation.complaint, enc.situation.intake, ehrText(record)));
+      // medpsy reasons in English; complaint/intake were captured in the patient's language.
+      const [cEN, iEN] = await Promise.all([toEnglish(enc.situation.complaint, lang), toEnglish(enc.situation.intake, lang)]);
+      const reply = await chat(refine(cEN, iEN, ehrText(record)));
       const t = parseTriage(reply);
-      setRefined(t);
-      set({ outcome: t }); // the refined outcome carries forward
+      set({ outcome: t }); // English outcome carries forward (SBAR / ICD / clinician view)
+      setRefined(await localizeTriage(t, lang)); // patient-facing copy in their language
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally { setBusy(false); }

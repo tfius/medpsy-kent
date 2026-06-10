@@ -931,3 +931,38 @@ keeps the event loop alive.
 
 New: `scripts/sherpa_stt_worker.py`, `scripts/sherpa_tts_worker.py`. Verified `npm run check`
 shows all three Cantonese rows ✓ (SenseVoice 237 MB, VITS 114 MB, sherpa-onnx import).
+
+**Translation bridge — medpsy in any language.** medpsy only reasons in English, but the
+kiosk now speaks 8 languages, so a non-English patient was sending non-English text to a
+model that thinks in English. Fix: conduct the **medpsy conversation entirely in English
+internally**, and translate at the boundary — patient free-text → English *before* each
+medpsy call, medpsy's question/verdict → patient language *after* (for display + TTS).
+medpsy itself never translates; a **separate LM Studio model `gemma-4-26b-a4b-it`** does,
+via the same `/v1` proxy (temperature 0, non-streaming). New `web/src/lib/translate.ts`:
+`toEnglish()`, `fromEnglish()`, `localizeTriage()`; `openai.ts` `chat()` gained an optional
+`model` arg so translation targets gemma while triage stays on medpsy
+(override via `VITE_TRANSLATE_MODEL`).
+
+The invariant that makes it clean: **`msgs` (the medpsy history) is always English; `turns`
+(the chat UI) is always the patient's language.** `Triage.tsx` translates on the way in
+(`begin`/`answer`) and out (`runTurn`), speaks the translated question, and keeps the medpsy
+reply (English) in `msgs` while showing the translated bubble. The **stored `enc.outcome`
+stays English** on purpose — the SBAR handover (paramedics/GP), `/api/icd` grounding, and the
+clinician sign-off all need canonical English; only a **display-only copy** of the patient-
+visible verdict fields (`routing`, `safetyNet`) is translated. `History.tsx` re-triage gets
+the same treatment.
+
+Design/robustness notes: **fails safe** — if gemma isn't loaded, `chat()` throws and
+`translateText` resolves to the original text, so triage degrades to "send the patient's own
+words / show English" rather than breaking. **English is a true no-op** (`from===to` returns
+immediately; zero overhead on the default path, live token stream untouched). The translation
+**cache stores in-flight Promises** (not just results) so identical concurrent calls share one
+round-trip, with a soft cap (>500 → clear) for long kiosk sessions. `localizeTriage` translates
+**only the two fields the patient view renders** — not all four — halving model load per verdict.
+For non-English the premature English answer bubble is suppressed (the live **reasoning** panel
+still streams, preserving the "alive" feel) until the translated bubble lands. Collapsible
+"🧠 reasoning" panels stay English (meta chain-of-thought behind a toggle — not worth the
+latency to translate live). Verified live against gemma: ES↔EN natural, EN→Cantonese in proper
+traditional characters (請即刻前往急症室); `tsc` + `vite build` clean.
+
+New: `web/src/lib/translate.ts`. Touched: `openai.ts`, `pages/Triage.tsx`, `pages/History.tsx`.

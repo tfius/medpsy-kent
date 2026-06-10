@@ -391,6 +391,18 @@ breaking. We also taught the setup checker about them, so `npm run check` tells 
 `npm run download-models` fetches them for you (they come as compressed bundles, so the script unpacks them
 automatically).
 
+Then we hit a snag: our medical brain (medpsy) only understands **English**. So if a patient
+spoke Spanish or Cantonese, we were handing English-only ears a foreign language. The fix: put a
+**translator in the middle**. The patient always sees and hears their own language; behind the
+scenes we quietly translate what they say *into* English for medpsy, and translate medpsy's
+questions and final advice *back* into their language. medpsy never has to learn other languages —
+a separate, bigger model (running locally too) does only the translating. We kept the medical
+conversation itself in English the whole time (so the official handover note, the billing codes,
+and the doctor's review all stay in the one language clinicians expect), and only the parts the
+patient actually reads get translated. And if the translator isn't switched on, nothing breaks —
+it just falls back to the old behaviour. We tested it: Spanish comes out naturally, and Cantonese
+comes out in proper Chinese characters.
+
 Bottom line: it now truly speaks (and listens) in many languages, and tells you honestly which ones work.
 
 ---

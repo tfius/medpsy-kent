@@ -19,7 +19,8 @@ exception is the browser Web Speech TTS fallback, used only if the `:8787` API i
 | 8 | **Mic capture + 16 kHz WAV** | — | browser | MediaRecorder + AudioContext (VAD auto-stop, barge-in) | ❌ | ✅ `web/src/lib/speech.ts` |
 | 9 | **Outcome signing** | SHA-256 hash | browser | Web Crypto `subtle.digest` | ❌ | ✅ `web/src/lib/sign.ts` |
 | 10 | **UI / kiosk** | — | browser (Vite, free port — often `:5175`) | React 18 + Vite + react-router | ❌ | ✅ |
-| 11 | **i18n** | — | browser | **8 languages**: en, de, fr, es, it, sl, zh, yue | ❌ | ✅ |
+| 11 | **i18n** (static UI strings) | — | browser | **8 languages**: en, de, fr, es, it, sl, zh, yue | ❌ | ✅ |
+| 12 | **Live translation** (patient ↔ medpsy) | **dev:** gemma-4-26b-a4b-it · **prod:** on-device LLM | LLM backend (LM Studio `:1234` dev) | OpenAI `/v1` w/ a **separate model** (medpsy reasons in English) | ✅ prod path | ✅ `web/src/lib/translate.ts` |
 
 > **TTS note:** the Node package `kokoro-js` is **English-only** (its JS phonemizer has no
 > Chinese/Japanese G2P), so real multilingual TTS runs through a **Python `kokoro-onnx` worker**
@@ -36,12 +37,24 @@ exception is the browser Web Speech TTS fallback, used only if the `:8787` API i
 > (STT → Nemotron, TTS → Mandarin Kokoro voice). Needs `sherpa-onnx` in the kokoro venv.
 > (We use the sherpa-native Cantonese VITS rather than `mms-tts-yue` — sherpa-onnx doesn't
 > package MMS-yue, and this avoids a torch conversion while giving a real Cantonese voice.)
+>
+> **Translation note:** medpsy reasons **only in English**, so for non-English patients the
+> triage conversation is conducted in English *internally* and translated at the boundary —
+> patient text → English before each medpsy call, medpsy's question/verdict → patient language
+> after (for display + TTS). medpsy never translates; a **separate LLM** (`gemma-4-26b-a4b-it`
+> in dev) does, through the same `/v1` proxy (`web/src/lib/translate.ts`). Invariant: the medpsy
+> message history is always English, the chat UI is always the patient's language. The stored
+> outcome stays **English** (SBAR handover, `/api/icd` grounding and clinician sign-off need
+> canonical English); only the patient-visible verdict fields (`routing`, `safetyNet`) are
+> translated for display. **Fails safe** — if the translation model is absent, triage degrades to
+> the patient's own words rather than breaking; English is a pure no-op. Override the model with
+> `VITE_TRANSLATE_MODEL`.
 
 ## 2. What's served where (processes & ports)
 
 | Endpoint / process | Port | Started by | Serves |
 |---|---|---|---|
-| **LM Studio** | `:1234` | you (external) | LLM + embeddings, OpenAI `/v1` (dev backend) |
+| **LM Studio** | `:1234` | you (external) | LLM (medpsy) + embeddings + **translation model** (`gemma-4-26b-a4b-it`), OpenAI `/v1` (dev backend) |
 | **ICD + speech API** | `:8787` | `npm run serve` (`src/server.js`) | `/api/icd`, `/api/tts`, `/api/tts/voices`, `/api/stt`, `/api/health` |
 | **Parakeet STT worker** | — (subprocess) | spawned by `:8787` | `python3` + `libparakeet.dylib`, keeps Nemotron resident |
 | **Kokoro TTS worker** | — (subprocess) | spawned by `:8787` | `python` + `kokoro-onnx`, keeps Kokoro resident (multilingual) |
@@ -79,6 +92,7 @@ archives — SenseVoice STT + Cantonese VITS TTS). The parakeet.cpp engine must 
 | Var | Default | Options | Controls |
 |---|---|---|---|
 | `MEDPSY_BACKEND` | `lmstudio` | `lmstudio` \| `qvac` | LLM + embeddings provider |
+| `VITE_TRANSLATE_MODEL` | `gemma-4-26b-a4b-it` | any LM Studio model id | translation model (patient ↔ English for medpsy); build-time web env |
 | `ICD_INDEX` | `sqlite` | `sqlite` \| `flat` | ICD vector-search backend (falls back to `flat`) |
 | `MEDPSY_STT_ENGINE` | `auto` | `auto` \| `parakeet-server` \| `parakeet-cli` \| `qvac` | STT engine (auto prefers the resident worker) |
 | `MEDPSY_TTS_ENGINE` | `kokoro` | `kokoro` \| `supertonic` | TTS engine (then falls back to the other) |

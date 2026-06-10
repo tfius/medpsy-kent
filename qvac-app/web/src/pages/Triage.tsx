@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { chatStream, type Msg } from "../lib/openai";
 import { seed, isConclusion, parseTriage, questionText, CONCLUDE_NUDGE, type Triage as T } from "../lib/triage";
 import { speak, stopSpeaking, listenLocal, sttSupported, type ListenControl } from "../lib/speech";
+import { toEnglish, fromEnglish, localizeTriage } from "../lib/translate";
 import { SpeakButton } from "../lib/voice";
 import { TriageResult, useHelp } from "../lib/ui";
 import { useEncounter } from "../store";
@@ -16,7 +17,7 @@ export default function Triage() {
   const nav = useNavigate();
   const { openHelp } = useHelp();
   const T = useT();
-  const { autoSpeak } = usePrefs();
+  const { autoSpeak, lang } = usePrefs();
   const [complaint, setComplaint] = useState(enc.situation.complaint);
   const [started, setStarted] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -43,6 +44,13 @@ export default function Triage() {
   useEffect(() => { handsFreeRef.current = handsFree; }, [handsFree]);
   useEffect(() => { listeningRef.current = listening; }, [listening]);
   useEffect(() => { resultRef.current = result; }, [result]);
+  // A stored outcome (revisiting the step) is English — translate it for the patient view once.
+  useEffect(() => {
+    let live = true;
+    if (enc.outcome && lang !== "en") localizeTriage(enc.outcome, lang).then((s) => { if (live) setResult(s); });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // bargeIn: arm the mic while the question is still being spoken (don't cut the TTS
   // up front) — onSpeechStart stops it only once the user actually starts talking.
@@ -100,18 +108,19 @@ export default function Triage() {
       }
       if (isConclusion(reply)) {
         setMsgs([...send, { role: "assistant", content: reply }]);
-        const t = parseTriage(reply);
-        setResult(t);
+        const t = parseTriage(reply); // English — stays canonical for SBAR / ICD / clinician view
         setResultReason(lastReason); // keep the reasoning that produced the verdict
         set({ outcome: t });
+        setResult(await localizeTriage(t, lang)); // patient-facing copy in their language
       } else {
         const q = questionText(reply); // strip any leaked reasoning → just the question
-        setMsgs([...send, { role: "assistant", content: q }]);
-        setTurns((x) => [...x, { who: "bot", text: q, reason: lastReason }]);
+        setMsgs([...send, { role: "assistant", content: q }]); // medpsy history stays English
+        const qLocal = await fromEnglish(q, lang); // what the patient reads + hears
+        setTurns((x) => [...x, { who: "bot", text: qLocal, reason: lastReason }]);
         setAsked((n) => n + 1);
         // Read the question aloud AND (hands-free) arm the mic now — you can answer
         // over the question (barge-in stops it) or wait; the mic is already listening.
-        if (autoSpeak) speak(q);
+        if (autoSpeak) speak(qLocal);
         armForAnswer();
       }
     } catch (e: unknown) {
@@ -126,18 +135,23 @@ export default function Triage() {
     const c = text.trim();
     if (!c) return;
     setComplaint(c);
-    setSituation({ complaint: c });
+    setSituation({ complaint: c }); // store the patient's own words (display + record)
     setStarted(true);
     setTurns([{ who: "me", text: c }]);
-    await runTurn(seed(c, enc.situation.intake));
+    // medpsy reasons only in English → translate the complaint + intake before seeding.
+    setBusy(true);
+    const [cEN, intakeEN] = await Promise.all([toEnglish(c, lang), toEnglish(enc.situation.intake, lang)]);
+    await runTurn(seed(cEN, intakeEN));
   }
 
   async function answer(text: string = input) {
     const a = text.trim();
     if (!a || busy) return;
     setInput("");
-    setTurns((x) => [...x, { who: "me", text: a }]);
-    const next: Msg[] = [...msgs, { role: "user", content: a }];
+    setTurns((x) => [...x, { who: "me", text: a }]); // show the patient's own words
+    setBusy(true);
+    const aEN = await toEnglish(a, lang); // … but send English to medpsy
+    const next: Msg[] = [...msgs, { role: "user", content: aEN }];
     setMsgs(next);
     await runTurn(next, asked + 1 >= CAP); // force conclusion once enough has been asked
   }
@@ -191,7 +205,9 @@ export default function Triage() {
                     <div className="think-body">{streamReason}<span className="cursor">▋</span></div>
                   </details>
                 )}
-                {streamAnswer
+                {/* The live token stream is English; show it as-is for English patients,
+                    otherwise just a "thinking" indicator (the translated bubble lands when done). */}
+                {streamAnswer && lang === "en"
                   ? <div className="bubble bot">{streamAnswer}<span className="cursor">▋</span></div>
                   : (!streamReason && <div className="typing">{T("tri.thinking")}</div>)}
               </>

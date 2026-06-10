@@ -6,13 +6,13 @@ const MODEL = import.meta.env.VITE_LLM_MODEL || "medpsy-4b";
 
 export async function chat(
   messages: Msg[],
-  opts: { temperature?: number; maxTokens?: number } = {},
+  opts: { temperature?: number; maxTokens?: number; model?: string } = {},
 ): Promise<string> {
   const res = await fetch("/v1/chat/completions", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      model: MODEL,
+      model: opts.model ?? MODEL, // default medpsy; translation passes a separate LM Studio model
       messages,
       temperature: opts.temperature ?? 0.3,
       max_tokens: opts.maxTokens ?? 8192, // >=8k: reasoning models need room before answering
