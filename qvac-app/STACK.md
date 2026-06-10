@@ -61,6 +61,16 @@ exception is the browser Web Speech TTS fallback, used only if the `:8787` API i
 | **SenseVoice + Cantonese-VITS workers** | — (subprocess) | spawned by `:8787` on first `yue` request | `python` + `sherpa-onnx`, Cantonese STT/TTS (resident) |
 | **Vite kiosk** | free port (often `:5175`) | `npm run dev` (in `web/`) | the React app; proxies `/v1→:1234`, `/api→:8787` |
 
+**Running fully on QVAC (no LM Studio):** the API server exposes an OpenAI-compatible
+shim (`/v1/chat/completions` streaming + `/v1/embeddings` + `/v1/models`) backed by the
+provider abstraction, so the web UI needs no change — just repoint its `/v1` proxy:
+```bash
+MEDPSY_BACKEND=qvac npm run serve              # LLM + embeddings + ICD all via @qvac/sdk
+VITE_LLM_URL=http://localhost:8787 npm run dev # /v1 → the on-device shim (not LM Studio)
+```
+In dev (default) `/v1` still proxies straight to LM Studio `:1234`; the shim path is what
+makes the kiosk run 100% on-device.
+
 **One-command stack:** `npm run start` (preflight → API server → web). `npm run check`
 reports model/dependency availability + sizes; `npm run download-models` fetches the
 downloadable model files (Nemotron GGUF, Kokoro, and the optional Cantonese sherpa-onnx

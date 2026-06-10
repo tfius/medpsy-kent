@@ -26,6 +26,16 @@ export async function makeQvacProvider() {
       return text.trim();
     },
 
+    // Streaming variant for the /v1 shim. onToken(token, kind) — medpsy emits its
+    // reasoning inline as <think>…</think> in the content stream, so kind is always
+    // "content" here; the client separates reasoning from the answer.
+    async completeStream(history, { temperature = TEMPERATURE } = {}, onToken) {
+      const res = completion({ modelId: llmId, history, stream: true, temperature });
+      let text = "";
+      for await (const token of res.tokenStream) { text += token; onToken?.(token, "content"); }
+      return text.trim();
+    },
+
     async embed(texts) {
       const { embedding } = await embed({ modelId: embId, text: texts });
       return Array.isArray(embedding[0]) ? embedding : [embedding]; // -> number[][]

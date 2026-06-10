@@ -47,6 +47,62 @@ http.createServer(async (req, res) => {
     res.end(JSON.stringify({ ok: true }));
     return;
   }
+  // OpenAI-compatible shim so the web UI can run through the QVAC (or LM Studio) provider
+  // with no frontend change — @qvac/sdk is a library, not a server, so we expose /v1 here.
+  // Point Vite's /v1 proxy at this server (instead of LM Studio) to go fully on-device.
+  if (req.method === "POST" && req.url === "/v1/chat/completions") {
+    const body = await readBody(req);
+    let parsed;
+    try { parsed = JSON.parse(body.toString() || "{}"); }
+    catch { res.writeHead(400, { "content-type": "application/json" }); res.end(JSON.stringify({ error: "bad json" })); return; }
+    const { messages = [], temperature, stream } = parsed;
+    const id = "chatcmpl-local";
+    // Provider may not implement streaming -> fall back to one chunk from complete().
+    const streamFn = provider.completeStream
+      ? provider.completeStream.bind(provider)
+      : async (h, o, onTok) => { const t = await provider.complete(h, o); onTok?.(t, "content"); return t; };
+    try {
+      if (stream) {
+        res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" });
+        const send = (o) => res.write(`data: ${JSON.stringify(o)}\n\n`);
+        await streamFn(messages, { temperature }, (tok, kind = "content") => {
+          const delta = kind === "reasoning" ? { reasoning_content: tok } : { content: tok };
+          send({ id, object: "chat.completion.chunk", model: provider.name, choices: [{ index: 0, delta }] });
+        });
+        send({ id, object: "chat.completion.chunk", model: provider.name, choices: [{ index: 0, delta: {}, finish_reason: "stop" }] });
+        res.write("data: [DONE]\n\n");
+        res.end();
+      } else {
+        const text = await provider.complete(messages, { temperature });
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ id, object: "chat.completion", model: provider.name,
+          choices: [{ index: 0, message: { role: "assistant", content: text }, finish_reason: "stop" }] }));
+      }
+    } catch (e) {
+      if (res.headersSent) { try { res.write(`data: ${JSON.stringify({ error: String(e) })}\n\n`); } catch { /* ignore */ } res.end(); }
+      else { res.writeHead(502, { "content-type": "application/json" }); res.end(JSON.stringify({ error: String(e) })); }
+    }
+    return;
+  }
+  if (req.method === "POST" && req.url === "/v1/embeddings") {
+    const body = await readBody(req);
+    try {
+      const { input } = JSON.parse(body.toString() || "{}");
+      const texts = Array.isArray(input) ? input : [input];
+      const vecs = await provider.embed(texts);
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ object: "list", model: provider.name,
+        data: vecs.map((embedding, index) => ({ object: "embedding", index, embedding })) }));
+    } catch (e) {
+      res.writeHead(502, { "content-type": "application/json" }); res.end(JSON.stringify({ error: String(e) }));
+    }
+    return;
+  }
+  if (req.method === "GET" && req.url === "/v1/models") {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ object: "list", data: [{ id: provider.name, object: "model" }] }));
+    return;
+  }
   if (req.method === "POST" && req.url === "/api/icd") {
     let body = "";
     req.on("data", (c) => (body += c));

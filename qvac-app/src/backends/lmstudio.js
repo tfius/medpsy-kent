@@ -21,6 +21,42 @@ export function makeLmStudioProvider() {
       return (d.choices?.[0]?.message?.content || "").trim();
     },
 
+    // Streaming variant for the /v1 shim. Forwards LM Studio's SSE deltas, preserving
+    // the content vs reasoning_content split: onToken(token, "content"|"reasoning").
+    async completeStream(history, { temperature = TEMPERATURE, maxTokens = MAX_TOKENS } = {}, onToken) {
+      const r = await fetch(`${LMSTUDIO_URL}/v1/chat/completions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          model: LMSTUDIO_LLM, messages: history,
+          temperature, max_tokens: maxTokens, stream: true,
+        }),
+      });
+      if (!r.ok || !r.body) throw new Error(`LM Studio ${r.status}: ${await r.text().catch(() => "")}`);
+      const reader = r.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "", text = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() || "";
+        for (const line of lines) {
+          const l = line.trim();
+          if (!l.startsWith("data:")) continue;
+          const p = l.slice(5).trim();
+          if (p === "[DONE]") continue;
+          try {
+            const d = JSON.parse(p).choices?.[0]?.delta || {};
+            if (d.reasoning_content) onToken?.(d.reasoning_content, "reasoning");
+            if (d.content) { text += d.content; onToken?.(d.content, "content"); }
+          } catch { /* keep-alive / partial frame */ }
+        }
+      }
+      return text.trim();
+    },
+
     async embed(texts) {
       const r = await fetch(`${LMSTUDIO_URL}/v1/embeddings`, {
         method: "POST",
