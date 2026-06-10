@@ -11,7 +11,9 @@ export const LMSTUDIO_EMBED = process.env.MEDPSY_EMBED || "text-embedding-nomic-
 
 // --- QVAC SDK — local .gguf (symlinked into ./models), else a registry constant ---
 import path from "node:path";
-const MODELS = path.join(import.meta.dirname, "..", "models");
+import fs from "node:fs";
+const ROOT = path.join(import.meta.dirname, "..");
+const MODELS = path.join(ROOT, "models");
 export const QVAC_LLM_GGUF = process.env.MEDPSY_GGUF || path.join(MODELS, "medpsy-4b.gguf");
 export const QVAC_EMBED_GGUF = process.env.MEDPSY_EMBED_GGUF || null; // null -> registry embed model
 
@@ -40,7 +42,9 @@ export const PARAKEET_BIN = process.env.MEDPSY_PARAKEET_BIN || path.join(MODELS,
 export const STT_GGUF = process.env.MEDPSY_STT_GGUF || path.join(MODELS, "nemotron-3.5-asr-streaming-0.6b-q8_0.gguf");
 // "parakeet-server": a persistent Python worker keeps the model resident (fast,
 // no per-request reload). Needs python3 + libparakeet.dylib + the GGUF.
-export const PARAKEET_LIB = process.env.MEDPSY_PARAKEET_LIB || path.join(MODELS, "libparakeet.dylib");
+// Shared-lib name is OS-specific: .dylib (macOS), .so (Linux), .dll (Windows).
+const LIB_EXT = process.platform === "darwin" ? "dylib" : process.platform === "win32" ? "dll" : "so";
+export const PARAKEET_LIB = process.env.MEDPSY_PARAKEET_LIB || path.join(MODELS, `libparakeet.${LIB_EXT}`);
 export const STT_WORKER = path.join(import.meta.dirname, "..", "scripts", "stt_worker.py");
 
 // --- TTS engine selection ---
@@ -55,7 +59,22 @@ export const KOKORO_VOICE = process.env.MEDPSY_TTS_VOICE || "af_heart";
 // Multilingual TTS runs through a persistent Python kokoro-onnx worker (kokoro-js
 // is English-only and mis-pronounces other languages). Needs python + kokoro-onnx
 // + the Kokoro v1.0 ONNX model and voices .bin.
-export const KOKORO_PY = process.env.MEDPSY_KOKORO_PY || "/Users/tex/repos/tfius/nemotron-asr-test/.venv/bin/python";
+// Python interpreter for the speech workers (kokoro-onnx + sherpa-onnx). Resolution:
+//   1. MEDPSY_KOKORO_PY (explicit override)
+//   2. the currently-ACTIVATED venv (VIRTUAL_ENV) — `source <venv>/bin/activate` then npm
+//   3. a repo-local venv: ./.venv or ./venv (create one and it's found with no config)
+//   4. "python3" on PATH
+// Cross-platform: venv python is bin/python (POSIX) or Scripts/python.exe (Windows).
+function resolvePython() {
+  if (process.env.MEDPSY_KOKORO_PY) return process.env.MEDPSY_KOKORO_PY;
+  const rel = process.platform === "win32" ? ["Scripts", "python.exe"] : ["bin", "python"];
+  const candidates = [];
+  if (process.env.VIRTUAL_ENV) candidates.push(path.join(process.env.VIRTUAL_ENV, ...rel));
+  candidates.push(path.join(ROOT, ".venv", ...rel), path.join(ROOT, "venv", ...rel));
+  for (const p of candidates) { try { if (fs.existsSync(p)) return p; } catch { /* ignore */ } }
+  return "python3";
+}
+export const KOKORO_PY = resolvePython();
 export const KOKORO_ONNX = process.env.MEDPSY_KOKORO_ONNX || path.join(MODELS, "kokoro-v1.0.onnx");
 export const KOKORO_VOICES_BIN = process.env.MEDPSY_KOKORO_VOICES || path.join(MODELS, "voices-v1.0.bin");
 export const TTS_WORKER = path.join(import.meta.dirname, "..", "scripts", "tts_worker.py");

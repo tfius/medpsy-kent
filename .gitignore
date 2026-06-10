@@ -1,6 +1,8 @@
 # --- Python / uv ---
 .venv/
 venv/
+# also a repo-local .venv symlink (dev convenience; never committed):
+.venv
 __pycache__/
 *.py[cod]
 *$py.class
