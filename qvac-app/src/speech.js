@@ -17,12 +17,76 @@ import { promisify } from "node:util";
 import {
   STT_MODEL_SRC, SPEECH_LANG, STT_ENGINE, PARAKEET_BIN, STT_GGUF, PARAKEET_LIB, STT_WORKER,
   TTS_ENGINE, KOKORO_VOICE, KOKORO_PY, KOKORO_ONNX, KOKORO_VOICES_BIN, TTS_WORKER,
+  SHERPA_PY, SENSEVOICE_ONNX, SENSEVOICE_TOKENS, SENSEVOICE_WORKER,
+  CANTO_TTS_ONNX, CANTO_TTS_LEXICON, CANTO_TTS_TOKENS, CANTO_TTS_RULE, CANTO_TTS_WORKER, CANTO_VOICE_ID,
 } from "./config.js";
 
 const execFileP = promisify(execFile);
 
 let sdk = null, sttId = null, ttsId = null;
 const getSdk = async () => (sdk ??= await import("@qvac/sdk"));
+
+// --- Generic persistent line-protocol Python worker (shared by the sherpa-onnx
+// Cantonese STT/TTS workers). The child prints "@@READY@@" then "<TAG> {json}" lines;
+// requests resolve FIFO. A crash rejects everything in flight and clears the handle so
+// the next call respawns it. request() returns the parsed JSON object.
+function lineWorker(cmd, args, env, tag) {
+  let w = null;
+  const spawnW = () => {
+    const proc = spawn(cmd, args, { env: { ...process.env, ...env }, stdio: ["pipe", "pipe", "inherit"] });
+    const s = { proc, queue: [], buf: "", ready: false, readyWaiters: [] };
+    proc.stdout.setEncoding("utf8");
+    proc.stdout.on("data", (chunk) => {
+      s.buf += chunk;
+      let i;
+      while ((i = s.buf.indexOf("\n")) >= 0) {
+        const line = s.buf.slice(0, i); s.buf = s.buf.slice(i + 1);
+        if (line.startsWith("@@READY@@")) {
+          s.ready = true; s.readyWaiters.forEach((r) => r()); s.readyWaiters = [];
+        } else if (line.startsWith(tag)) {
+          const job = s.queue.shift();
+          if (job) {
+            try { const o = JSON.parse(line.slice(tag.length).trim());
+              o.error ? job.reject(new Error(o.error)) : job.resolve(o); }
+            catch (e) { job.reject(e); }
+          }
+        }
+      }
+    });
+    const fail = (err) => {
+      if (w === s) w = null;
+      s.queue.forEach((j) => j.reject(err)); s.queue = [];
+      s.readyWaiters.forEach((r) => r(err)); s.readyWaiters = [];
+    };
+    proc.on("exit", (code) => fail(new Error(`${tag} worker exited (code ${code})`)));
+    proc.on("error", (e) => fail(e));
+    return s;
+  };
+  return {
+    request(payload) {
+      if (!w) w = spawnW();
+      const s = w;
+      return new Promise((resolve, reject) => {
+        const send = () => { s.queue.push({ resolve, reject }); s.proc.stdin.write(JSON.stringify(payload) + "\n"); };
+        if (s.ready) send();
+        else s.readyWaiters.push((err) => (err ? reject(err) : send()));
+      });
+    },
+    warm() { if (!w) w = spawnW(); },
+  };
+}
+
+// Cantonese routes to dedicated sherpa-onnx models (Nemotron has no Cantonese; Kokoro
+// has no Cantonese voice). These only ever spawn when a Cantonese request arrives.
+let _svWorker = null, _cantoWorker = null;
+const svWorker = () => (_svWorker ??= lineWorker(SHERPA_PY, [SENSEVOICE_WORKER],
+  { MEDPSY_SENSEVOICE_ONNX: SENSEVOICE_ONNX, MEDPSY_SENSEVOICE_TOKENS: SENSEVOICE_TOKENS, MEDPSY_SPEECH_LANG: "yue" }, "@@STT@@"));
+const cantoWorker = () => (_cantoWorker ??= lineWorker(SHERPA_PY, [CANTO_TTS_WORKER],
+  { MEDPSY_CANTO_ONNX: CANTO_TTS_ONNX, MEDPSY_CANTO_LEXICON: CANTO_TTS_LEXICON,
+    MEDPSY_CANTO_TOKENS: CANTO_TTS_TOKENS, MEDPSY_CANTO_RULE: CANTO_TTS_RULE }, "@@TTS@@"));
+
+const isCantonese = (lang) => typeof lang === "string" && /^(yue|zh-?yue|cantonese)/i.test(lang);
+const isCantoneseVoice = (v) => typeof v === "string" && v.startsWith("yue");
 
 // ---- STT (Parakeet / Nemotron-3.5-ASR) ----
 export async function loadSTT(onProgress) {
@@ -124,8 +188,13 @@ export function prewarmStt() {
 }
 
 // audioChunk: a WAV file path (16 kHz mono PCM). Returns the transcript text.
-// Tries the preferred engine, falling back through the chain on failure.
-export async function transcribe(audioChunk) {
+// Cantonese (lang="yue") routes to SenseVoice; everything else uses the Nemotron
+// chain. Tries the preferred engine, falling back through the chain on failure.
+export async function transcribe(audioChunk, { lang } = {}) {
+  if (isCantonese(lang) && fs.existsSync(SENSEVOICE_ONNX)) {
+    try { return (await svWorker().request({ wav: audioChunk, lang: "yue" })).text || ""; }
+    catch (e) { console.warn(`[stt] sensevoice(yue) failed (${e?.message || e}); falling back to default chain`); }
+  }
   let lastErr;
   for (const engine of sttOrder()) {
     try {
@@ -254,16 +323,32 @@ const TTS_BACKENDS = {
   supertonic: synthesizeWavSupertonic,
 };
 
-// Returns a complete WAV Buffer for `text`. Tries TTS_ENGINE, then falls back.
-// opts.voice selects a Kokoro voice (ignored by Supertonic).
+// Cantonese synthesis -> WAV Buffer via the sherpa-onnx VITS worker.
+async function synthesizeWavCantonese(text) {
+  const { wav } = await cantoWorker().request({ text });
+  try { return fs.readFileSync(wav); } finally { try { fs.unlinkSync(wav); } catch { /* ignore */ } }
+}
+
+// Returns a complete WAV Buffer for `text`. A Cantonese voice (id "yue*") routes to the
+// dedicated VITS model; otherwise it tries TTS_ENGINE then falls back. If the Cantonese
+// model is missing/fails, it degrades to a Mandarin Kokoro voice rather than erroring.
 export async function synthesizeWav(text, opts = {}) {
+  let voice = opts.voice || KOKORO_VOICE;
+  if (isCantoneseVoice(voice) || isCantonese(opts.lang)) {
+    if (fs.existsSync(CANTO_TTS_ONNX)) {
+      try { return await synthesizeWavCantonese(text); }
+      catch (e) { console.warn(`[tts] cantonese-vits failed (${e?.message || e}); falling back to Mandarin Kokoro`); }
+    }
+    voice = "zf_xiaoxiao"; // no Cantonese model -> Mandarin voice (mispronounced but audible)
+  }
+  const passOpts = { ...opts, voice };
   const order = [TTS_ENGINE, ...Object.keys(TTS_BACKENDS).filter((e) => e !== TTS_ENGINE)];
   let lastErr;
   for (const engine of order) {
     const fn = TTS_BACKENDS[engine];
     if (!fn) continue;
     try {
-      return await fn(text, opts);
+      return await fn(text, passOpts);
     } catch (e) {
       lastErr = e;
       console.warn(`[tts] ${engine} failed (${e?.message || e}); trying next engine`);
@@ -276,12 +361,15 @@ export async function synthesizeWav(text, opts = {}) {
 // Multilingual — id prefix encodes the language + gender.
 export async function listVoices() {
   if (TTS_ENGINE !== "kokoro") return [];
-  return KOKORO_VOICE_IDS.map((id) => ({
+  const voices = KOKORO_VOICE_IDS.map((id) => ({
     id,
     name: id.split("_")[1].replace(/^\w/, (c) => c.toUpperCase()),
     language: KOKORO_LANG_LABEL[id[0]] || "?",
     gender: id[1] === "m" ? "Male" : "Female",
   }));
+  // Real Cantonese voice (sherpa-onnx VITS) — separate engine, routed by id prefix.
+  voices.push({ id: CANTO_VOICE_ID, name: "Cantonese", language: "yue", gender: "Female" });
+  return voices;
 }
 
 function pcmToWav(pcm, rate) {
@@ -298,15 +386,17 @@ function pcmToWav(pcm, rate) {
 
 // ---- CLI ----
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const [cmd, arg, out] = process.argv.slice(2);
+  const [cmd, arg, a3, a4] = process.argv.slice(2);
   if (cmd === "tts" && arg) {
-    const wav = await synthesizeWav(arg);
-    fs.writeFileSync(out || "tts-output.wav", wav);
-    console.log(`wrote ${out || "tts-output.wav"} (${wav.length} bytes)`);
+    const out = a3 || "tts-output.wav";
+    const wav = await synthesizeWav(arg, { voice: a4 || process.env.MEDPSY_TTS_VOICE });
+    fs.writeFileSync(out, wav);
+    console.log(`wrote ${out} (${wav.length} bytes)`);
   } else if (cmd === "stt" && arg) {
-    console.log(await transcribe(arg));
+    console.log(await transcribe(arg, { lang: a3 })); // a3 = lang hint, e.g. "yue"
   } else {
-    console.error('usage: node src/speech.js tts "<text>" [out.wav] | stt <clip.wav>');
+    console.error('usage: node src/speech.js tts "<text>" [out.wav] [voice] | stt <clip.wav> [lang]');
     process.exit(1);
   }
+  process.exit(0); // persistent worker children keep the loop alive otherwise (CLI is one-shot)
 }

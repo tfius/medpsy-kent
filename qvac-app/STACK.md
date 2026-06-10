@@ -13,8 +13,8 @@ exception is the browser Web Speech TTS fallback, used only if the `:8787` API i
 | 2 | **Embeddings** (ICD grounding) | **dev:** nomic-embed-text-v1.5 (768-d) · **prod:** GTE-large (fp16, 1024-d) | same backends as LLM | LM Studio `/v1/embeddings` / QVAC `embed` | ✅ prod path | — |
 | 3 | **ICD-10 vector search** | — (cosine over 12,246 vectors) | Node, in-process `:8787` | **own** flat-cosine; optional SQLite-vector (`@sqliteai`) | ❌ (roadmap: `@qvac/rag`) | ✅ `icd.js` |
 | 4 | **ICD-10 knowledge base** | WHO ICD-10, 12,246 codes (768-d index, 37 MB) | static files in `data/` | exported via `simple-icd-10` | ❌ | ✅ |
-| 5 | **STT (speech→text)** | Nemotron-3.5-ASR-streaming-0.6b (`q8_0`) | `:8787` → subprocess | **own** parakeet.cpp (lib/CLI) → QVAC fallback | ✅ fallback only | ✅ engine chain |
-| 6 | **TTS (text→speech)** | Kokoro-82M-v1.0-ONNX (**multilingual**, 54 voices) | `:8787` → **Python worker** | **own** kokoro-onnx (persistent worker) → Supertonic fallback | ✅ fallback (Supertonic) | ✅ engine chain |
+| 5 | **STT (speech→text)** | Nemotron-3.5-ASR-streaming-0.6b (`q8_0`); **Cantonese → SenseVoice-Small** (int8) | `:8787` → subprocess | **own** parakeet.cpp (lib/CLI) → QVAC fallback; **sherpa-onnx** for yue | ✅ fallback only | ✅ engine chain |
+| 6 | **TTS (text→speech)** | Kokoro-82M-v1.0-ONNX (**multilingual**, 54 voices); **Cantonese → vits-cantonese-hf-xiaomaiiwn** | `:8787` → **Python worker** | **own** kokoro-onnx (persistent worker) → Supertonic fallback; **sherpa-onnx** VITS for yue | ✅ fallback (Supertonic) | ✅ engine chain |
 | 7 | **TTS last-resort** | OS voices | browser | Web Speech API | ❌ | browser |
 | 8 | **Mic capture + 16 kHz WAV** | — | browser | MediaRecorder + AudioContext (VAD auto-stop, barge-in) | ❌ | ✅ `web/src/lib/speech.ts` |
 | 9 | **Outcome signing** | SHA-256 hash | browser | Web Crypto `subtle.digest` | ❌ | ✅ `web/src/lib/sign.ts` |
@@ -24,7 +24,18 @@ exception is the browser Web Speech TTS fallback, used only if the `:8787` API i
 > **TTS note:** the Node package `kokoro-js` is **English-only** (its JS phonemizer has no
 > Chinese/Japanese G2P), so real multilingual TTS runs through a **Python `kokoro-onnx` worker**
 > (`scripts/tts_worker.py`) that phonemizes by language. en/fr/es/it/zh have native voices;
-> de/sl have none (→ English voice); yue uses a Mandarin voice.
+> de/sl have none (→ English voice).
+>
+> **Cantonese (yue) note:** Kokoro has no Cantonese voice and Nemotron can't transcribe
+> Cantonese, so when the UI language is Cantonese the server routes speech to dedicated
+> **sherpa-onnx** models via two persistent Python workers — **SenseVoice-Small** (STT,
+> `scripts/sherpa_stt_worker.py`) and the **Cantonese VITS** `vits-cantonese-hf-xiaomaiiwn`
+> (TTS, `scripts/sherpa_tts_worker.py`). This activates **only** for `yue` (routed by
+> `lang=yue` on `/api/stt` and `/api/tts`, and the `yue_canto` voice id); every other
+> language is untouched. If the sherpa models/venv are absent it degrades gracefully
+> (STT → Nemotron, TTS → Mandarin Kokoro voice). Needs `sherpa-onnx` in the kokoro venv.
+> (We use the sherpa-native Cantonese VITS rather than `mms-tts-yue` — sherpa-onnx doesn't
+> package MMS-yue, and this avoids a torch conversion while giving a real Cantonese voice.)
 
 ## 2. What's served where (processes & ports)
 
@@ -34,11 +45,13 @@ exception is the browser Web Speech TTS fallback, used only if the `:8787` API i
 | **ICD + speech API** | `:8787` | `npm run serve` (`src/server.js`) | `/api/icd`, `/api/tts`, `/api/tts/voices`, `/api/stt`, `/api/health` |
 | **Parakeet STT worker** | — (subprocess) | spawned by `:8787` | `python3` + `libparakeet.dylib`, keeps Nemotron resident |
 | **Kokoro TTS worker** | — (subprocess) | spawned by `:8787` | `python` + `kokoro-onnx`, keeps Kokoro resident (multilingual) |
+| **SenseVoice + Cantonese-VITS workers** | — (subprocess) | spawned by `:8787` on first `yue` request | `python` + `sherpa-onnx`, Cantonese STT/TTS (resident) |
 | **Vite kiosk** | free port (often `:5175`) | `npm run dev` (in `web/`) | the React app; proxies `/v1→:1234`, `/api→:8787` |
 
 **One-command stack:** `npm run start` (preflight → API server → web). `npm run check`
 reports model/dependency availability + sizes; `npm run download-models` fetches the
-downloadable model files (Nemotron GGUF, Kokoro). The parakeet.cpp engine must be **built**
+downloadable model files (Nemotron GGUF, Kokoro, and the optional Cantonese sherpa-onnx
+archives — SenseVoice STT + Cantonese VITS TTS). The parakeet.cpp engine must be **built**
 (see `../nemotron-asr-test`) and LM Studio set up by you.
 
 ## 3. QVAC SDK — what we use it for vs. bypass
@@ -73,3 +86,5 @@ downloadable model files (Nemotron GGUF, Kokoro). The parakeet.cpp engine must b
 | `MEDPSY_KOKORO_PY` | harness `.venv` python | path | Python interpreter that has `kokoro-onnx` |
 | `MEDPSY_KOKORO_ONNX` / `_VOICES` | `models/kokoro-v1.0.onnx` / `voices-v1.0.bin` | path | Kokoro model + voices |
 | `MEDPSY_PARAKEET_BIN` / `_LIB` / `MEDPSY_STT_GGUF` | `models/…` | path | parakeet-cli, libparakeet, Nemotron GGUF |
+| `MEDPSY_SHERPA_PY` | kokoro venv python | path | Python with `sherpa-onnx` (Cantonese STT/TTS) |
+| `MEDPSY_SENSEVOICE_DIR` / `MEDPSY_CANTO_TTS_DIR` | `models/…` | path | Cantonese SenseVoice / VITS model dirs |

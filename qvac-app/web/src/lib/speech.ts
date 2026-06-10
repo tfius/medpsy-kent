@@ -3,6 +3,12 @@
 // is running. STT uses the browser SpeechRecognition for the demo; the on-device QVAC
 // path is POST /api/stt (16 kHz WAV) for native/Expo clients.
 
+// Current UI speech language. Sent to /api/stt (?lang=) and /api/tts ({lang}) so
+// Cantonese ("yue") routes to SenseVoice (STT) + the Cantonese VITS voice (TTS)
+// instead of the default Nemotron/Kokoro paths. Set from prefs on language change.
+let speechLang = "";
+export function setSpeechLang(l: string): void { speechLang = l || ""; }
+
 // Selectable on-device TTS voice (Kokoro). Persisted so the choice sticks.
 export interface Voice { id: string; name?: string; language?: string; gender?: string; grade?: string }
 const VOICE_KEY = "medpsy.ttsVoice";
@@ -62,7 +68,7 @@ export async function speak(text: string, opts: { voice?: string; id?: string } 
   try {
     const r = await fetch("/api/tts", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text, voice: opts.voice || getVoice() || undefined }),
+      body: JSON.stringify({ text, voice: opts.voice || getVoice() || undefined, lang: speechLang || undefined }),
       signal: abort.signal,
     });
     if (seq !== speakSeq) return;  // superseded while fetching
@@ -150,7 +156,8 @@ export function listenLocal(
         try {
           onPhase?.("transcribing");
           const wav = await blobToWav16k(new Blob(chunks, { type: mr?.mimeType || "audio/webm" }));
-          const r = await fetch("/api/stt", {
+          const q = speechLang ? `?lang=${encodeURIComponent(speechLang)}` : "";
+          const r = await fetch(`/api/stt${q}`, {
             method: "POST", headers: { "content-type": "audio/wav" }, body: wav,
           });
           if (!r.ok) throw new Error(`on-device STT unavailable (${r.status})`);

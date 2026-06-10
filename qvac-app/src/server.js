@@ -63,12 +63,13 @@ http.createServer(async (req, res) => {
     });
     return;
   }
-  // On-device TTS: POST {text, voice?} -> audio/wav
+  // On-device TTS: POST {text, voice?, lang?} -> audio/wav
+  // lang="yue" (or a "yue*" voice) routes to the Cantonese VITS voice.
   if (req.method === "POST" && req.url === "/api/tts") {
     const buf = await readBody(req);
     try {
-      const { text, voice } = JSON.parse(buf.toString() || "{}");
-      const wav = await (await getSpeech()).synthesizeWav(text || "", { voice });
+      const { text, voice, lang } = JSON.parse(buf.toString() || "{}");
+      const wav = await (await getSpeech()).synthesizeWav(text || "", { voice, lang });
       res.writeHead(200, { "content-type": "audio/wav" });
       res.end(wav);
     } catch (e) {
@@ -90,12 +91,14 @@ http.createServer(async (req, res) => {
     return;
   }
   // On-device STT: POST raw WAV bytes (16 kHz mono) -> {text}
-  if (req.method === "POST" && req.url === "/api/stt") {
+  // ?lang=yue routes Cantonese to SenseVoice; other langs use the Nemotron chain.
+  if (req.method === "POST" && req.url.split("?")[0] === "/api/stt") {
     const buf = await readBody(req);
+    const lang = new URL(req.url, "http://localhost").searchParams.get("lang") || undefined;
     const tmp = path.join(os.tmpdir(), `stt-${Date.now()}.wav`);
     try {
       fs.writeFileSync(tmp, buf);
-      const text = await (await getSpeech()).transcribe(tmp);
+      const text = await (await getSpeech()).transcribe(tmp, { lang });
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify({ text }));
     } catch (e) {

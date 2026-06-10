@@ -902,3 +902,32 @@ prefs so it's a start-of-session choice.
 site-wide **footer toggle** ("🔓 Unlock all steps") that lets the rail bypass the data gating.
 
 New: `scripts/tts_worker.py`, i18n `de/it/fr.json`. Verified `tsc` + `vite build` + HTTP TTS.
+
+**Cantonese (yue) speech via sherpa-onnx.** Kokoro has no Cantonese voice and Nemotron
+can't transcribe Cantonese, so `yue` was the one language with no real voice path. Rather
+than fake it, we route Cantonese to dedicated **sherpa-onnx** models behind two persistent
+Python workers (same manager pattern as the Kokoro/parakeet workers, via a generic
+`lineWorker()` in `speech.js`): **STT = SenseVoice-Small** (`scripts/sherpa_stt_worker.py`,
+`OfflineRecognizer.from_sense_voice(language="yue", use_itn=True)`) and **TTS = Cantonese
+VITS `vits-cantonese-hf-xiaomaiiwn`** (`scripts/sherpa_tts_worker.py`, `OfflineTts` +
+lexicon/tokens/rule.fst, ~22 kHz). It activates **only** for `yue` — `transcribe(audio,
+{lang})` and `synthesizeWav(text, {voice, lang})` check `isCantonese(lang)` / the `yue_canto`
+voice id; the frontend tags the UI language onto each request (`setSpeechLang()` →
+`/api/stt?lang=`, `/api/tts` body `lang`). Every other language is untouched, and if the
+sherpa models/venv are absent it **degrades gracefully** (STT → Nemotron, TTS → Mandarin
+Kokoro voice). We use the sherpa-native Cantonese VITS rather than `mms-tts-yue` —
+sherpa-onnx doesn't package MMS-yue, and this avoids a torch conversion while giving a real
+Cantonese voice. Config (`SENSEVOICE_*`, `CANTO_TTS_*`, `SHERPA_PY`) is fully env-overridable.
+
+**Preflight + download cover it.** `scripts/preflight.mjs` gained a "Cantonese (yue) —
+sherpa-onnx" check block (SenseVoice model + VITS model + `sherpa-onnx` python import) and
+two `archive: true` `DOWNLOADS` entries — these are sherpa-onnx `.tar.bz2` directory archives,
+so `download-models` `curl`s the archive and `tar -xjf` extracts it into `models/` (single-file
+curl wouldn't work). Cantonese rows are marked **optional** and don't fail the overall
+"✓ all ready". Gotchas: the kokoro venv is a **uv** venv (no pip → `uv pip install --python
+<venv> sherpa-onnx`); `sherpa_onnx` v1.13.2 has no top-level `read_wave` (read WAV via stdlib
+`wave`+numpy); and the CLI path needed an explicit `process.exit(0)` since the resident worker
+keeps the event loop alive.
+
+New: `scripts/sherpa_stt_worker.py`, `scripts/sherpa_tts_worker.py`. Verified `npm run check`
+shows all three Cantonese rows ✓ (SenseVoice 237 MB, VITS 114 MB, sherpa-onnx import).

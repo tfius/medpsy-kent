@@ -59,3 +59,26 @@ export const KOKORO_PY = process.env.MEDPSY_KOKORO_PY || "/Users/tex/repos/tfius
 export const KOKORO_ONNX = process.env.MEDPSY_KOKORO_ONNX || path.join(MODELS, "kokoro-v1.0.onnx");
 export const KOKORO_VOICES_BIN = process.env.MEDPSY_KOKORO_VOICES || path.join(MODELS, "voices-v1.0.bin");
 export const TTS_WORKER = path.join(import.meta.dirname, "..", "scripts", "tts_worker.py");
+
+// --- Cantonese (yue) speech via sherpa-onnx (activates ONLY when lang/voice is yue) ---
+// Nemotron has no Cantonese and Kokoro has no Cantonese voice, so Cantonese routes to
+// dedicated sherpa-onnx models through persistent Python workers (same pattern as above):
+//   STT: SenseVoice-Small (zh/en/ja/ko/yue) — model.int8.onnx + tokens.txt
+//   TTS: vits-cantonese-hf-xiaomaiiwn (real Cantonese VITS) — onnx + lexicon + tokens
+// Both run on the same venv as Kokoro (needs `sherpa-onnx`); missing models degrade
+// gracefully (STT -> Nemotron, TTS -> Mandarin Kokoro voice).
+export const SHERPA_PY = process.env.MEDPSY_SHERPA_PY || KOKORO_PY;
+const SENSEVOICE_DIR = process.env.MEDPSY_SENSEVOICE_DIR
+  || path.join(MODELS, "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2025-09-09");
+export const SENSEVOICE_ONNX = process.env.MEDPSY_SENSEVOICE_ONNX || path.join(SENSEVOICE_DIR, "model.int8.onnx");
+export const SENSEVOICE_TOKENS = process.env.MEDPSY_SENSEVOICE_TOKENS || path.join(SENSEVOICE_DIR, "tokens.txt");
+export const SENSEVOICE_WORKER = path.join(import.meta.dirname, "..", "scripts", "sherpa_stt_worker.py");
+
+const CANTO_TTS_DIR = process.env.MEDPSY_CANTO_TTS_DIR || path.join(MODELS, "vits-cantonese-hf-xiaomaiiwn");
+export const CANTO_TTS_ONNX = process.env.MEDPSY_CANTO_ONNX || path.join(CANTO_TTS_DIR, "vits-cantonese-hf-xiaomaiiwn.onnx");
+export const CANTO_TTS_LEXICON = process.env.MEDPSY_CANTO_LEXICON || path.join(CANTO_TTS_DIR, "lexicon.txt");
+export const CANTO_TTS_TOKENS = process.env.MEDPSY_CANTO_TOKENS || path.join(CANTO_TTS_DIR, "tokens.txt");
+export const CANTO_TTS_RULE = process.env.MEDPSY_CANTO_RULE || path.join(CANTO_TTS_DIR, "rule.fst");
+export const CANTO_TTS_WORKER = path.join(import.meta.dirname, "..", "scripts", "sherpa_tts_worker.py");
+// The voice id the kiosk uses to request Cantonese TTS (routes to the VITS worker).
+export const CANTO_VOICE_ID = "yue_canto";

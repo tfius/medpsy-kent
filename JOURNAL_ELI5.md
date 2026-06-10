@@ -382,6 +382,15 @@ since that's where it makes sense — and split that screen into a clean "sign i
 "language & voice" card, so it's not cramped. And we added a small **"unlock all steps"** switch at the
 bottom (for testing) so you can jump around the screens freely.
 
+Then we gave **Cantonese** a real voice. Our main listening model can't understand Cantonese, and our
+main speaking model has no Cantonese voice — so before, Cantonese was the one language that couldn't truly
+talk. We added two small specialist models (from a project called sherpa-onnx) that *only* wake up when you
+pick Cantonese: one that understands spoken Cantonese, and one that speaks it. Every other language works
+exactly as before, and if those Cantonese models aren't installed the app quietly falls back instead of
+breaking. We also taught the setup checker about them, so `npm run check` tells you if they're present and
+`npm run download-models` fetches them for you (they come as compressed bundles, so the script unpacks them
+automatically).
+
 Bottom line: it now truly speaks (and listens) in many languages, and tells you honestly which ones work.
 
 ---

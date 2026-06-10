@@ -5,6 +5,7 @@
 // (one file per language). Strings fall back to English, then to the key itself, so
 // partial translations degrade gracefully.
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { setSpeechLang } from "./speech";
 import en from "./i18n/en.json";
 import sl from "./i18n/sl.json";
 import es from "./i18n/es.json";
@@ -25,14 +26,14 @@ export const LANGS: { code: Lang; label: string; flag: string; limited?: boolean
   { code: "zh", label: "中文（普通话）", flag: "🇨🇳" },
   { code: "de", label: "Deutsch", flag: "🇩🇪", limited: true }, // no German Kokoro voice (uses English)
   { code: "sl", label: "Slovenščina", flag: "🇸🇮", limited: true }, // no native voice (beta STT)
-  { code: "yue", label: "粵語（廣東話）", flag: "🇭🇰", limited: true }, // no Cantonese voice/STT yet
+  { code: "yue", label: "粵語（廣東話）", flag: "🇭🇰" }, // SenseVoice STT + Cantonese VITS TTS
 ];
 
-// Default Kokoro voice per UI language (used when the user hasn't picked one).
-// Kokoro ships Mandarin (z*) voices but no Cantonese, so Cantonese falls back to a
-// Mandarin voice — it reads the text with Mandarin pronunciation.
+// Default TTS voice per UI language (used when the user hasn't picked one).
+// Cantonese uses a dedicated sherpa-onnx Cantonese VITS voice ("yue_canto"); the rest
+// are Kokoro voices (id prefix encodes language + gender).
 export const VOICE_FOR_LANG: Record<Lang, string> = {
-  en: "af_heart", sl: "af_heart", es: "ef_dora", zh: "zf_xiaoxiao", yue: "zf_xiaoxiao",
+  en: "af_heart", sl: "af_heart", es: "ef_dora", zh: "zf_xiaoxiao", yue: "yue_canto",
   de: "af_heart", fr: "ff_siwis", it: "if_sara",
 };
 
@@ -47,7 +48,7 @@ export const LANG_SUPPORT: Record<Lang, { ttsPrefixes: string[]; ttsNote?: strin
   es:  { ttsPrefixes: ["e"],      stt: "full" },
   it:  { ttsPrefixes: ["i"],      stt: "full" },
   zh:  { ttsPrefixes: ["z"],      stt: "broad" },
-  yue: { ttsPrefixes: ["z"],      stt: "none",  ttsNote: "Mandarin voice (no Cantonese voice)", sttNote: "Cantonese isn't supported — speech may mis-transcribe" },
+  yue: { ttsPrefixes: ["yue"],    stt: "full" }, // SenseVoice STT + Cantonese VITS TTS (sherpa-onnx)
   sl:  { ttsPrefixes: [],         stt: "adapt", ttsNote: "no Slovenian voice — uses English", sttNote: "recognized but beta-quality" },
 };
 
@@ -65,7 +66,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
   const [scale, setScale] = useState<UiScale>(read("medpsy.scale", "base") as UiScale);
   const [demo, setDemo] = useState<boolean>(read("medpsy.demo", "0") === "1");
   const [autoSpeak, setAutoSpeak] = useState<boolean>(read("medpsy.autoSpeak", "1") !== "0");
-  useEffect(() => { try { localStorage.setItem("medpsy.lang", lang); } catch { /* ignore */ } document.documentElement.lang = lang; }, [lang]);
+  useEffect(() => { try { localStorage.setItem("medpsy.lang", lang); } catch { /* ignore */ } document.documentElement.lang = lang; setSpeechLang(lang); }, [lang]);
   useEffect(() => { try { localStorage.setItem("medpsy.scale", scale); } catch { /* ignore */ } document.documentElement.dataset.scale = scale; }, [scale]);
   useEffect(() => { try { localStorage.setItem("medpsy.demo", demo ? "1" : "0"); } catch { /* ignore */ } }, [demo]);
   useEffect(() => { try { localStorage.setItem("medpsy.autoSpeak", autoSpeak ? "1" : "0"); } catch { /* ignore */ } }, [autoSpeak]);

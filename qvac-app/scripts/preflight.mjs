@@ -4,14 +4,17 @@
 // that can be downloaded (the Nemotron GGUF + Kokoro). The parakeet.cpp engine must be
 // BUILT (see ../../nemotron-asr-test) and LM Studio set up by you.
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { spawnSync, execFileSync } from "node:child_process";
 import {
   STT_GGUF, PARAKEET_BIN, PARAKEET_LIB, KOKORO_ONNX, KOKORO_VOICES_BIN, KOKORO_PY,
   LMSTUDIO_URL, LMSTUDIO_LLM,
+  SHERPA_PY, SENSEVOICE_ONNX, CANTO_TTS_ONNX,
 } from "../src/config.js";
 
 const ROOT = path.join(import.meta.dirname, "..");
+const MODELS = path.join(ROOT, "models");
 const DL = process.argv.includes("--download");
 const c = { g: "\x1b[32m", y: "\x1b[33m", r: "\x1b[31m", d: "\x1b[2m", b: "\x1b[1m", x: "\x1b[0m" };
 const ex = (p) => { try { return !!p && fs.existsSync(p); } catch { return false; } };
@@ -24,6 +27,11 @@ const DOWNLOADS = [
     url: "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx" },
   { label: "Kokoro voices (TTS)", dest: KOKORO_VOICES_BIN, size: "~27 MB",
     url: "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin" },
+  // Cantonese (optional) — tar.bz2 archives extracted into models/.
+  { label: "SenseVoice STT — Cantonese +zh/en/ja/ko (optional)", archive: true, check: SENSEVOICE_ONNX, size: "~230 MB",
+    url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2025-09-09.tar.bz2" },
+  { label: "Cantonese VITS TTS (optional)", archive: true, check: CANTO_TTS_ONNX, size: "~112 MB",
+    url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-cantonese-hf-xiaomaiiwn.tar.bz2" },
 ];
 
 async function lmStudioOk() {
@@ -47,6 +55,15 @@ function row(ok, label, detail, fix) {
 }
 
 function download(d) {
+  if (d.archive) { // tar.bz2 -> extract into models/
+    fs.mkdirSync(MODELS, { recursive: true });
+    const tmp = path.join(os.tmpdir(), path.basename(d.url));
+    console.log(`\n${c.b}↓ ${d.label}${c.x} (${d.size}) → ${path.relative(ROOT, d.check)}`);
+    execFileSync("curl", ["-L", "--fail", "--progress-bar", "-o", tmp, d.url], { stdio: "inherit" });
+    execFileSync("tar", ["-xjf", tmp, "-C", MODELS], { stdio: "inherit" });
+    try { fs.rmSync(tmp, { force: true }); } catch { /* ignore */ }
+    return;
+  }
   try { if (fs.lstatSync(d.dest).isSymbolicLink()) fs.unlinkSync(d.dest); } catch { /* not a symlink */ }
   fs.mkdirSync(path.dirname(d.dest), { recursive: true });
   console.log(`\n${c.b}↓ ${d.label}${c.x} (${d.size}) → ${path.relative(ROOT, d.dest)}`);
@@ -58,7 +75,8 @@ async function main() {
 
   if (DL) {
     for (const d of DOWNLOADS) {
-      if (ex(d.dest)) console.log(`  ${c.g}✓${c.x} ${d.label} already present (${mb(d.dest)})`);
+      const dest = d.check || d.dest;
+      if (ex(dest)) console.log(`  ${c.g}✓${c.x} ${d.label} already present (${mb(dest)})`);
       else download(d);
     }
     console.log(`\n${c.d}download done — re-run without --download to verify.${c.x}\n`);
@@ -87,6 +105,13 @@ async function main() {
   ok &= row(ttsVoices, "Kokoro voices", ttsVoices ? mb(KOKORO_VOICES_BIN) : "~27 MB", "npm run download-models");
   ok &= row(ttsPy, `python with kokoro-onnx (${path.basename(KOKORO_PY)})`, undefined,
     `pip install kokoro-onnx  (or set MEDPSY_KOKORO_PY to a venv that has it)`);
+
+  console.log(`\n${c.b}Cantonese (yue) — sherpa-onnx${c.x} ${c.d}(optional; only used when language = Cantonese)${c.x}`);
+  const svOk = ex(SENSEVOICE_ONNX), cantoOk = ex(CANTO_TTS_ONNX), sherpaPy = pyImports(SHERPA_PY, "sherpa_onnx");
+  row(svOk, "SenseVoice STT model", svOk ? mb(SENSEVOICE_ONNX) : "~230 MB", "npm run download-models");
+  row(cantoOk, "Cantonese VITS TTS model", cantoOk ? mb(CANTO_TTS_ONNX) : "~112 MB", "npm run download-models");
+  row(sherpaPy, `python with sherpa-onnx (${path.basename(SHERPA_PY)})`, undefined,
+    "uv pip install --python <kokoro venv> sherpa-onnx  (or set MEDPSY_SHERPA_PY)");
 
   console.log(`\n${ok ? `${c.g}${c.b}✓ all ready${c.x} — npm run start` : `${c.y}${c.b}⚠ some pieces missing${c.x} (kiosk still runs; those features degrade)`}\n`);
   process.exit(ok ? 0 : 1);
