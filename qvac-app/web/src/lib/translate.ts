@@ -12,6 +12,11 @@ import { audit } from "./audit";
 import type { Lang } from "./prefs";
 import type { Triage } from "./triage";
 
+// gemma-4-26b-a4b-it: fast (~1-2 s), non-reasoning, fluent for fr/es/it/de/zh/yue. It garbles
+// Slovenian (sl), but every loaded alternative is worse for live use: qwen3.6-27b-optiq is the
+// only model that nails sl, but it's a runaway reasoning model (50-167 s/call, thinking can't be
+// disabled) — unusable in real time; the small/fast models (medgemma-4b, gemma-4-e4b) also corrupt
+// sl red flags. So sl is handled by falling back to English output (see fromEnglish), not a model swap.
 const MODEL = import.meta.env.VITE_TRANSLATE_MODEL || "gemma-4-26b-a4b-it";
 
 // Full language names the translator understands (our short codes mean nothing to it).
@@ -69,9 +74,17 @@ export async function translateText(text: string, from: string, to: string): Pro
 export const toEnglish = (text: string, lang: string): Promise<string> =>
   translateText(text || "", lang, "en");
 
-/** English -> patient language, for display + speech. */
+// Languages whose OUTBOUND translation (English -> patient) is unreliable enough to be unsafe:
+// every fast-enough model corrupts them (Slovenian e.g. turns "stiff neck" into "neck feather"
+// and drops "blood in vomit"). For these we show medpsy's English text rather than risk a garbled
+// safety-net / red flag. The INBOUND direction (patient -> English) stays ON — it's reliable — so
+// medpsy still reasons on the patient's real words. (sl is already a `limited` language: beta STT,
+// no native TTS voice.) Revisit if a fast model that nails these languages becomes available.
+const NO_TRANSLATE_OUT = new Set(["sl"]);
+
+/** English -> patient language, for display + speech. Outbound-unreliable langs stay English. */
 export const fromEnglish = (text: string, lang: string): Promise<string> =>
-  translateText(text || "", "en", lang);
+  NO_TRANSLATE_OUT.has(lang) ? Promise.resolve(text) : translateText(text || "", "en", lang);
 
 /**
  * Translate a parsed triage result for the PATIENT view. Only the two fields the patient

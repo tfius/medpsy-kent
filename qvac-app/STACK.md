@@ -49,7 +49,12 @@ exception is the browser Web Speech TTS fallback, used only if the `:8787` API i
 > canonical English); only the patient-visible verdict fields (`routing`, `safetyNet`) are
 > translated for display. **Fails safe** — if the translation model is absent, triage degrades to
 > the patient's own words rather than breaking; English is a pure no-op. Override the model with
-> `VITE_TRANSLATE_MODEL`.
+> `VITE_TRANSLATE_MODEL`. **Model eval (see JOURNAL):** gemma-4-26b is fast (~1-2 s) and fluent for
+> fr/es/it/de/zh/yue but corrupts **Slovenian** red flags; qwen3.6-27b-optiq nails Slovenian but is a
+> runaway reasoning model (50-167 s/call — unusable live). So **`sl` outbound (English→patient) is
+> disabled** (`NO_TRANSLATE_OUT` in `translate.ts`): Slovenian patients see medpsy's questions/advice
+> in English, while their input is still translated **into** English (reliable) so medpsy reasons on
+> their real words. (`sl` is already a `limited` language: beta STT, no native voice.)
 >
 > **Audit note:** every encounter writes an append-only, **hash-chained** JSONL at
 > `audit/<encounterId>.jsonl` (one per patient; new id on "New patient"). Each event is
