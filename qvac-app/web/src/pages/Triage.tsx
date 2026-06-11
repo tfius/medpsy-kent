@@ -8,6 +8,7 @@ import { SpeakButton } from "../lib/voice";
 import { TriageResult, useHelp } from "../lib/ui";
 import { useEncounter } from "../store";
 import { useT, usePrefs } from "../lib/prefs";
+import { audit } from "../lib/audit";
 
 type Turn = { who: "bot" | "me"; text: string; reason?: string };
 const CAP = 6; // max questions before we force a conclusion
@@ -117,6 +118,7 @@ export default function Triage() {
         setMsgs([...send, { role: "assistant", content: q }]); // medpsy history stays English
         const qLocal = await fromEnglish(q, lang); // what the patient reads + hears
         setTurns((x) => [...x, { who: "bot", text: qLocal, reason: lastReason }]);
+        audit.botTurn(qLocal, lastReason); // English raw is captured server-side as model.io
         setAsked((n) => n + 1);
         // Read the question aloud AND (hands-free) arm the mic now — you can answer
         // over the question (barge-in stops it) or wait; the mic is already listening.
@@ -138,6 +140,7 @@ export default function Triage() {
     setSituation({ complaint: c }); // store the patient's own words (display + record)
     setStarted(true);
     setTurns([{ who: "me", text: c }]);
+    audit.userTurn(c);
     // medpsy reasons only in English → translate the complaint + intake before seeding.
     setBusy(true);
     const [cEN, intakeEN] = await Promise.all([toEnglish(c, lang), toEnglish(enc.situation.intake, lang)]);
@@ -149,6 +152,7 @@ export default function Triage() {
     if (!a || busy) return;
     setInput("");
     setTurns((x) => [...x, { who: "me", text: a }]); // show the patient's own words
+    audit.userTurn(a);
     setBusy(true);
     const aEN = await toEnglish(a, lang); // … but send English to medpsy
     const next: Msg[] = [...msgs, { role: "user", content: aEN }];

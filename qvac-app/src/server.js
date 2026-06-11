@@ -7,6 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { getProvider } from "./backend.js";
 import { loadOrBuildIndex, verifyIcd } from "./icd-index.js";
+import * as audit from "./audit.js";
 
 // On-device speech is optional (needs @qvac/sdk + models). Loaded lazily on first use.
 let speech = null;
@@ -55,17 +56,20 @@ http.createServer(async (req, res) => {
     let parsed;
     try { parsed = JSON.parse(body.toString() || "{}"); }
     catch { res.writeHead(400, { "content-type": "application/json" }); res.end(JSON.stringify({ error: "bad json" })); return; }
-    const { messages = [], temperature, stream } = parsed;
+    const { messages = [], temperature, stream, encounterId } = parsed;
     const id = "chatcmpl-local";
     // Provider may not implement streaming -> fall back to one chunk from complete().
     const streamFn = provider.completeStream
       ? provider.completeStream.bind(provider)
       : async (h, o, onTok) => { const t = await provider.complete(h, o); onTok?.(t, "content"); return t; };
+    let outContent = "", outReason = "";
+    const t0 = Date.now();
     try {
       if (stream) {
         res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" });
         const send = (o) => res.write(`data: ${JSON.stringify(o)}\n\n`);
         await streamFn(messages, { temperature }, (tok, kind = "content") => {
+          if (kind === "reasoning") outReason += tok; else outContent += tok;
           const delta = kind === "reasoning" ? { reasoning_content: tok } : { content: tok };
           send({ id, object: "chat.completion.chunk", model: provider.name, choices: [{ index: 0, delta }] });
         });
@@ -74,10 +78,15 @@ http.createServer(async (req, res) => {
         res.end();
       } else {
         const text = await provider.complete(messages, { temperature });
+        outContent = text;
         res.writeHead(200, { "content-type": "application/json" });
         res.end(JSON.stringify({ id, object: "chat.completion", model: provider.name,
           choices: [{ index: 0, message: { role: "assistant", content: text }, finish_reason: "stop" }] }));
       }
+      // Raw model I/O audit (prompt + raw completion incl. reasoning), correlated by encounter.
+      if (encounterId) audit.append(encounterId, "model.io",
+        { model: provider.name, temperature: temperature ?? null, stream: !!stream,
+          messages, content: outContent, reasoning: outReason || undefined, ms: Date.now() - t0 }, "model").catch(() => {});
     } catch (e) {
       if (res.headersSent) { try { res.write(`data: ${JSON.stringify({ error: String(e) })}\n\n`); } catch { /* ignore */ } res.end(); }
       else { res.writeHead(502, { "content-type": "application/json" }); res.end(JSON.stringify({ error: String(e) })); }
@@ -101,6 +110,33 @@ http.createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/v1/models") {
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify({ object: "list", data: [{ id: provider.name, object: "model" }] }));
+    return;
+  }
+  // --- Audit log: per-encounter, append-only, hash-chained (see src/audit.js) ---
+  if (req.url.split("?")[0].startsWith("/api/audit")) {
+    const seg = req.url.split("?")[0].split("/").filter(Boolean); // ["api","audit", id?, action?]
+    const id = seg[2] ? decodeURIComponent(seg[2]) : null;
+    const action = seg[3] || null;
+    const json = (code, obj) => { res.writeHead(code, { "content-type": "application/json" }); res.end(JSON.stringify(obj)); };
+    try {
+      if (req.method === "POST" && seg[2] === "import") {            // POST /api/audit/import
+        const b = JSON.parse((await readBody(req)).toString() || "{}");
+        json(200, audit.importBundle(b)); return;
+      }
+      if (req.method === "POST" && !id) {                            // POST /api/audit  -> append
+        const { encounterId, type, actor, data } = JSON.parse((await readBody(req)).toString() || "{}");
+        const ev = await audit.append(encounterId, type, data || {}, actor || "system");
+        json(200, { seq: ev.seq, hash: ev.hash, ts: ev.ts }); return;
+      }
+      if (req.method === "GET" && !id) { json(200, { encounters: audit.list() }); return; }   // list
+      if (req.method === "GET" && id && action === "export") { json(200, audit.exportBundle(id)); return; }
+      if (req.method === "GET" && id && action === "verify") { json(200, audit.verify(audit.read(id))); return; }
+      if (req.method === "GET" && id) {                              // GET /api/audit/:id  -> events
+        const events = audit.read(id);
+        json(200, { encounterId: id, events, integrity: audit.verify(events) }); return;
+      }
+      json(404, { error: "unknown audit route" });
+    } catch (e) { json(400, { error: String(e) }); }
     return;
   }
   if (req.method === "POST" && req.url === "/api/icd") {

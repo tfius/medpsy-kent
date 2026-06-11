@@ -966,3 +966,133 @@ latency to translate live). Verified live against gemma: ES↔EN natural, EN→C
 traditional characters (請即刻前往急症室); `tsc` + `vite build` clean.
 
 New: `web/src/lib/translate.ts`. Touched: `openai.ts`, `pages/Triage.tsx`, `pages/History.tsx`.
+
+---
+
+## 2026-06-10 — QVAC-native: the whole app runs on-device (no LM Studio, no P2P)
+
+The hackathon's entire premise is "runs on the QVAC SDK," but in practice QVAC was the
+*least*-exercised path — the LLM ran on LM Studio (dev), speech on our parakeet.cpp/kokoro/
+sherpa bypasses. The `qvac` backend existed (`src/backends/qvac.js`, `MEDPSY_BACKEND=qvac`)
+but had never run end-to-end. This session made it real.
+
+**The one missing piece: a `/v1` shim.** The frontend's only LLM dependency is OpenAI-style
+`/v1/chat/completions` (`openai.ts`, `translate.ts`). `@qvac/sdk` is a **library, not a
+server** (`bin: undefined`, no `/v1` route) — so there was nothing to point the proxy at. The
+fix was small precisely because of the existing provider abstraction (`src/backend.js`): add
+`/v1/chat/completions` (streaming SSE, preserving the `reasoning_content`/`content` split),
+`/v1/embeddings` and `/v1/models` to `src/server.js`, backed by the provider, plus a
+`completeStream()` on both the QVAC and LM Studio providers. The web UI needs **no change** —
+just `VITE_LLM_URL=http://localhost:8787`. **Decision: extend, don't rebuild** — a new app
+would throw away the backend-agnostic 9-stage UI to solve a ~1-file problem; a "new app" is
+only ever a future Bare/Expo shell that *wraps* this same UI.
+
+**The blocker that wasn't what it looked like.** First `qvac` run timed out with a
+`HypercoreError: REQUEST_TIMEOUT` from `hypercore/lib/replicator.js` — QVAC's **P2P
+(Hyperswarm) model registry** couldn't reach a peer. But the diagnostics flipped the story:
+the **local LLM (`medpsy-4b.gguf`) loaded fine** ("Unloaded 1 models" on cleanup); it was the
+second `loadModel` — the registry **GTE-large embeddings** model — that stalled at 0 bytes.
+And we *don't use GTE-large_ — embeddings are **nomic** (that's what the dev path and the 768-d
+ICD index use). The `qvac` backend just defaulted to the wrong (registry) model.
+
+**Fix: local nomic, zero registry.** Pointed `QVAC_EMBED_GGUF` at a local
+`nomic-embed-text-v1.5.Q8_0.gguf` (768-d) — the **same model as the LM Studio dev path and the
+ICD index**, so dev and on-device share one embedder and one index, with **no P2P at all**.
+Verified the QVAC-nomic vectors are cross-compatible with the LM-Studio-built index (AMI→I21.9,
+T2DM→E11.9). Then proved the whole chain end-to-end on a side port (`:8788`): `/v1/chat/
+completions` streamed from `model: "qvac(medpsy-4b.gguf)"`, `/v1/embeddings` returned 768-d,
+ICD lookup correct — **no LM Studio, no registry**.
+
+**Portability (so a teammate could build it on Linux).** The Python interpreter for the speech
+workers had been hard-coded to one dev's macOS venv path, so `npm run check` never found a venv
+elsewhere. Replaced it with `resolvePython()`: `MEDPSY_KOKORO_PY` → an **activated venv**
+(`$VIRTUAL_ENV`) → a repo-local `./.venv`/`./venv` → `python3`. Also made `libparakeet` resolve
+per-OS (`.so`/`.dylib`/`.dll`). Wrote `SETUP-LINUX.md` (venv, building parakeet.cpp, models,
+troubleshooting).
+
+New: `SETUP-LINUX.md`. Touched: `src/server.js`, `src/backends/{qvac,lmstudio}.js`,
+`src/config.js`, `scripts/preflight.mjs`, `STACK.md`. Run on-device:
+`MEDPSY_BACKEND=qvac npm run serve` + `VITE_LLM_URL=http://localhost:8787 npm run dev`.
+
+---
+
+## 2026-06-11 — Is `@qvac/rag` better for ICD lookup? (measured: no)
+
+Before swapping our ICD backend to `@qvac/rag` (the SDK's HyperDB RAG: `ragIngest`/`ragSearch`),
+we tested whether it's actually better. Built `scripts/icd_rag_compare.mjs` — an honest A/B over
+the **20 curated ground-truth cases** (`icd_cases.json`), with **both** sides using the **same
+QVAC nomic embeddings**, scoring exact ICD-10 match.
+
+Result:
+
+| | top-1 | top-3 | latency |
+|---|---|---|---|
+| current (cosine / sqlite-vector) | **16/20 (80%)** | **18/20 (90%)** | 17 ms |
+| `@qvac/rag` | 1/20 (5%) | 1/20 (5%) | 15 ms |
+
+`unmapped: 0/20` — every rag hit resolved to a real code, so the gap is **real retrieval
+quality**, not a harness/mapping artifact. The `rag-content` column showed near-random hits
+(acute appendicitis → "SARS", asthma → "personal history of allergy to narcotic").
+
+Why it loses, both measured and in principle: (1) `ragIngest`/`ragSearch` take *our* embedding
+`modelId`, so rag uses the **same nomic vectors** — it can at best **tie** exact cosine, never
+beat it. (2) For a fixed **12k-row exact-label** lookup, normalized cosine is already optimal and
+fast (17 ms); rag adds an ingest step, HyperDB storage and a content→code indirection. (3) The
+near-random output with identical embeddings points to rag not L2-normalizing before its
+distance metric, which wrecks ranking for nomic (which *requires* normalization). `@qvac/rag` is
+built for **chunked document retrieval** (fetch passages to feed an LLM), not short-label
+classification. (Note: `ragIngest` itself was fast — 12,246 docs embedded in ~6.6 s.)
+
+**Verdict: keep the current exact-cosine / sqlite-vector backend.** No production code changed;
+`scripts/icd_rag_compare.mjs` stays as a reusable A/B harness (seeds the future eval harness).
+
+New: `scripts/icd_rag_compare.mjs`.
+
+---
+
+## 2026-06-11 — Full per-patient audit trail (tamper-evident)
+
+Auditability was always a stated pillar (the three-identity model + the SHA-256 outcome
+signing existed for it), but nothing actually **recorded** an encounter — the conversation
+lived in React state and evaporated on reset. Now every patient gets a complete, append-only,
+**hash-chained** log written **as it happens**, with retrieve / view / verify / export / import.
+
+**The chain.** One JSONL per encounter at `audit/<encounterId>.jsonl` (a new id per patient;
+"New patient" starts a fresh one). Each event is `{v, encounterId, seq, ts, type, actor, data,
+prevHash, hash}` where `hash = sha256(canonical(event))`, `canonical` fixes field order and
+excludes the hash. Because each event chains on the previous hash, **any edit, deletion or
+reorder breaks the chain** — `verify()` returns `{ok, brokenAt, reason}` and pinpoints the first
+bad event (tested: flip one byte → flagged at that exact seq). The engine (`src/audit.js`)
+serializes appends per encounter (in-memory head cache + a per-id promise mutex) so the two
+writers never race the chain.
+
+**Two writers, one stream.** The OpenAI-compatible `/v1` shim (added when we made the backend
+QVAC-native — it's the single chokepoint every model call passes through) logs the **raw model
+I/O**: when a request carries an `encounterId`, it records a `model.io` event with the full
+prompt, the raw completion **including the `<think>` reasoning**, the model id
+(`qvac(medpsy-4b.gguf)` vs `lmstudio(medpsy-4b)`) and temperature — the things you can't
+reconstruct from the cleaned answer, especially since temp 0.3 is non-deterministic. The client
+(`web/src/lib/audit.ts`, fire-and-forget + `keepalive`) logs the human-facing events at their
+natural chokepoints: `stage.enter` for all nine stages (one `useEffect` in `App.tsx`),
+`patient`/`consent`/`outcome` in the store, `message.user`/`message.assistant` in `Triage.tsx`,
+`stt`/`tts` in `speech.ts`, `icd` in `ui.tsx`, `signoff` in the Validate scaffold, and — the
+subtle but critical one — the **translation boundary** in `translate.ts` (`{dir, from, to, src,
+out}`), so an auditor can tell whether a *mistranslation* (not medpsy) drove a decision.
+
+**Retrieve / view / share / import.** `GET /api/audit` lists patients (with an integrity flag);
+`GET /api/audit/:id` returns events + a verify result; `…/verify`; `…/export` produces a
+self-contained **signed bundle** (`signature = sha256(headHash + MEDPSY_AUDIT_KEY)`); `POST
+/api/audit/import` re-verifies a bundle (chain + signature) and persists it for viewing. The new
+**Audit page** (`/audit`, linked in the top bar) lists encounters, shows the timeline with
+per-type icons + summaries (raw JSON + hash on expand) and an integrity badge, and does
+export/share + import-to-verify.
+
+**PII.** The log is PHI → on-device only, `audit/` gitignored; `MEDPSY_AUDIT_DIR` /
+`MEDPSY_AUDIT_KEY` configure path + signing. The demo signature is a device-key hash; production
+would swap in an ECDSA signature (same as the outcome-signing note). Verified end-to-end: append
+→ list → read → tamper-detect → export → import all green; `model.io` fires from the shim;
+web `tsc` clean.
+
+New: `src/audit.js`, `web/src/lib/audit.ts`, `web/src/pages/Audit.tsx`. Touched: `src/server.js`,
+`web/src/{store.tsx, App.tsx, lib/openai.ts, lib/speech.ts, lib/translate.ts, lib/ui.tsx,
+pages/Triage.tsx, pages/scaffolds.tsx, styles.css}`.

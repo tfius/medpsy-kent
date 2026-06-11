@@ -6,6 +6,8 @@
 // Current UI speech language. Sent to /api/stt (?lang=) and /api/tts ({lang}) so
 // Cantonese ("yue") routes to SenseVoice (STT) + the Cantonese VITS voice (TTS)
 // instead of the default Nemotron/Kokoro paths. Set from prefs on language change.
+import { audit } from "./audit";
+
 let speechLang = "";
 export function setSpeechLang(l: string): void { speechLang = l || ""; }
 
@@ -58,6 +60,7 @@ function playBlob(blob: Blob, signal: AbortSignal): Promise<void> {
 // previous one's pending fetch + audio, so rapid taps never overlap.
 export async function speak(text: string, opts: { voice?: string; id?: string } = {}): Promise<void> {
   if (!text) return;
+  audit.tts({ text, voice: opts.voice || getVoice() || undefined, lang: speechLang || undefined });
   stopSpeaking();                 // cancel anything currently playing/pending
   const seq = ++speakSeq;
   const id = opts.id ?? "tts";
@@ -161,7 +164,9 @@ export function listenLocal(
             method: "POST", headers: { "content-type": "audio/wav" }, body: wav,
           });
           if (!r.ok) throw new Error(`on-device STT unavailable (${r.status})`);
-          onText(((await r.json()).text || "").trim());
+          const text = ((await r.json()).text || "").trim();
+          audit.stt({ text, lang: speechLang });
+          onText(text);
         } catch (e) {
           onErr?.(e instanceof Error ? e.message : String(e));
         }

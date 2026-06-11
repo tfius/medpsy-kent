@@ -2,6 +2,7 @@
 // helpers, and the unified TriageResult (patient vs clinician views).
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useT, usePrefs, LANGS } from "./prefs";
+import { audit as auditLog } from "./audit";
 import type { Triage } from "./triage";
 
 // Segmented language picker (start-of-session choice; lives on the welcome step).
@@ -108,7 +109,12 @@ function IcdField({ condition, guess }: { condition: string; guess: string }) {
     let cancelled = false;
     fetch("/api/icd", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ condition }) })
       .then((r) => r.json())
-      .then((d) => { if (cancelled) return; const top = d.results?.[0]; top ? (setVerified(top), setState("ok")) : setState("err"); })
+      .then((d) => {
+        if (cancelled) return;
+        const top = d.results?.[0];
+        if (top) { setVerified(top); setState("ok"); auditLog.icd({ condition, guess, verified: top.code, description: top.description }); }
+        else setState("err");
+      })
       .catch(() => !cancelled && setState("err"));
     return () => { cancelled = true; };
   }, [condition]);

@@ -407,6 +407,73 @@ Bottom line: it now truly speaks (and listens) in many languages, and tells you 
 
 ---
 
+## Session 20 — Cutting the cord: the whole brain now runs on the device
+
+The whole point of this project is to run on **QVAC** — the on-device AI engine. But quietly,
+during building, we'd been leaning on a separate helper app (LM Studio) to actually run the
+medical brain. This session we made the real thing work: medpsy **and** the medical-code matcher
+now run **directly on QVAC, on the device, with nothing fetched from the network**.
+
+The only thing in the way was plumbing. The website part knew how to talk to a "standard AI
+socket," but QVAC is a toolkit, not a server with that socket — so we added a tiny **adapter** so
+the website talks to QVAC through the same socket it always used. No website changes needed.
+
+Then a confusing hiccup: switching to QVAC, it **froze trying to download a model over a
+peer-to-peer network** that wasn't reachable. It turned out the medical brain itself loaded
+fine — it was an *extra* text-understanding model it tried to fetch, and **we don't even use that
+one**. We use a small model called "nomic" — the same one all along. So we handed QVAC a local
+copy of nomic, and now nothing touches the network. We double-checked it still finds the right
+medical codes.
+
+We also made it far easier for a teammate to set up on a **Linux** laptop (it used to have one
+person's personal folder path baked in) and wrote a step-by-step setup guide.
+
+Bottom line: it now genuinely runs **entirely on the device**, on QVAC, start to finish — no
+cloud, no separate app, no network.
+
+---
+
+## Session 21 — We tried a fancier code-finder, and kept the simple one
+
+To turn "what's wrong" into an official medical code, we use a matching tool. QVAC offers a
+fancier "RAG" database that's supposed to be good at search, so we **tested whether it beats
+ours** — fair and square, on the same 20 test cases, using the same understanding underneath.
+
+It lost badly: ours got **16 of 20** right; the fancy one got **1 of 20** (it suggested "SARS"
+for appendicitis). The reason: that fancier tool is built for searching through **long
+documents**, not matching short labels to a fixed list — and since it uses the very same
+understanding ours does, it can't really do better anyway. So we kept our simple, exact matcher.
+
+Bottom line: tested honestly, the simple tool won — so we kept it.
+
+---
+
+## Session 22 — A black box for every visit (that can't be secretly changed)
+
+Until now, once a patient finished, the whole conversation just… vanished. For something that helps
+make medical decisions, that's not okay — a doctor (or, later, someone checking what went wrong) needs
+to be able to look back and see *exactly* what happened. So we built a **flight recorder** for every
+patient visit.
+
+Every meaningful thing is written down the instant it happens: which screen the patient was on, what
+they typed or said out loud, what the assistant asked **and the exact thinking behind it**, the
+translations both ways (so you can tell if a bad *translation* — not the AI — caused a mistake), the
+verified medical code, the final urgency decision, and the doctor's sign-off.
+
+The clever part: each entry is **sealed to the one before it with a digital fingerprint**, like links in
+a chain. If anyone ever went back and changed or deleted even a single word, the chain breaks — and the
+app can point at the exact spot where it was tampered with. You simply can't quietly rewrite history.
+
+Each patient gets their **own** record. There's a new **"Audit"** page where you can open any visit, see
+the whole timeline, check the green "untampered ✓" badge, and **export it as a single sealed file** to
+hand to a hospital — who can load it back in, and the app will confirm it's genuine and unaltered. It all
+stays **on the device** (it's private medical information); nothing leaves unless you choose to share it.
+
+Bottom line: every visit now keeps an honest, sealed, replayable record — so the AI's decisions can
+always be checked afterwards, and that record can't be secretly altered.
+
+---
+
 ## The whole story in three sentences
 
 We built a tiny medical AI helper, tried our hardest to break it, and found its

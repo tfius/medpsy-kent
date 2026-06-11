@@ -1,5 +1,7 @@
 // Minimal OpenAI-compatible chat client. Hits /v1 (Vite proxies to LM Studio today,
 // or a QVAC CLI server later). Same contract either way.
+import { getAuditEncounter } from "./audit";
+
 export type Msg = { role: "system" | "user" | "assistant"; content: string };
 
 const MODEL = import.meta.env.VITE_LLM_MODEL || "medpsy-4b";
@@ -17,6 +19,7 @@ export async function chat(
       temperature: opts.temperature ?? 0.3,
       max_tokens: opts.maxTokens ?? 8192, // >=8k: reasoning models need room before answering
       stream: false,
+      encounterId: getAuditEncounter(), // server logs raw model I/O under this encounter
     }),
   });
   if (!res.ok) throw new Error(`LLM ${res.status}: ${await res.text()}`);
@@ -55,6 +58,7 @@ export async function chatStream(
       temperature: opts.temperature ?? 0.3,
       max_tokens: opts.maxTokens ?? 8192,
       stream: true,
+      encounterId: getAuditEncounter(), // server logs raw model I/O under this encounter
     }),
   });
   if (!res.ok || !res.body) throw new Error(`LLM ${res.status}: ${await res.text().catch(() => "")}`);

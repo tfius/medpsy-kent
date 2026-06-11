@@ -8,6 +8,7 @@
 // Fails safe: on any error the original text is returned unchanged, so a missing/clashing
 // translation model degrades to "send the patient's own words" rather than breaking triage.
 import { chat } from "./openai";
+import { audit } from "./audit";
 import type { Lang } from "./prefs";
 import type { Triage } from "./triage";
 
@@ -56,6 +57,8 @@ export async function translateText(text: string, from: string, to: string): Pro
     // e.g. the same question localized twice, or repeated answers — share one round-trip.
     // Fail safe: on any error resolve to the original text so triage never breaks.
     p = llmTranslate(src, from, to).catch(() => text);
+    // Audit the translation boundary (what medpsy saw vs. what the patient said/heard).
+    p.then((out) => { if (out && out !== src) audit.translation({ dir: from === "en" ? "out" : "in", from, to, src, out }); }).catch(() => {});
     if (cache.size > 500) cache.clear(); // soft cap for very long kiosk sessions
     cache.set(key, p);
   }

@@ -6,6 +6,8 @@ import { Identify, Consent, Context, Intake, Route as RoutePage, Validate, Billi
 import { useEncounter, type Encounter } from "./store";
 import { usePrefs, useT, type UiScale } from "./lib/prefs";
 import { HelpProvider, HelpButton } from "./lib/ui";
+import Audit from "./pages/Audit";
+import { audit } from "./lib/audit";
 
 type Step = { path: string; key: string; el: ReactNode; clinician?: boolean };
 const STEPS: Step[] = [
@@ -50,6 +52,9 @@ export default function App() {
     if (h) { h.setAttribute("tabindex", "-1"); h.focus(); }
   }, [pathname]);
 
+  // Audit every stage the patient/clinician enters.
+  useEffect(() => { audit.stage(pathname, STEPS.find((s) => s.path === pathname)?.key); }, [pathname]);
+
   function newPatient() {
     reset();
     nav("/");
@@ -69,6 +74,7 @@ export default function App() {
               ))}
             </div>
             <button type="button" className="btn ghost newpt" onClick={newPatient}>↺ {T("newPatient")}</button>
+            <NavLink to="/audit" className="btn ghost newpt" title="Audit log">🛡 {T("audit") !== "audit" ? T("audit") : "Audit"}</NavLink>
             <HelpButton />
           </div>
         </header>
@@ -90,6 +96,7 @@ export default function App() {
         <main className="content">
           <Routes>
             {STEPS.map((s) => <Route key={s.path} path={s.path} element={s.el} />)}
+            <Route path="/audit" element={<Audit />} />
           </Routes>
         </main>
 

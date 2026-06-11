@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { useEncounter } from "../store";
 import { chat } from "../lib/openai";
 import { sha256Hex, newId } from "../lib/sign";
+import { audit } from "../lib/audit";
 import { VoiceTextarea, SpeakButton, VoicePicker, SpeechSupport } from "../lib/voice";
 import { useHelp, TriageResult, LanguagePicker } from "../lib/ui";
 import { useT, usePrefs } from "../lib/prefs";
@@ -202,6 +203,7 @@ export function Validate() {
     const hash = await sha256Hex(JSON.stringify(payload));
     setRecord({ id: payload.outcome.id, hash, at: payload.at });
     set({ outcome: o ? { ...o, decision, severity } : o });
+    audit.signoff({ outcomeId: payload.outcome.id, decision, severity, hash, at: payload.at, validatedBy: payload.validatedBy, notes });
   }
 
   return (
