@@ -7,6 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { getProvider } from "./backend.js";
 import { loadOrBuildIndex, verifyIcd } from "./icd-index.js";
+import { searchKnowledge } from "./knowledge.js";
 import * as audit from "./audit.js";
 
 // On-device speech is optional (needs @qvac/sdk + models). Loaded lazily on first use.
@@ -14,6 +15,12 @@ let speech = null;
 async function getSpeech() {
   if (!speech) speech = await import("./speech.js");
   return speech;
+}
+// P2P handoff (hyperswarm) is loaded lazily too — only when a transfer is requested.
+let p2p = null;
+async function getP2p() {
+  if (!p2p) p2p = await import("./p2p.js");
+  return p2p;
 }
 const readBody = (req) => new Promise((resolve) => {
   const chunks = [];
@@ -112,6 +119,31 @@ http.createServer(async (req, res) => {
     res.end(JSON.stringify({ object: "list", data: [{ id: provider.name, object: "model" }] }));
     return;
   }
+  // --- P2P audit handoff: device-to-device over Hyperswarm (see src/p2p.js) ---
+  // POST /api/p2p/send {encounterId} -> {code,...}; POST /api/p2p/receive {code} -> import
+  // result (held open until the transfer lands or times out); GET /api/p2p/status.
+  if (req.url.split("?")[0].startsWith("/api/p2p")) {
+    const action = req.url.split("?")[0].split("/").filter(Boolean)[2] || null;
+    const json = (code, obj) => { res.writeHead(code, { "content-type": "application/json" }); res.end(JSON.stringify(obj)); };
+    try {
+      const mod = await getP2p();
+      if (req.method === "POST" && action === "send") {
+        const { encounterId } = JSON.parse((await readBody(req)).toString() || "{}");
+        json(200, await mod.offer(encounterId)); return;
+      }
+      if (req.method === "POST" && action === "receive") {
+        const { code } = JSON.parse((await readBody(req)).toString() || "{}");
+        json(200, await mod.receive(code)); return;
+      }
+      if (req.method === "POST" && action === "cancel") {
+        const { code } = JSON.parse((await readBody(req)).toString() || "{}");
+        json(200, await mod.cancel(code)); return;
+      }
+      if (req.method === "GET" && action === "status") { json(200, mod.status()); return; }
+      json(404, { error: "unknown p2p route" });
+    } catch (e) { json(400, { error: String(e?.message || e) }); }
+    return;
+  }
   // --- Audit log: per-encounter, append-only, hash-chained (see src/audit.js) ---
   if (req.url.split("?")[0].startsWith("/api/audit")) {
     const seg = req.url.split("?")[0].split("/").filter(Boolean); // ["api","audit", id?, action?]
@@ -137,6 +169,23 @@ http.createServer(async (req, res) => {
       }
       json(404, { error: "unknown audit route" });
     } catch (e) { json(400, { error: String(e) }); }
+    return;
+  }
+  // Clinical knowledge base: top passages from data/knowledge/*.md for a triage
+  // conclusion (pharmacist reference — retrieved, cited, never auto-acted-on).
+  if (req.method === "POST" && req.url === "/api/knowledge") {
+    const body = await readBody(req);
+    try {
+      const { query, topK, encounterId } = JSON.parse(body.toString() || "{}");
+      const results = await searchKnowledge(query || "", provider, Math.min(Math.max(Number(topK) || 3, 1), 8));
+      if (encounterId) audit.append(encounterId, "knowledge.search",
+        { query, results: results.map((r) => ({ doc: r.doc, score: r.score })) }, "system").catch(() => {});
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ results }));
+    } catch (e) {
+      res.writeHead(500, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: String(e) }));
+    }
     return;
   }
   if (req.method === "POST" && req.url === "/api/icd") {

@@ -1,0 +1,29 @@
+{
+  "description": "Ground truth for the doc-RAG quality gate (scripts/doc_rag_eval.mjs). Each query should retrieve passages from the named source document in data/knowledge/. Queries are paraphrased — they deliberately avoid copying the documents' wording.",
+  "cases": [
+    { "id": "K1", "query": "patient on warfarin wants to buy ibuprofen for back pain", "doc": "warfarin-interactions.md" },
+    { "id": "K2", "query": "GP started clarithromycin, patient takes warfarin daily — anything to check?", "doc": "warfarin-interactions.md" },
+    { "id": "K3", "query": "is it safe to take sumatriptan if I'm on sertraline", "doc": "serotonin-syndrome.md" },
+    { "id": "K4", "query": "patient on fluoxetine got tramadol after dental surgery, now shaky and sweating with fast heartbeat", "doc": "serotonin-syndrome.md" },
+    { "id": "K5", "query": "taking St John's Wort tablets from the health shop together with antidepressants", "doc": "serotonin-syndrome.md" },
+    { "id": "K6", "query": "how many paracetamol tablets per day is too many for a small elderly woman", "doc": "paracetamol-dosing.md" },
+    { "id": "K7", "query": "took cold and flu sachets plus co-codamol all day, feels fine — worried it was too much acetaminophen", "doc": "paracetamol-dosing.md" },
+    { "id": "K8", "query": "can someone with asthma use Nurofen for a headache", "doc": "nsaid-risks.md" },
+    { "id": "K9", "query": "naproxen request from a woman who is 8 months pregnant", "doc": "nsaid-risks.md" },
+    { "id": "K10", "query": "elderly man on ramipril and furosemide buying diclofenac gel and tablets — kidney concerns?", "doc": "nsaid-risks.md" },
+    { "id": "K11", "query": "diabetic on metformin booked for a CT scan with contrast dye, what should they do with their tablets", "doc": "metformin-safety.md" },
+    { "id": "K12", "query": "metformin patient with gastroenteritis vomiting for two days, keep taking the medication?", "doc": "metformin-safety.md" },
+    { "id": "K13", "query": "patient picks up oxycodone and is already on zopiclone at night, drinks wine with dinner", "doc": "opioid-benzo-codeine.md" },
+    { "id": "K14", "query": "found family member very drowsy with tiny pupils breathing slowly after pain tablets", "doc": "opioid-benzo-codeine.md" },
+    { "id": "K15", "query": "simvastatin patient prescribed a course of clarithromycin for chest infection", "doc": "statin-interactions.md" },
+    { "id": "K16", "query": "muscle aches all over and urine looks like cola, on cholesterol tablets", "doc": "statin-interactions.md" },
+    { "id": "K17", "query": "heart failure patient on ramipril and spironolactone using LoSalt instead of regular salt", "doc": "acei-hyperkalemia.md" },
+    { "id": "K18", "query": "lips and tongue swelling up in a patient who has taken lisinopril for three years", "doc": "acei-hyperkalemia.md" },
+    { "id": "K19", "query": "person on lithium wants ibuprofen for fever during a heatwave and has diarrhoea", "doc": "lithium-monitoring.md" },
+    { "id": "K20", "query": "62 year old diabetic woman with jaw ache, sweating and nausea but no chest pain at the counter", "doc": "protocol-chest-pain.md" },
+    { "id": "K21", "query": "old lady on apixaban bumped her head on a cupboard door, feels completely fine", "doc": "protocol-head-injury-anticoagulated.md" },
+    { "id": "K22", "query": "8 week old baby with a temperature of 38.2 but feeding okay", "doc": "protocol-pediatric-fever.md" },
+    { "id": "K23", "query": "toddler with fever and a rash that does not fade when pressed with a glass", "doc": "protocol-pediatric-fever.md" },
+    { "id": "K24", "query": "can I give my 14 year old aspirin for the flu", "doc": "protocol-pediatric-fever.md" }
+  ]
+}

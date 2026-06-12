@@ -503,6 +503,40 @@ and chose safe-and-honest over confidently-wrong for the one language the machin
 
 ---
 
+## Session 24 — Beaming records between devices, and a pocket library for the pharmacist
+
+This session answered a fair question: if the whole point of our toolkit (QVAC) is that it's
+*more* than a plain AI engine, where's the proof? It turned out the proof was already installed —
+the toolkit quietly ships with the same technology BitTorrent-style apps use to let two computers
+talk **directly to each other**, with no server in the middle. We just hadn't used it yet.
+
+First feature: **beaming a patient's record from the kiosk to the pharmacist's computer.** Until
+now you had to download a file and carry it over. Now the kiosk shows a short code (like
+`NRM8-P72M`), the pharmacist types it on their machine, and the sealed record travels straight
+between the two devices over an encrypted connection — never touching the internet's servers, never
+touching a cloud. And we gave every device its own unforgeable digital signature (think wax seal),
+so the receiving pharmacist can prove not just that the record wasn't tampered with, but *which
+kiosk* it came from. We tested it for real — two separate "devices", one sealed record, delivered
+and verified. One catch we're honest about: finding the other device currently uses a public
+address book on the internet; a pharmacy with no internet at all would need a small local one.
+
+Second feature: **a built-in reference library.** We wrote a starter shelf of pharmacy fact sheets
+(drug combinations that hurt people, plus local rules like "any head bump on blood thinners goes to
+the ER") and taught the kiosk to pull up the right page the moment it reaches a conclusion — shown
+to the *pharmacist*, clearly labeled as reference, never acted on automatically. Before trusting
+the fancy library-search tool that came with our toolkit, we tested it against our boring simple
+one — 24 tricky questions, none reusing the documents' exact words. The fancy tool did fine (it
+found the right document in its top-3 picks 92% of the time), but boring-and-simple found it **100%
+of the time**. So, same verdict as last time: keep the simple one. The library is just a folder of
+text files, which means updating every kiosk's knowledge is as easy as beaming files — using
+feature number one.
+
+Bottom line: the kiosk can now hand its sealed records directly to the pharmacist's computer like a
+relay baton, each one wax-stamped with which machine made it, and it reads up on the right fact
+sheet before the pharmacist even asks — all still without a single byte leaving the building.
+
+---
+
 ## The whole story in three sentences
 
 We built a tiny medical AI helper, tried our hardest to break it, and found its

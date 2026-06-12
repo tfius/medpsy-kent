@@ -75,3 +75,29 @@ export const getEncounter = (id: string): Promise<{ events: AuditEvent[]; integr
 export const exportEncounter = (id: string) => j(`/api/audit/${encodeURIComponent(id)}/export`);
 export const importBundle = (bundle: unknown) =>
   j("/api/audit/import", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(bundle) });
+
+// --- P2P handoff: device-to-device bundle transfer over Hyperswarm (src/p2p.js) ---
+export interface DeviceId { publicKey: string; name: string }
+export interface P2pOffer { code: string; encounterId: string; expiresAt: string; device: DeviceId }
+export interface P2pOfferStatus {
+  code: string; encounterId: string; createdAt: string; expiresAt: string;
+  status: "waiting" | "sent" | "rejected" | "expired" | "cancelled"; sentTo: DeviceId | null; error: string | null;
+}
+export interface P2pImportResult {
+  ok: boolean; reason?: string; encounterId?: string; integrity?: Integrity; signatureOk?: boolean;
+  signedBy?: { publicKey?: string; name?: string | null; scheme: string };
+  imported?: boolean; sender?: DeviceId | null; error?: string;
+}
+// Unlike j(), this returns the parsed body even on a non-2xx response, so the server's
+// {error: "…"} reason (broken chain, receive timeout) reaches the UI instead of a generic
+// "is the server running?". Returns null only on a network/parse failure.
+const postX = async (url: string, body: unknown): Promise<Record<string, unknown> | null> => {
+  try {
+    const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    return await r.json().catch(() => null);
+  } catch { return null; }
+};
+export const p2pSend = (encounterId: string) => postX("/api/p2p/send", { encounterId }) as Promise<(P2pOffer & { error?: string }) | { error: string } | null>;
+// Held open server-side until the transfer lands or times out (~60 s).
+export const p2pReceive = (code: string) => postX("/api/p2p/receive", { code }) as Promise<P2pImportResult | null>;
+export const p2pStatus = (): Promise<{ device: DeviceId; offers: P2pOfferStatus[] } | null> => j("/api/p2p/status");

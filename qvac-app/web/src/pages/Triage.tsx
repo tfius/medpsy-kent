@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { chatStream, type Msg } from "../lib/openai";
 import { seed, isConclusion, parseTriage, questionText, CONCLUDE_NUDGE, type Triage as T } from "../lib/triage";
+import { searchKnowledge, docLabel, type KnowledgePassage } from "../lib/knowledge";
 import { speak, stopSpeaking, listenLocal, sttSupported, type ListenControl } from "../lib/speech";
 import { toEnglish, fromEnglish, localizeTriage } from "../lib/translate";
 import { SpeakButton } from "../lib/voice";
@@ -33,7 +34,17 @@ export default function Triage() {
   const stopRef = useRef<null | ListenControl>(null);
   const [result, setResult] = useState<T | null>(enc.outcome);
   const [resultReason, setResultReason] = useState(""); // reasoning behind the final verdict
+  const [know, setKnow] = useState<KnowledgePassage[]>([]); // pharmacist reference passages
+  const knowReq = useRef(0); // staleness guard: only the latest fetch may set `know`
   const [err, setErr] = useState("");
+
+  // Pull matching protocols/monographs for the (English, canonical) conclusion. Guarded
+  // so a slow response from a prior conclusion can't repopulate the panel after a restart.
+  function fetchKnow(t: T) {
+    const q = [t.condition, t.redFlags].filter((s) => s && !/^none/i.test(s)).join(". ");
+    const req = ++knowReq.current;
+    searchKnowledge(q).then((r) => { if (req === knowReq.current) setKnow(r); });
+  }
 
   // Hands-free: once you answer by voice we keep the mic on (auto-arm after each
   // spoken question), for a natural back-and-forth. Typing or tapping the mic off
@@ -49,6 +60,7 @@ export default function Triage() {
   useEffect(() => {
     let live = true;
     if (enc.outcome && lang !== "en") localizeTriage(enc.outcome, lang).then((s) => { if (live) setResult(s); });
+    if (enc.outcome) fetchKnow(enc.outcome); // revisiting the step — repopulate the reference panel
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -112,6 +124,7 @@ export default function Triage() {
         const t = parseTriage(reply); // English — stays canonical for SBAR / ICD / clinician view
         setResultReason(lastReason); // keep the reasoning that produced the verdict
         set({ outcome: t });
+        fetchKnow(t); // pharmacist reference passages (on-device knowledge base)
         setResult(await localizeTriage(t, lang)); // patient-facing copy in their language
       } else {
         const q = questionText(reply); // strip any leaked reasoning → just the question
@@ -162,7 +175,8 @@ export default function Triage() {
 
   function restart() {
     setStarted(false); setMsgs([]); setTurns([]); setAsked(0);
-    setInput(""); setResult(null); setResultReason(""); setErr(""); set({ outcome: null });
+    knowReq.current++; // invalidate any in-flight knowledge fetch from the previous encounter
+    setInput(""); setResult(null); setResultReason(""); setKnow([]); setErr(""); set({ outcome: null });
   }
 
   return (
@@ -252,6 +266,20 @@ export default function Triage() {
           <TriageResult t={result} view="patient"
             onNext={() => nav(result.band === "GREEN" ? "/route" : "/history")}
             onEmergency={() => openHelp(true)} />
+          {/* Pharmacist reference — retrieved from the on-device knowledge base (local
+              protocols + interaction monographs). Clinician-facing: stays English. */}
+          {know.length > 0 && (
+            <details className="card" style={{ marginTop: 10 }}>
+              <summary>📚 Pharmacist reference — local protocols &amp; interactions ({know.length})
+                {" "}<span className="note">on-device retrieval; reference only, not patient advice</span></summary>
+              {know.map((k, i) => (
+                <details key={i} style={{ marginTop: 8 }} open={i === 0}>
+                  <summary><b>{docLabel(k.doc)}</b> <span className="note">match {k.score}</span></summary>
+                  <div className="note" style={{ whiteSpace: "pre-wrap", fontSize: 13, marginTop: 4 }}>{k.content}</div>
+                </details>
+              ))}
+            </details>
+          )}
           <div className="row"><button className="btn ghost" onClick={restart}>↻ {T("tri.restart")}</button></div>
         </>
       )}

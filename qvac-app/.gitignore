@@ -16,3 +16,9 @@ data/icd10.index.meta.json
 
 # data/icd10.json IS committed (small, makes the app self-contained)
 audit/
+
+# Device identity — contains the ed25519 SECRET key. Never commit.
+data/device-key.json
+
+# Generated knowledge-base chunk index (rebuilds automatically from data/knowledge/)
+data/knowledge.index.json

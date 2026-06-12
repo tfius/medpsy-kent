@@ -12,6 +12,7 @@
 import fs from "node:fs";
 import crypto from "node:crypto";
 import path from "node:path";
+import * as identity from "./identity.js";
 
 const AUDIT_DIR = process.env.MEDPSY_AUDIT_DIR || path.join(import.meta.dirname, "..", "audit");
 const AUDIT_KEY = process.env.MEDPSY_AUDIT_KEY || "medpsy-demo-device-key"; // prod: per-device secret
@@ -120,7 +121,12 @@ export function list() {
   return out.sort((a, b) => (a.start < b.start ? 1 : -1));
 }
 
-// Self-contained, signed bundle for sharing/import.
+// What a device attests to when signing a bundle: this encounter, this chain head.
+const signable = (encounterId, head) => `medpsy-audit:${encounterId}:${head}`;
+
+// Self-contained, signed bundle for sharing/import. Signed with this device's
+// ed25519 key (see identity.js) so the receiver can verify *which device* produced
+// it — not just that the chain is intact.
 export function exportBundle(encounterId) {
   const events = read(encounterId);
   const v = verify(events);
@@ -130,7 +136,9 @@ export function exportBundle(encounterId) {
     exportedAt: nowIso(), events,
     head: { seq: events.length - 1, hash: head },
     integrity: v,
-    signature: sha256(`${head}:${AUDIT_KEY}`), // demo: device-key HMAC-ish; prod: ECDSA
+    device: identity.getIdentity(),                   // { publicKey, name } of the exporting device
+    sigScheme: "ed25519",
+    signature: identity.sign(signable(encounterId, head)),
   };
 }
 
@@ -140,16 +148,25 @@ export function importBundle(bundle, { persist = true } = {}) {
     return { ok: false, reason: "not a medpsy-audit bundle" };
   const integrity = verify(bundle.events);
   const head = bundle.events.length ? bundle.events[bundle.events.length - 1].hash : GENESIS;
-  const signatureOk = bundle.signature === sha256(`${head}:${AUDIT_KEY}`);
   const id = bundle.encounterId;
+  // ed25519 device signature (current format); legacy HMAC bundles still verify.
+  const signatureOk = bundle.device?.publicKey
+    ? identity.verify(signable(id, head), bundle.signature || "", bundle.device.publicKey)
+    : bundle.signature === sha256(`${head}:${AUDIT_KEY}`);
+  const signedBy = bundle.device?.publicKey
+    ? { publicKey: bundle.device.publicKey, name: bundle.device.name || null, scheme: "ed25519" }
+    : { scheme: "legacy-hmac" };
+  // Fail closed: only persist a bundle whose chain AND device signature verify. A
+  // chain can be internally consistent yet fabricated, so integrity alone is not a
+  // trust decision — without a valid signature the record never lands on disk.
   let imported = false;
-  if (persist && integrity.ok && safeId(id) && !fs.existsSync(fileFor(id))) {
+  if (persist && integrity.ok && signatureOk && safeId(id) && !fs.existsSync(fileFor(id))) {
     fs.mkdirSync(AUDIT_DIR, { recursive: true });
     fs.writeFileSync(fileFor(id), bundle.events.map((e) => JSON.stringify(e)).join("\n") + "\n");
     heads.delete(id);
     imported = true;
   }
-  return { ok: integrity.ok, encounterId: id, events: bundle.events, integrity, signatureOk, imported };
+  return { ok: integrity.ok, encounterId: id, events: bundle.events, integrity, signatureOk, signedBy, imported };
 }
 
 export const _internal = { AUDIT_DIR, fileFor };

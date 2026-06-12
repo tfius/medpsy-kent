@@ -1140,3 +1140,71 @@ clean); adding more languages to the set is a one-token change. Override the mod
 `VITE_TRANSLATE_MODEL`.
 
 No new files. Touched: `web/src/lib/translate.ts`, `STACK.md`.
+
+---
+
+## 2026-06-13 — P2P audit handoff + on-device knowledge base (the "why QVAC?" features)
+
+Strategic session first: mapped five horizons from demo to pilot (validate → de-mock →
+productionize → regulatory → QVAC-distinctive) and turned the planning into GitHub issues —
+**#1** the translation-safety eval (run the 90-case adversarial bank through each language's
+gemma→medpsy path and measure band drift vs native English; spec'd in full, parked), **#2** P2P
+model distribution via `@qvac/registry-client` (fleet-scale, later), **#3** Holepunch delegated
+inference (hard-case escalation to a bigger peer; needs its own safety design). Then built the
+two "QVAC-distinctive" features that justify the SDK over bare llama.cpp: the P2P stack
+(hyperswarm, hyperdrive, corestore, hypercore-crypto) **already ships inside `@qvac/sdk`** — the
+data layer was sitting in `node_modules` unused.
+
+**A — P2P audit handoff (kiosk → pharmacist station).** The audit log's export/import was 90% of
+a P2P feature; what was missing was transport and real device identity.
+- `src/identity.js`: persistent **ed25519 keypair per device** (hypercore-crypto;
+  `data/device-key.json`, mode 600, gitignored — it holds the secret key). `exportBundle` now
+  signs `medpsy-audit:<encounterId>:<headHash>` with the device key and embeds
+  `device.{publicKey,name}`; `importBundle` verifies ed25519 (legacy HMAC bundles still accepted,
+  reported as `signedBy.scheme`). The receiver can now prove *which kiosk* produced a record —
+  evidentiary, not cosmetic.
+- `src/p2p.js`: pairing-code handoff over Hyperswarm. Sender `offer(encounterId)` → 8-char
+  unambiguous-base32 code (`XXXX-XXXX`, ~40 bits, 5-min TTL); both sides derive the DHT topic
+  `sha256("medpsy-handoff:v1:"+code)`; the bundle streams as newline-JSON over the
+  **end-to-end-encrypted Noise channel**; receiver verifies chain + signature via the existing
+  `importBundle` (the transport never needs to be trusted — only the signature does), acks, and
+  the sender's offer flips to `sent`. Routes: `POST /api/p2p/send|receive|cancel`,
+  `GET /api/p2p/status` (lazy-loaded like speech). UI: `/audit` grew "📡 Send to device" (live
+  pairing code + delivery status polling) and "📡 Receive from device" (code entry).
+- **Verified end-to-end** by `scripts/p2p_test.mjs`: receiver runs as a child process with its own
+  `MEDPSY_AUDIT_DIR` + device key (a genuine second "device") — transfer, chain verify, ed25519
+  verify, persist, ack all green. One real-world bug found and fixed: the receiver tore the swarm
+  down before the ack flushed (sender stuck on "waiting") → `conn.end()` + wait-for-close before
+  destroy. Caveat for a truly offline LAN: hyperswarm discovery needs a DHT bootstrap —
+  `MEDPSY_P2P_BOOTSTRAP` can point at a local node.
+
+**B — clinical knowledge base, gated by measurement.** The ICD A/B said @qvac/rag loses at
+short-label classification; documents are its home turf, so it got a fair rematch before any
+integration. New demo corpus `data/knowledge/*.md` (12 files: 9 interaction monographs —
+warfarin, serotonin syndrome, paracetamol, NSAIDs, metformin, opioid+benzo, statins,
+ACEi/hyperkalaemia, lithium — and 3 local protocols: chest pain, anticoagulated head injury,
+paediatric fever; each clearly labeled DEMO CORPUS), plus 24 paraphrased ground-truth queries
+(`scripts/knowledge_cases.json` — deliberately no string overlap with the docs).
+`scripts/doc_rag_eval.mjs` ran three arms on the same local QVAC nomic embeddings:
+
+| arm | recall@1 | recall@3 |
+|---|---|---|
+| @qvac/rag naive (`ragIngest` chunk:true) | 75% | 92% |
+| @qvac/rag tuned (`ragChunk` + nomic prefixes per chunk) | 71% | 88% |
+| **flat normalized cosine over the same tuned chunks** | **83%** | **100%** |
+
+So rag **is viable for document RAG** (vindicating half the ICD verdict — 92% ≠ 5%) but cosine
+still wins every metric, and recall@3=100% is the number that matters when the top-3 passages go
+in front of a pharmacist. `src/knowledge.js` therefore uses paragraph chunking + provider
+embeddings + normalized cosine (index cached at `data/knowledge.index.json`, keyed by corpus
+hash, auto-rebuilds on any doc change). The corpus stays **plain markdown** — distributing an
+updated protocol to other kiosks is a file transfer over the same P2P layer, not a database
+migration. Wired through: `POST /api/knowledge` (audits `knowledge.search` per encounter) → a
+collapsed **"📚 Pharmacist reference"** panel on the triage conclusion (English/clinician-facing,
+cited by source doc, reference-only — never auto-acted-on). Smoke: the atypical-MI query
+("diabetic woman, jaw ache, sweating, no chest pain") retrieves `protocol-chest-pain.md` top-1.
+
+New: `src/identity.js`, `src/p2p.js`, `src/knowledge.js`, `web/src/lib/knowledge.ts`,
+`scripts/p2p_test.mjs`, `scripts/doc_rag_eval.mjs`, `scripts/knowledge_cases.json`,
+`data/knowledge/*.md`. Touched: `src/audit.js`, `src/server.js`, `web/src/lib/audit.ts`,
+`web/src/pages/{Audit,Triage}.tsx`, `.gitignore`.
