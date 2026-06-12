@@ -1096,3 +1096,47 @@ web `tsc` clean.
 New: `src/audit.js`, `web/src/lib/audit.ts`, `web/src/pages/Audit.tsx`. Touched: `src/server.js`,
 `web/src/{store.tsx, App.tsx, lib/openai.ts, lib/speech.ts, lib/translate.ts, lib/ui.tsx,
 pages/Triage.tsx, pages/scaffolds.tsx, styles.css}`.
+
+---
+
+## 2026-06-12 — Which model should translate? (measured) + a Slovenian safety fallback
+
+The translation bridge had shipped with `gemma-4-26b-a4b-it` as the translator. Before trusting
+it, we **measured** how well it (and the alternatives loaded in LM Studio) translate the supported
+languages, both directions, on realistic triage strings stressing numbers, doses, drug names and
+**red-flag terms** (meningitis "stiff neck / non-fading rash", GI-bleed "black stools / blood in
+vomit"). Method: native→English (the safety-critical inbound path), plus English→lang→English
+round-trips to expose fidelity loss.
+
+**Inbound (patient → English, what medpsy reasons on) is reliable for all 8 languages** on gemma —
+every native complaint came back as accurate English. That's the direction that determines triage
+correctness, so the core path is sound.
+
+**Outbound (English → patient) is where models diverge:**
+- **gemma-4-26b-a4b-it** — fast (~1–2 s), fluent for fr/es/it/de/zh/yue (idiomatic clinical
+  register; "non-blanching" nuance preserved; drug names + "400 mg" intact). **But it garbles
+  Slovenian**, and not cosmetically: "stiff neck" → *"neck feather/lump"*, "blood in your vomit" →
+  *"blood in the scalp"*, invented non-words ("odmek", "ugleva"), even **Cyrillic-script leakage**
+  ("odправите"). For a meningitis/GI-bleed safety-net line that's unsafe.
+- **qwen3.6-27b-optiq** — the *only* model that nails Slovenian (correct "okorelost vratu", "črno
+  blato, kri v bruhanju"). **But it's a runaway reasoning model**: 800–2,555 thinking tokens to
+  translate one sentence → **50–167 s per call**, and `/no_think` (system *or* user) doesn't
+  suppress it (still burns the whole budget → `<EMPTY>` at 1–2k caps). A triage turn does 1–2
+  translations + result localization, so this is **minutes per question — unusable live.** Not
+  adopted. (Also surfaced that `translate.ts` capping `maxTokens` at 2048 silently truncates any
+  reasoning model — our own "≥8k for reasoning models" rule.)
+- **medgemma-4b-it / gemma-4-e4b-it** — fast (0.4–0.7 s) but *also* corrupt Slovenian: "steep
+  neck", "skin that doesn't disappear" (lost "rash"), Cyrillic "Zaјmite", nonsense "kopitica".
+- **gemma-3-12b-it-qat / gemma-4-31b-it-assistant** — HTTP 400 (chat-template incompatible).
+
+**Conclusion: no loaded model is both fast enough for live use *and* reliable on Slovenian** — a
+genuinely low-resource language (it's already `limited` in the app: beta STT, no native TTS voice).
+So rather than a model swap: **stay on gemma-4-26b-a4b-it** (fast, good for the other six), and
+**disable Slovenian *outbound* translation** — `NO_TRANSLATE_OUT = new Set(["sl"])` in
+`translate.ts`, checked in `fromEnglish`. A Slovenian patient's **input is still translated *into*
+English** (reliable → medpsy reasons on their real words), but medpsy's questions/advice **display
+in English** rather than risk a corrupted red flag. `de` outbound stays on (gemma's German tested
+clean); adding more languages to the set is a one-token change. Override the model globally with
+`VITE_TRANSLATE_MODEL`.
+
+No new files. Touched: `web/src/lib/translate.ts`, `STACK.md`.

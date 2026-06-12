@@ -474,6 +474,35 @@ always be checked afterwards, and that record can't be secretly altered.
 
 ---
 
+## Session 23 — Picking the right translator (and being honest about Slovenian)
+
+We have a separate AI just for translating between the patient and our English-only medical brain.
+Before trusting it, we **tested** it properly — and not with easy sentences, but with the scary ones:
+"stiff neck and a rash that doesn't fade" (a meningitis warning), "blood in your vomit, black stools"
+(internal bleeding), exact drug doses. We checked both directions for all the languages.
+
+Two good pieces of news and one awkward one. Good: **understanding the patient works for every
+language** — when someone describes their symptoms, our brain gets an accurate English version, which
+is the part that actually decides how urgent things are. Also good: translating *to* the patient is
+great for French, Spanish, Italian, German, Mandarin and Cantonese.
+
+The awkward one: **Slovenian**. Our fast translator mangled it — it turned "stiff neck" into "neck
+feather" and "blood in your vomit" into "blood in the scalp", and even leaked Russian letters. That's
+not a typo you can shrug off on a medical warning. We tried other models: one translated Slovenian
+beautifully but took **one to three *minutes* per sentence** (it "overthinks" everything) — useless for
+a live conversation — and the quick small ones mangled it too. The honest truth is that Slovenian is a
+"small" language these models just haven't learned well enough yet.
+
+So we made a safe choice instead of a flashy one: for Slovenian, we **keep understanding the patient**
+(that direction is reliable), but we **show the assistant's questions and advice in English** rather than
+risk a dangerously wrong Slovenian warning. (Slovenian was already marked "limited" in the app — no
+voice yet either.) The moment a fast, accurate Slovenian translator exists, it's a one-line switch.
+
+Bottom line: we measured before we trusted, kept the fast translator that's reliable for six languages,
+and chose safe-and-honest over confidently-wrong for the one language the machines can't yet do well.
+
+---
+
 ## The whole story in three sentences
 
 We built a tiny medical AI helper, tried our hardest to break it, and found its
