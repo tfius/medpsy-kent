@@ -11,6 +11,23 @@
 
 const GENESIS = "GENESIS";
 
+// Deterministic JSON: keys sorted at every depth, undefined dropped (matching
+// JSON.stringify so the in-memory record and the parsed-from-storage record hash the
+// same). Makes the chain hash stable regardless of key insertion order or JS runtime —
+// the tamper-evidence guarantee shouldn't depend on V8 quirks.
+function stableStringify(v) {
+  if (v === undefined) return undefined;
+  if (v !== null && typeof v === "object" && typeof v.toJSON === "function") v = v.toJSON(); // match JSON.stringify (e.g. Date)
+  if (v === null || typeof v !== "object") return JSON.stringify(v);
+  if (Array.isArray(v)) return "[" + v.map((x) => stableStringify(x) ?? "null").join(",") + "]";
+  const parts = [];
+  for (const k of Object.keys(v).sort()) {
+    const s = stableStringify(v[k]);
+    if (s !== undefined) parts.push(JSON.stringify(k) + ":" + s);
+  }
+  return "{" + parts.join(",") + "}";
+}
+
 export class ChainLog {
   constructor({ adapter, hash, now, v = 1 }) {
     if (!adapter) throw new Error("ChainLog requires an adapter");
@@ -23,11 +40,9 @@ export class ChainLog {
     this.locks = new Map(); // log -> tail promise (serialize appends per log)
   }
 
-  // NB: hashes JSON with insertion-order keys (same approach as the app's audit log). Stable
-  // within a V8-family runtime (Node/Bare). Cross-runtime hash interop would need a sorted
-  // canonical JSON — out of scope until a non-V8 exporter is a real use case.
+  // Sorted-canonical JSON of the hashed fields — deterministic across key order + runtime.
   canonical(rec) {
-    return JSON.stringify({ v: rec.v, log: rec.log, seq: rec.seq, ts: rec.ts, payload: rec.payload, prevHash: rec.prevHash });
+    return stableStringify({ v: rec.v, log: rec.log, seq: rec.seq, ts: rec.ts, payload: rec.payload, prevHash: rec.prevHash });
   }
 
   _withLock(log, fn) {

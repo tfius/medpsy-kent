@@ -37,13 +37,17 @@ export class HypercoreAdapter {
 
   async append(log, line) {
     const core = await this._core(log);
-    if (core.length === 0) { const man = await this._names(); await man.append(b4a.from(log)); } // register the name once
-    await core.append(b4a.from(line));
+    const first = core.length === 0;
+    await core.append(b4a.from(line));               // commit data first…
+    if (first) { const man = await this._names(); await man.append(b4a.from(log)); } // …then register the name (no orphan manifest entry on a failed append)
   }
 
   async read(log) {
     const core = await this._core(log);
     const out = [];
+    // Assumes locally-available blocks (always true for the writer). A REPLICATED remote
+    // core may be sparse — reading it needs core.update() + a {wait:false}/timeout policy,
+    // which lands with the hyperswarm replication wiring (the documented next step).
     for (let i = 0; i < core.length; i++) out.push(b4a.toString(await core.get(i)));
     return out;
   }

@@ -288,3 +288,25 @@ test("multi-writer merge: a correction on one device wins over the other by tran
   assert.equal(view.facts.length, 1, "one logical fact across two devices");
   assert.equal(view.facts[0].object.dose, "2.5mg", "the later correction wins");
 });
+
+test("multi-writer: a clock-skewed-EARLY correction still applies (asserts replayed first)", async () => {
+  const clk = { t: "" };
+  const s = new FactStore({ adapter: new MemoryAdapter(), hash: sha256hex, now: () => clk.t, newId: () => "x" });
+  clk.t = "2026-06-01T12:00:00.000Z";
+  await s.assert("p@A", { statementId: "m1", subject: "p", predicate: "takes", object: { dose: "5mg" }, validFrom: "2024-01-01" });
+  clk.t = "2026-06-01T11:58:00.000Z"; // device B's clock is behind the assert
+  await s.correct("p@B", "m1", { object: { dose: "2.5mg" } });
+  const view = await s.foldView("p", { subject: "p", validAt: "2026-07-01", knownAt: "2026-12-01T00:00:00.000Z" });
+  assert.equal(view.facts.length, 1);
+  assert.equal(view.facts[0].object.dose, "2.5mg", "correction applies despite an earlier wall-clock");
+});
+
+test("a retracted fact cannot be confirmed/corrected/ended/re-retracted (no false success)", async () => {
+  const { store } = makeStore();
+  await store.assert("p", { statementId: "s1", subject: "p", predicate: "x", object: 1 });
+  await store.retract("p", "s1", {});
+  await assert.rejects(() => store.confirm("p", "s1"), /was retracted/);
+  await assert.rejects(() => store.correct("p", "s1", { object: 2 }), /was retracted/);
+  await assert.rejects(() => store.end("p", "s1", "2026-01-01"), /was retracted/);
+  await assert.rejects(() => store.retract("p", "s1", {}), /was retracted/);
+});
