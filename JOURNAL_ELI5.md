@@ -570,6 +570,61 @@ in the brain, not the bridge between languages.
 
 ---
 
+## Session 26 — Teaching the kiosk to listen and speak in the right language
+
+Someone tried the kiosk by hand and noticed it sometimes wrote down what they said in the wrong
+language, or read its answers aloud in the wrong accent. The embarrassing cause: the kiosk *knew*
+which language the person had chosen — it just wasn't telling the ear and the voice. The
+"listening" part was set to "guess the language," so a short or accented sentence could get
+mistaken for another language. And the "speaking" part was using whatever voice was left over
+from the last person, so it might read English with a Spanish mouth.
+
+We fixed both: now the chosen language is handed to the listener (and if the listener doesn't know
+that language, it safely falls back to "guess" instead of breaking), and the voice is always the
+right one for the current language. We also made the kiosk warm up the right language's gear the
+moment you pick it, so there's no awkward pause mid-conversation. Small bug, real difference: on a
+medical tool, hearing "stiff neck" correctly matters.
+
+## Session 27 — Giving the helper a way to look things up instead of guessing
+
+Until now the medical helper answered from memory. We added a separate "Ask MedPsy" page where it
+can actually *use tools* — look up the official code for a condition, search our local fact
+sheets, check a medication list — and then answer, showing you exactly which tools it used and
+what they returned. So instead of "I think the code is roughly K35," it calls the lookup and says
+"K35.8, from the verified list." It runs alongside the normal step-by-step flow, never replacing
+it, and every tool it touches is written into the tamper-proof logbook. We also gave it a thorough
+once-over and fixed the rough edges (it no longer keeps thinking after you close the page, no
+double-counting, clean cancellation).
+
+## Session 28 — A memory with a sense of time (and how a patient's record could travel)
+
+This was the big one. We built a little "memory" the helper can read and write — but a special
+kind that understands **time in two directions**. It knows both *when something was true* ("on
+warfarin since 2024, stopped in March") and *when we learned it* ("we recorded the dose on the
+1st, corrected it on the 20th"). That second one is the magic: you can ask "what did we believe on
+the day of the June visit?" and get the honest answer, even if we corrected it later — exactly the
+question a safety review asks. Nothing is ever erased; the record only grows, and every entry is
+sealed so tampering shows.
+
+It's deliberately general — not just for patients, but a reusable building block (we packaged it so
+it could even become part of the QVAC toolkit). On top of it we added the things that make it safe
+and useful: the helper's notes start as *proposals* a clinician confirms or rejects; when two
+sources disagree (the hospital record vs. what the patient said), the more trustworthy one wins and
+the other is flagged, not silently dropped; and a hand-written drug-interaction map lets the helper
+catch "warfarin + ibuprofen = dangerous" from the *facts*, not a fuzzy guess — even when the
+medicine was written down as "Coumadin" or "Nurofen 400mg." And because each patient's record is a
+self-contained sealed bundle, it can travel device-to-device — so in a clinic with no central
+computer, the patient's record can move *with them*, which is the whole point of an offline-first
+tool.
+
+We reviewed it hard (twice) and the reviews earned their keep — they caught a case where two
+devices with slightly different clocks could make a "stopped this medicine" note silently vanish,
+and a case where a dosed medicine name wouldn't match the danger list. Both fixed. The honest
+status: the memory and its safety features are built and tested; making records actually sync
+between two physical devices over the air is the next step.
+
+---
+
 ## The whole story in three sentences
 
 We built a tiny medical AI helper, tried our hardest to break it, and found its

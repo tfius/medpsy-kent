@@ -1262,3 +1262,96 @@ Scope: smoke slice only (2 of 6 adversarial categories, 3 of 7 languages). The f
 (all 90 cases × 7 langs, ~3 h) is the issue-#1 follow-up; the harness scales to it via `--langs`
 / `--files`. New: `run_translation_eval.py`, `grade_translation_eval.py`,
 `questions_adversarial_i18n/`, `results/20260613-015855-txsafety/`.
+
+---
+
+## 2026-06-13 — Speech: thread the patient's language into STT/TTS (no more auto-detect)
+
+A manual run surfaced two bugs: the kiosk sometimes transcribed in the wrong language or
+"started speaking a different language." Root cause: the kiosk *computed* the patient's
+language but both engines discarded it.
+- **STT** ran Nemotron in fixed `auto` regardless of the `?lang=` the web already sent —
+  `scripts/stt_worker.py` only read `MEDPSY_SPEECH_LANG` at spawn. Short/accented English or
+  a non-English clip could auto-detect wrong; in the translated flow a mis-transcription fed
+  garbage to gemma. Fix: per-request `{wav, lang}` to the worker → pass the locale to the
+  C-API; **self-heal to `auto` on an unknown locale** and report the locale actually used.
+  `speech.js` maps UI code → Nemotron locale, threads it through all STT backends, returns
+  `{text, locale}`, and `prewarmFor(lang)` warms the right engines (Nemotron/Kokoro vs the
+  Cantonese SenseVoice/VITS) so the chosen language's models are resident from the welcome step.
+- **TTS** spoke with a *persisted localStorage voice* (`getVoice()`) — Kokoro derives the
+  language from the voice-id prefix, so a stale Spanish voice read English text. Fix:
+  `effectiveVoice()` uses the persisted voice only if it's native to the current language,
+  else that language's default; prefs hands speech.ts the default voice + native prefixes
+  on language change. The audit now logs the actual STT locale (`"…" (es→auto)`).
+
+Verified live: `?lang=es`→`locale:es`, `?lang=sl`→`sl` (Slovenian IS a Nemotron locale),
+bogus `?lang=xx`→ rejected → `auto`. No new files; `scripts/stt_worker.py`, `src/speech.js`,
+`src/server.js`, `web/src/lib/{speech.ts,prefs.tsx,audit.ts}`, `web/src/pages/Audit.tsx`.
+
+---
+
+## 2026-06-13 — medpsy as a tool-calling agent (a separate /agent flow)
+
+A new clinician-facing `/agent` page, off the 9-step rail, where medpsy reasons and CALLS
+on-device tools rather than working from memory — closing the "the agent is patient-unaware"
+gap. Probed first: medpsy-4b emits native OpenAI `tool_calls` through LM Studio (and the QVAC
+SDK supports `gemma4`-dialect tools), so the loop is built on the standard tools API.
+- `src/tools.js` (ICD lookup / knowledge search / interactions), `src/agent.js` (backend-
+  agnostic loop: completion → toolCall → execute on-device → feed back → repeat → answer),
+  `chatWithTools` on both backends, `src/think.js` (robust `<think>` stripping).
+- Web: `Agent.tsx` chat page (tool calls shown inline), `lib/agent.ts` SSE client, `lib/sse.ts`
+  (shared SSE reader, now also used by `chatStream`), `/api/agent` SSE route; every tool call +
+  answer audited into the encounter chain.
+- A high-effort review pass hardened it: server disconnect-safety + abort threading, removed a
+  StrictMode history-duplication (side-effect in a setState updater), immutable streaming,
+  AbortController, shared SSE/think utils.
+
+Verified: ICD question → `lookup_icd10` → grounded answer; warfarin+ibuprofen →
+`check_interactions` → grounded "not safe"; receipts in the audit chain.
+
+---
+
+## 2026-06-13 — @qvac/factstore: a holistic bi-temporal fact store (issue #5)
+
+Built the design from issue #5 as a standalone, dependency-free package (`packages/factstore`,
+consumed via a `file:` dep — additive, the triage flow untouched). The substrate is
+domain-agnostic: subject-predicate-object triples where the object is a literal (attribute) or
+`{ref}` (graph edge), with two time axes — **valid time** (validFrom/validTo) and **transaction
+time** (the hash-chained record's ts). Append-only; facts evolve via assert/end/correct/retract.
+Every read returns a **receipt** (the chain-anchored statement hashes it resolved to) for
+"as-known-at" reproducibility. Storage is a pluggable adapter (Memory / NodeFile / Hypercore),
+the hash is injected → runs in Node/Bare/browser.
+
+- **Phase 0/1:** the store + `fold/timeline/neighbors/verify` + signed `exportBundle/importBundle`
+  (reuses the P2P/identity rails) + write-gated agent tools (`makeFactstoreTools`, bound subject
+  is authoritative so the model can't query a hallucinated id). Wired into `/api/agent` as
+  patient-aware memory (`patient:<encounterId>`, `allowWrite:"propose"`); `facts.read`/
+  `facts.assert` receipts logged into the encounter audit. Verified: the agent recalled a stored
+  warfarin fact it never saw in conversation and grounded its answer.
+- **OKF interop** (`./okf`): export/import the reference-knowledge layer to Google's Open
+  Knowledge Format (markdown+frontmatter). Honest about the lossiness — OKF's untyped links flatten
+  typed edges — and the right framing: OKF is the portable interchange for the non-PHI KB; the
+  factstore is the queryable bi-temporal engine. The doc KB (`data/knowledge/*.md`) is already
+  OKF-shaped.
+- **Three improvements:** (1) a trust/confirmation lifecycle (confirmed-only / minConfidence /
+  source filters, confirm()/reject(), source-ranked conflict resolution that surfaces the
+  overridden source); (2) interaction-graph traversal (`edgesAmong`) + a medical lens
+  (`src/medlens.js`) with an authored — not LLM-extracted — interaction graph in `kb:medical` and
+  a deterministic, graph-grounded `screen_interactions` agent tool; (3) multi-writer merge
+  (`foldView` over per-device sub-logs `<log>@<device>` — a conflict-free CRDT merge of append-only
+  bi-temporal statements) + a `HypercoreAdapter` (replicable append-only cores, tested over real
+  on-disk cores; live hyperswarm replication is the remaining step).
+- **Review fixes** (two adversarial passes): fail-closed bundle import (no persist without a valid
+  signature; unsigned distrusted when a verifier is configured), atomic import (no chain fork),
+  OKF idempotency, throw-on-bad-date (no silent empty med list), orphan-op guard, **clock-skew no
+  longer drops a correction/stop** (asserts replayed first), retract-aware `_requireActive`,
+  deterministic sorted-canonical hashing (cross-runtime tamper-evidence), and the safety one — a
+  dosed/brand drug name (`"Warfarin 5mg"`, `Coumadin`, `Nurofen`) now normalizes to the graph node
+  so an interaction isn't a silent false-negative. The unauthenticated `/api/facts` write endpoint
+  stamps non-authoritative provenance (source/actor "api") and generates statementIds server-side
+  so a client can't forge a clinician/EHR fact or rewrite one by id collision.
+
+28 package tests + a hypercore-over-real-cores test, all green; verified end-to-end through the
+agent. New: `packages/factstore/**`, `src/medlens.js`. Touched additively: `src/server.js`,
+`src/tools.js`/`agent.js`/backends, `web/src/pages/Audit.tsx`, `package.json`, `.gitignore`.
+Issue #5 Phases 2/3 (kiosk timeline UI, real-MRN longitudinal, hyperswarm replication) remain.
