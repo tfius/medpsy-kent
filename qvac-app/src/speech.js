@@ -119,7 +119,7 @@ function getSttWorker() {
         const job = w.queue.shift();
         if (job) {
           try { const o = JSON.parse(line.slice("@@STT@@".length).trim());
-            o.error ? job.reject(new Error(o.error)) : job.resolve(o.text || ""); }
+            o.error ? job.reject(new Error(o.error)) : job.resolve({ text: o.text || "", locale: o.locale }); }
           catch (e) { job.reject(e); }
         }
       } // any other stdout line is ignored
@@ -136,10 +136,20 @@ function getSttWorker() {
   return w;
 }
 
-function transcribeParakeetServer(wavPath) {
+// UI language code -> Nemotron-3.5-ASR locale. The model takes a locale as a per-call
+// prompt (one resident model, no reload on language change). Unknown locales are
+// rejected by the C-API, so the worker self-heals to "auto" — this map is best-effort,
+// not a guarantee. yue is NOT here (Cantonese routes to SenseVoice before we get here).
+const NEMOTRON_LOCALE = { en: "en", de: "de", fr: "fr", es: "es", it: "it", sl: "sl", zh: "zh" };
+// Resolve a request lang (UI code, full locale, or undefined) to a Nemotron locale.
+export const nemotronLocale = (lang) =>
+  !lang ? SPEECH_LANG : (NEMOTRON_LOCALE[lang] || (/^[a-z]{2}(-[A-Za-z]{2,4})?$/.test(lang) ? lang : SPEECH_LANG));
+
+// Persistent worker. Sends {wav, lang} and gets back {text, locale-actually-used}.
+function transcribeParakeetServer(wavPath, locale) {
   const w = getSttWorker();
   return new Promise((resolve, reject) => {
-    const send = () => { w.queue.push({ resolve, reject }); w.proc.stdin.write(wavPath + "\n"); };
+    const send = () => { w.queue.push({ resolve, reject }); w.proc.stdin.write(JSON.stringify({ wav: wavPath, lang: locale }) + "\n"); };
     if (w.ready) send();
     else w.readyWaiters.push((err) => (err ? reject(err) : send()));
   });
@@ -147,19 +157,20 @@ function transcribeParakeetServer(wavPath) {
 
 // Local Nemotron-3.5-ASR via the parakeet.cpp CLI (reloads the model each call —
 // the fallback when the persistent worker isn't available). Strips inline <lang> tags.
-async function transcribeParakeetCli(wavPath) {
+async function transcribeParakeetCli(wavPath, locale) {
   const { stdout } = await execFileP(
     PARAKEET_BIN,
-    ["transcribe", "--model", STT_GGUF, "--input", wavPath, "--lang", SPEECH_LANG],
+    ["transcribe", "--model", STT_GGUF, "--input", wavPath, "--lang", locale],
     { maxBuffer: 16 * 1024 * 1024 }, // stdout is just the transcript; ggml logs go to stderr
   );
-  return stdout.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+  return { text: stdout.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim(), locale };
 }
 
-async function transcribeQvac(audioChunk) {
+async function transcribeQvac(audioChunk, locale) {
   const s = await getSdk();
   if (!sttId) await loadSTT();
-  return s.transcribe({ modelId: sttId, audioChunk, lang: SPEECH_LANG });
+  const text = await s.transcribe({ modelId: sttId, audioChunk, lang: locale });
+  return { text, locale };
 }
 
 const STT_BACKENDS = {
@@ -187,18 +198,20 @@ export function prewarmStt() {
   }
 }
 
-// audioChunk: a WAV file path (16 kHz mono PCM). Returns the transcript text.
-// Cantonese (lang="yue") routes to SenseVoice; everything else uses the Nemotron
-// chain. Tries the preferred engine, falling back through the chain on failure.
+// audioChunk: a WAV file path (16 kHz mono PCM). Returns { text, locale } where locale
+// is the language ACTUALLY used (for the audit trail). Cantonese (lang="yue") routes to
+// SenseVoice; everything else transcribes Nemotron in the request's locale (so the model
+// isn't left guessing). Tries the preferred engine, falling back through the chain.
 export async function transcribe(audioChunk, { lang } = {}) {
   if (isCantonese(lang) && fs.existsSync(SENSEVOICE_ONNX)) {
-    try { return (await svWorker().request({ wav: audioChunk, lang: "yue" })).text || ""; }
+    try { return { text: (await svWorker().request({ wav: audioChunk, lang: "yue" })).text || "", locale: "yue" }; }
     catch (e) { console.warn(`[stt] sensevoice(yue) failed (${e?.message || e}); falling back to default chain`); }
   }
+  const locale = nemotronLocale(lang);
   let lastErr;
   for (const engine of sttOrder()) {
     try {
-      return await STT_BACKENDS[engine](audioChunk);
+      return await STT_BACKENDS[engine](audioChunk, locale);
     } catch (e) {
       lastErr = e;
       console.warn(`[stt] ${engine} failed (${e?.message || e}); trying next engine`);
@@ -316,6 +329,21 @@ export function prewarmTts() {
   }
 }
 
+// Warm the specific engines a language needs, so the model is resident BEFORE the
+// patient speaks/listens (no mid-flow stall). Called when the language is chosen on the
+// welcome step. Idempotent — every worker is a singleton that stays resident once spawned.
+// The Nemotron STT model and Kokoro TTS model are multilingual (one resident model serves
+// all locales), so only Cantonese pulls in extra dedicated models (SenseVoice + VITS).
+export function prewarmFor(lang, voice) {
+  const canto = isCantonese(lang) || isCantoneseVoice(voice);
+  try {
+    if (canto && fs.existsSync(SENSEVOICE_ONNX)) svWorker().warm();
+    else prewarmStt();
+    if (canto && fs.existsSync(CANTO_TTS_ONNX)) cantoWorker().warm();
+    else prewarmTts();
+  } catch { /* best-effort; engines also load lazily at request time */ }
+}
+
 // Engine -> synth fn. synthesizeWav tries the configured engine first, then the
 // rest as fallbacks, so a missing/broken engine degrades instead of erroring.
 const TTS_BACKENDS = {
@@ -393,7 +421,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     fs.writeFileSync(out, wav);
     console.log(`wrote ${out} (${wav.length} bytes)`);
   } else if (cmd === "stt" && arg) {
-    console.log(await transcribe(arg, { lang: a3 })); // a3 = lang hint, e.g. "yue"
+    const { text, locale } = await transcribe(arg, { lang: a3 }); // a3 = lang hint, e.g. "es"
+    console.log(text); console.error(`[locale=${locale}]`);
   } else {
     console.error('usage: node src/speech.js tts "<text>" [out.wav] [voice] | stt <clip.wav> [lang]');
     process.exit(1);

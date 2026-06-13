@@ -9,7 +9,36 @@
 import { audit } from "./audit";
 
 let speechLang = "";
-export function setSpeechLang(l: string): void { speechLang = l || ""; }
+// The current language's default TTS voice + the voice-id prefixes that count as
+// "native" for it (from prefs LANG_SUPPORT). Used by effectiveVoice() so a voice left
+// over from a previous language/patient is never used to speak the wrong language.
+let speechDefaultVoice = "af_heart";
+let speechPrefixes: string[] = ["a", "b"];
+let lastPrewarmed = "";
+
+export function setSpeechLang(l: string, opts?: { defaultVoice?: string; prefixes?: string[] }): void {
+  speechLang = l || "";
+  if (opts?.defaultVoice) speechDefaultVoice = opts.defaultVoice;
+  if (opts?.prefixes) speechPrefixes = opts.prefixes;
+  // Warm this language's on-device models now (kept resident for the whole session) so
+  // the first dictation/read-aloud isn't a cold-start stall. Once per language.
+  if (speechLang && speechLang !== lastPrewarmed) {
+    lastPrewarmed = speechLang;
+    fetch("/api/speech/prewarm", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ lang: speechLang, voice: effectiveVoice() }),
+    }).catch(() => { /* best-effort; models also load lazily at first use */ });
+  }
+}
+
+// The voice to actually speak with: the user's persisted pick ONLY if it's native to the
+// current language, otherwise that language's default. This is the fix for "starts
+// speaking a different language" — a stale ef_dora never reads English text.
+export function effectiveVoice(): string {
+  const v = getVoice();
+  if (v && speechPrefixes.length && speechPrefixes.some((p) => v.startsWith(p))) return v;
+  return speechDefaultVoice;
+}
 
 // Selectable on-device TTS voice (Kokoro). Persisted so the choice sticks.
 export interface Voice { id: string; name?: string; language?: string; gender?: string; grade?: string }
@@ -60,7 +89,8 @@ function playBlob(blob: Blob, signal: AbortSignal): Promise<void> {
 // previous one's pending fetch + audio, so rapid taps never overlap.
 export async function speak(text: string, opts: { voice?: string; id?: string } = {}): Promise<void> {
   if (!text) return;
-  audit.tts({ text, voice: opts.voice || getVoice() || undefined, lang: speechLang || undefined });
+  const voice = opts.voice || effectiveVoice() || undefined; // never a stale wrong-language voice
+  audit.tts({ text, voice, lang: speechLang || undefined });
   stopSpeaking();                 // cancel anything currently playing/pending
   const seq = ++speakSeq;
   const id = opts.id ?? "tts";
@@ -71,7 +101,7 @@ export async function speak(text: string, opts: { voice?: string; id?: string } 
   try {
     const r = await fetch("/api/tts", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text, voice: opts.voice || getVoice() || undefined, lang: speechLang || undefined }),
+      body: JSON.stringify({ text, voice, lang: speechLang || undefined }),
       signal: abort.signal,
     });
     if (seq !== speakSeq) return;  // superseded while fetching
@@ -164,8 +194,11 @@ export function listenLocal(
             method: "POST", headers: { "content-type": "audio/wav" }, body: wav,
           });
           if (!r.ok) throw new Error(`on-device STT unavailable (${r.status})`);
-          const text = ((await r.json()).text || "").trim();
-          audit.stt({ text, lang: speechLang });
+          const data = await r.json();
+          const text = (data.text || "").trim();
+          // Log the locale the model ACTUALLY used (data.locale), not just the requested
+          // one, so a fallback-to-auto / wrong-language transcription is visible in the audit.
+          audit.stt({ text, lang: speechLang, locale: data.locale });
           onText(text);
         } catch (e) {
           onErr?.(e instanceof Error ? e.message : String(e));

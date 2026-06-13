@@ -8,14 +8,21 @@ JSON line per result. The model stays resident, so each transcription is fast
 nemotron-asr-test harness.
 
 Protocol (so stray C-library stdout can't corrupt it):
-  stdout: "@@READY@@"                     once the model is loaded + warmed
-          "@@STT@@ {\"text\": \"...\"}"   one line per transcription
-          "@@STT@@ {\"error\": \"...\"}"  on failure
-  stdin:  one WAV file path per line
+  stdout: "@@READY@@"                                 once the model is loaded + warmed
+          "@@STT@@ {\"text\": \"...\", \"locale\": \"es\"}"  one line per transcription
+          "@@STT@@ {\"error\": \"...\"}"                on failure
+  stdin:  one request per line — either a bare WAV path (locale = default), or a JSON
+          object {"wav": "<path>", "lang": "<locale>"} to transcribe in a specific
+          locale. "locale" in the reply is the locale ACTUALLY used (the request locale,
+          or "auto" if the model didn't recognize it and we fell back).
 ggml/Metal diagnostics go to stderr (inherited by the Node server).
 
+Nemotron is one resident multilingual model: a locale is just a per-call prompt, so the
+model never reloads when the language changes. Unknown locales make the C-API fail, so we
+fall back to "auto" and remember the bad locale to skip the wasted retry next time.
+
 Env: MEDPSY_PARAKEET_LIB (libparakeet.dylib), MEDPSY_STT_GGUF (model),
-     MEDPSY_SPEECH_LANG (locale, default "auto").
+     MEDPSY_SPEECH_LANG (default locale when a request doesn't specify one, default "auto").
 """
 import ctypes
 import json
@@ -76,14 +83,32 @@ def main() -> None:
     if not ctx:
         log("failed to load model"); sys.exit(3)
 
-    def transcribe(path: str) -> str:
-        ptr = lib.parakeet_capi_transcribe_path_lang(ctx, path.encode(), 0, LANG.encode())
+    bad_locales: set[str] = set()  # locales this model rejected — skip straight to auto
+
+    def _try(path: str, locale: str):
+        ptr = lib.parakeet_capi_transcribe_path_lang(ctx, path.encode(), 0, locale.encode())
         if not ptr:
-            err = lib.parakeet_capi_last_error(ctx) or b""
-            raise RuntimeError(err.decode("utf-8", "replace") or "transcribe failed")
+            err = (lib.parakeet_capi_last_error(ctx) or b"").decode("utf-8", "replace")
+            raise RuntimeError(err or "transcribe failed")
         raw = ctypes.cast(ptr, ctypes.c_char_p).value or b""
         lib.parakeet_capi_free_string(ptr)
         return re.sub(r"\s+", " ", TAG.sub(b"", raw).decode("utf-8", "replace")).strip()
+
+    def transcribe(path: str, lang: str = ""):
+        """Transcribe in `lang` (falling back to MEDPSY_SPEECH_LANG, then "auto").
+        Returns (text, locale_actually_used)."""
+        want = (lang or LANG or "auto").strip() or "auto"
+        if want in bad_locales:
+            want = "auto"
+        try:
+            return _try(path, want), want
+        except RuntimeError as e:
+            if want == "auto":
+                raise
+            # Unknown/unsupported locale for this model — remember it, fall back to auto.
+            bad_locales.add(want)
+            log(f"locale '{want}' rejected ({e}); falling back to auto")
+            return _try(path, "auto"), "auto"
 
     # Pre-warm: a throwaway transcribe compiles the Metal kernels now (~once, ~10 s)
     # so the first real request is fast instead of "stuck".
@@ -98,11 +123,20 @@ def main() -> None:
     sys.stdout.write("@@READY@@\n"); sys.stdout.flush()
 
     for line in sys.stdin:
-        path = line.strip()
-        if not path:
+        line = line.strip()
+        if not line:
             continue
+        # Either a bare path (back-compat) or a JSON request {"wav","lang"}.
+        path, lang = line, ""
+        if line.startswith("{"):
+            try:
+                req = json.loads(line)
+                path, lang = req.get("wav", ""), req.get("lang", "")
+            except Exception as e:  # noqa: BLE001 - malformed request line
+                emit({"error": f"bad request: {e}"}); continue
         try:
-            emit({"text": transcribe(path)})
+            text, locale = transcribe(path, lang)
+            emit({"text": text, "locale": locale})
         except Exception as e:  # noqa: BLE001 - report, keep the worker alive
             emit({"error": str(e)})
 

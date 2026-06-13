@@ -66,7 +66,13 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
   const [scale, setScale] = useState<UiScale>(read("medpsy.scale", "base") as UiScale);
   const [demo, setDemo] = useState<boolean>(read("medpsy.demo", "0") === "1");
   const [autoSpeak, setAutoSpeak] = useState<boolean>(read("medpsy.autoSpeak", "1") !== "0");
-  useEffect(() => { try { localStorage.setItem("medpsy.lang", lang); } catch { /* ignore */ } document.documentElement.lang = lang; setSpeechLang(lang); }, [lang]);
+  useEffect(() => {
+    try { localStorage.setItem("medpsy.lang", lang); } catch { /* ignore */ }
+    document.documentElement.lang = lang;
+    // Hand speech.ts this language's default voice + native voice prefixes so it speaks
+    // in the right language (not a stale voice) and warms this language's models now.
+    setSpeechLang(lang, { defaultVoice: VOICE_FOR_LANG[lang], prefixes: LANG_SUPPORT[lang].ttsPrefixes });
+  }, [lang]);
   useEffect(() => { try { localStorage.setItem("medpsy.scale", scale); } catch { /* ignore */ } document.documentElement.dataset.scale = scale; }, [scale]);
   useEffect(() => { try { localStorage.setItem("medpsy.demo", demo ? "1" : "0"); } catch { /* ignore */ } }, [demo]);
   useEffect(() => { try { localStorage.setItem("medpsy.autoSpeak", autoSpeak ? "1" : "0"); } catch { /* ignore */ } }, [autoSpeak]);
