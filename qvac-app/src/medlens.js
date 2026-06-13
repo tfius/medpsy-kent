@@ -5,15 +5,30 @@
 // Deterministic and grounded — the interaction comes from authored edges + recorded meds,
 // not the model's memory or a fuzzy prose match.
 
-// Normalize a drug name to a graph id. Strips dose/strength ("warfarin 5mg" -> warfarin)
-// so a med recorded with its dose still matches the bare drug node — a missed match here
-// is a dangerous interaction false-negative. (Salt forms / brand names still need a
-// synonym map — RxNorm — for production; this handles the common dose case.)
+// A small curated synonym map (salt forms, brand/US names, abbreviations) -> the canonical
+// graph node. A missed match is a dangerous interaction false-negative, so the common
+// aliases for the drugs in the interaction graph are covered here. Full coverage needs an
+// RxNorm/dm+d mapping — this is the pragmatic subset.
+const SYNONYMS = {
+  "acetylsalicylic-acid": "aspirin", "asa": "aspirin",
+  "acetaminophen": "paracetamol",
+  "albuterol": "salbutamol",
+  "warfarin-sodium": "warfarin", "coumadin": "warfarin",
+  "frusemide": "furosemide", "lasix": "furosemide",
+  "glyceryl-trinitrate": "gtn", "nitroglycerin": "gtn", "nitroglycerine": "gtn", "trinitrate": "gtn",
+  "nurofen": "ibuprofen", "brufen": "ibuprofen",
+  "viagra": "sildenafil",
+  "septrin": "trimethoprim", "co-trimoxazole": "trimethoprim",
+};
+
+// Normalize a drug name to a graph id: strip dose/strength ("Warfarin 5mg" -> warfarin),
+// slugify, then map known synonyms to the canonical node.
 export const drugId = (name) => {
-  const base = String(name || "").toLowerCase().trim()
+  const slug = String(name || "").toLowerCase().trim()
     .replace(/\b\d+(\.\d+)?\s*(mg|mcg|g|ml|units?|iu|%)\b.*$/i, "") // drop "5mg ...", "400 mg", etc.
-    .trim();
-  return "drug:" + base.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    .replace(/\b(spray|tablets?|tabs?|caps?|capsules?|cream|gel|patch(es)?|inhaler|oral|solution|injection|drops?|liquid|suspension|sachets?|modified[- ]release|mr|sr|er|xl)\b/gi, "") // drop form/route words
+    .trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return "drug:" + (SYNONYMS[slug] || slug);
 };
 
 // Authored interaction edges (a, b) with severity + a one-line rationale. Curated from

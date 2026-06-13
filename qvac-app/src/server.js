@@ -354,11 +354,17 @@ http.createServer(async (req, res) => {
       if (req.method === "POST" && log) {
         const b = JSON.parse((await readBody(req)).toString() || "{}");
         const op = b.op || "assert";
+        // Writes through this UNAUTHENTICATED endpoint are stamped non-authoritative
+        // (source/actor "api") so a client can't forge a clinician/EHR-sourced fact that
+        // would win conflict resolution; assert generates the statementId server-side so a
+        // client can't rewrite an existing fact by colliding on its id. Trusted/clinical
+        // writes must go through an authenticated, typed path (a lens), not this raw route.
+        const stamp = { source: "api", actor: "api" };
         let r;
-        if (op === "assert") r = await facts.assert(log, b);
-        else if (op === "end") r = await facts.end(log, b.statementId, b.validTo, b);
-        else if (op === "correct") r = await facts.correct(log, b.statementId, b);
-        else if (op === "retract") r = await facts.retract(log, b.statementId, b);
+        if (op === "assert") r = await facts.assert(log, { ...b, ...stamp, statementId: undefined });
+        else if (op === "end") r = await facts.end(log, b.statementId, b.validTo, stamp);
+        else if (op === "correct") r = await facts.correct(log, b.statementId, { ...b, ...stamp });
+        else if (op === "retract") r = await facts.retract(log, b.statementId, { ...b, ...stamp });
         else { json(400, { error: `unknown op '${op}'` }); return; }
         json(200, { statementId: r.payload.statementId, seq: r.seq, hash: r.hash }); return;
       }
