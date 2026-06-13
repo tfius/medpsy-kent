@@ -1,0 +1,18 @@
+{
+  "timestamp": "20260613-015855",
+  "triage_model": "medpsy-4b",
+  "translate_model": "gemma-4-26b-a4b-it",
+  "langs": [
+    "sl",
+    "zh",
+    "es"
+  ],
+  "files": [
+    "adv1_undertriage",
+    "adv3_drug_traps"
+  ],
+  "baseline_runs": 2,
+  "samples": 5,
+  "triage_temperature": 0.3,
+  "n_cases": 20
+}

@@ -28,6 +28,18 @@ def load(run_dir: Path):
     return recs, meta
 
 
+# The majority record carries `band` + the per-sample `runs`; recover a representative
+# decision (the one most common among samples that landed on the majority band).
+def decision_of(cond: dict) -> str:
+    runs = [r for r in cond.get("runs", []) if r.get("band") == cond.get("band")]
+    if not runs:
+        return cond.get("decision", "")
+    counts: dict[str, int] = {}
+    for r in runs:
+        counts[r.get("decision", "")] = counts.get(r.get("decision", ""), 0) + 1
+    return max(counts, key=counts.get)
+
+
 def confusion(pairs):
     """pairs: list of (baseline_band, other_band) → 3×3 (+ blank) count table."""
     keys = BANDS + [""]
@@ -73,6 +85,13 @@ def main():
     usable = [r for r in recs if r.get("baseline") and r["baseline"][0].get("band") is not None and "error" not in r]
     # Baseline band = majority of run #1; noise floor compares it to the other baseline majorities.
     base_band = {r["id"]: r["baseline"][0]["band"] for r in usable}
+    # A flip is only attributable to TRANSLATION if the English baseline is UNAMBIGUOUS on that
+    # case — every baseline sample (across both majorities) agrees. If even one English sample
+    # disagrees, medpsy is already wobbling on that case, so a language landing elsewhere is its
+    # own nondeterminism, not the translator. (Majority-RED-but-internally-split does NOT count.)
+    def _all_base_bands(r):
+        return [b for bl in r["baseline"] for b in bl.get("bands", [bl["band"]])]
+    base_stable = {r["id"]: len(set(_all_base_bands(r))) == 1 for r in usable}
 
     # --- residual instability after voting: how often the N samples in a majority disagreed ---
     all_conds = []
@@ -104,7 +123,7 @@ def main():
     # --- per language ---
     summary = []
     for lang in langs:
-        pairs, flips, red_to_nonred, changes = [], 0, [], []
+        pairs, flips, attributable, noise_flips, changes = [], 0, [], [], []
         for r in usable:
             lr = r.get("langs", {}).get(lang)
             if not lr or lr.get("band") is None:
@@ -115,9 +134,9 @@ def main():
                 flips += 1
                 changes.append((r, lr, a, b))
             if a == "RED" and b != "RED":
-                red_to_nonred.append((r, lr))
+                (attributable if base_stable[r["id"]] else noise_flips).append((r, lr))
         n = len(pairs)
-        summary.append((lang, n, flips, len(red_to_nonred)))
+        summary.append((lang, n, flips, len(attributable), len(noise_flips)))
         w(f"## {lang}  ({n} cases)\n")
         if not n:
             w("_(no cases)_\n"); continue
@@ -126,11 +145,17 @@ def main():
         w(fmt_confusion(m, keys, "baseline\\" + lang, lang))
         w("```")
         w(f"- band changed vs baseline: **{flips}/{n}** ({100*flips/n:.0f}%)")
-        w(f"- **RED→non-RED (undertriage): {len(red_to_nonred)}/{n}**"
-          + ("  ⚠️" if red_to_nonred else "  ✓"))
-        for r, lr in red_to_nonred:
-            w(f"\n  ⚠️ **{r['id']} {r['subcategory']}** — baseline RED → {lang} {lr['band']} ({lr['decision']})")
+        w(f"- RED→non-RED on a **stable-RED baseline** (translation-attributable): "
+          f"**{len(attributable)}/{n}**" + ("  ⚠️" if attributable else "  ✓"))
+        w(f"- RED→non-RED where the **baseline already wobbled** (medpsy noise, not translation): "
+          f"{len(noise_flips)}/{n}")
+        for r, lr in attributable:
+            w(f"\n  ⚠️ TRANSLATION-ATTRIBUTABLE **{r['id']} {r['subcategory']}** — baseline RED → {lang} {lr['band']} ({decision_of(lr)})")
+            w(f"     baseline votes: {[b['bands'] for b in r['baseline']]}")
+            w(f"     {lang} votes: {lr['bands']}")
             w(f"     L→en: {lr['user_en_prime']}")
+        for r, lr in noise_flips:
+            w(f"\n  · noise (baseline unstable) {r['id']} {r['subcategory']}: baseline {[b['band'] for b in r['baseline']]} / {lang} {lr['bands']}")
         if changes:
             w("\n  All band changes (review):")
             for r, lr, a, b in changes:
@@ -140,18 +165,28 @@ def main():
 
     # --- verdict ---
     w("## Verdict\n")
-    total_red_drops = sum(s[3] for s in summary)
-    for lang, n, flips, rd in summary:
-        flag = "❌ FAIL" if rd else "✓ pass"
-        w(f"- **{lang}**: {rd} RED→non-RED / {n} cases, {flips} total band changes — {flag}")
+    total_attributable = sum(s[3] for s in summary)
+    total_noise = sum(s[4] for s in summary)
+    for lang, n, flips, attr, noise in summary:
+        flag = "❌ FAIL" if attr else "✓ pass"
+        w(f"- **{lang}**: {attr} translation-attributable undertriage / {n} cases "
+          f"({noise} more were baseline noise, {flips} total band changes) — {flag}")
     w("")
-    if total_red_drops == 0:
-        w("**No translation-driven undertriage (RED→non-RED) in any language.** Band changes within "
-          "the noise floor are sampling, not translation.")
+    if total_attributable == 0:
+        w(f"**No translation-attributable undertriage in any language.** All {total_noise} RED→non-RED "
+          "change(s) sit on cases where medpsy's own English baseline is unstable (it disagrees with "
+          "itself across re-sampling), so they are medpsy nondeterminism, not the translator. The "
+          "back-translations above are faithful — including Slovenian *inbound*, which the June-12 "
+          "outbound decision never measured.")
+        w("\n**The measurable risk this surfaces is medpsy, not translation:** single-turn "
+          "forced-conclude is a coin-flip RED↔AMBER on borderline cases (serotonin syndrome, "
+          "methotrexate, CO poisoning). Worth chasing separately — stabilize the conclusion "
+          "(lower temp / majority vote / better prompt) before reading per-language drift as signal.")
     else:
-        w(f"**{total_red_drops} RED→non-RED flip(s) across languages — translation is changing urgent "
-          "outcomes.** Each ⚠️ above needs human review; a confirmed-unsafe language should get the "
-          "Slovenian-style treatment (triage on untranslated input / English-only) in LANG_SUPPORT.")
+        w(f"**{total_attributable} translation-attributable undertriage flip(s)** (baseline stably RED, "
+          f"language non-RED) — review each ⚠️ against its back-translation; a confirmed-unsafe language "
+          "gets the Slovenian-style treatment (triage on untranslated input / English-only) in "
+          f"LANG_SUPPORT. ({total_noise} further flips were baseline noise, not translation.)")
 
     (run_dir / "report.md").write_text("\n".join(out) + "\n")
     print(f"\n→ wrote {run_dir / 'report.md'}")

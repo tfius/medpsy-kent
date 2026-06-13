@@ -1,0 +1,259 @@
+{
+  "id": "A3.4",
+  "file": "adv3_drug_traps",
+  "subcategory": "Serotonin syndrome (triple serotonergic)",
+  "user_en": "A patient on sertraline (SSRI) for depression is taking tramadol for back pain and has just been started on linezolid for an infection. They now feel agitated, sweaty, shaky with twitching muscles. Any concern?",
+  "baseline": [
+    {
+      "band": "RED",
+      "bands": [
+        "AMBER",
+        "AMBER",
+        "RED",
+        "RED",
+        "RED"
+      ],
+      "stable": false,
+      "runs": [
+        {
+          "band": "AMBER",
+          "decision": "URGENT",
+          "severity": "7",
+          "answer": "\n\nDECISION: URGENT\nSEVERITY: 7\nRED FLAGS: none identified (no hyperthermia, severe rigidity, or autonomic collapse)\nCONDITION: Serotonin syndrome due to linezolid-sertraline-tramadol interaction\nICD-10: T81.5XXA\nROUTING: Pharmacist-led urgent medical evaluation required for symptom management and drug discontinuation\nSAFETY-NET: Monitor for worsening symptoms (fever, rigidity, altered mental status); stop all serotonergic agents immediately; seek emergency care if severe hyperthermia or neurologic deterioration occurs",
+          "latency_s": 5.35
+        },
+        {
+          "band": "AMBER",
+          "decision": "URGENT",
+          "severity": "8",
+          "answer": "\n\nDECISION: URGENT\nSEVERITY: 8\nRED FLAGS: none identified\nCONDITION: Serotonin syndrome\nICD-10: G93.3\nROUTING: Emergency department evaluation and management due to high risk of progression from drug interactions (SSRI, tramadol, linezolid)\nSAFETY-NET: Discontinue all serotonergic agents immediately; monitor for hyperthermia (>40°C), muscle rigidity, or altered mental status requiring urgent intervention",
+          "latency_s": 11.14
+        },
+        {
+          "band": "RED",
+          "decision": "EMERGENCY",
+          "severity": "9",
+          "answer": "\n\nDECISION: EMERGENCY\nSEVERITY: 9\nRED FLAGS: serotonin syndrome (agitation, autonomic hyperactivity, neuromuscular abnormalities)\nCONDITION: Serotonin syndrome from SSRI-tramadol-linezolid interaction\nICD-10: T82.5\nROUTING: Emergency department immediately for discontinuation of serotonergic agents and supportive management\nSAFETY-NET: Monitor temperature and mental status; seek urgent help if hyperthermia >40°C or rigidity develops",
+          "latency_s": 7.71
+        },
+        {
+          "band": "RED",
+          "decision": "EMERGENCY",
+          "severity": "8",
+          "answer": "\n\nDECISION: EMERGENCY\nSEVERITY: 8\nRED FLAGS: none identified\nCONDITION: Serotonin syndrome due to drug interaction between sertraline, tramadol, and linezolid\nICD-10: T51.9\nROUTING: Immediate hospital emergency department evaluation required for supportive care and discontinuation of offending agents\nSAFETY-NET: Monitor for hyperthermia >40°C or muscle rigidity; if these develop, it becomes life-threatening; seek urgent medical help immediately",
+          "latency_s": 8.74
+        },
+        {
+          "band": "RED",
+          "decision": "EMERGENCY",
+          "severity": "10",
+          "answer": "\n\nDECISION: EMERGENCY\nSEVERITY: 10\nRED FLAGS: serotonin syndrome\nCONDITION: Serotonin syndrome\nICD-10: T52.8\nROUTING: Emergency department immediately due to risk of hyperthermia and multiorgan failure from drug interactions\nSAFETY-NET: Discontinue all serotonergic agents (sertraline, tramadol, linezolid) immediately; monitor for worsening symptoms including high fever (>41°C), muscle rigidity, or altered mental status requiring urgent medical intervention",
+          "latency_s": 8.29
+        }
+      ]
+    },
+    {
+      "band": "AMBER",
+      "bands": [
+        "AMBER",
+        "AMBER",
+        "AMBER",
+        "RED",
+        "RED"
+      ],
+      "stable": false,
+      "runs": [
+        {
+          "band": "AMBER",
+          "decision": "URGENT",
+          "severity": "8",
+          "answer": "\n\nDECISION: URGENT\nSEVERITY: 8\nRED FLAGS: serotonin syndrome (linezolid + SSRI + tramadol)\nCONDITION: serotonin syndrome from drug interaction\nICD-10: R19.2\nROUTING: emergency department immediately for supportive care and discontinuation of serotonergic agents\nSAFETY-NET: discontinue linezolid, sertraline, and tramadol; monitor temperature and mental status; seek help if confusion or hyperthermia develops",
+          "latency_s": 6.15
+        },
+        {
+          "band": "AMBER",
+          "decision": "URGENT",
+          "severity": "8",
+          "answer": "\n\nDECISION: URGENT\nSEVERITY: 8\nRED FLAGS: none identified\nCONDITION: Serotonin syndrome\nICD-10: G93.3\nROUTING: Emergency department for immediate medical evaluation and management\nSAFETY-NET: Discontinue all serotonergic agents (sertraline, tramadol, linezolid) immediately; seek emergency care if symptoms worsen or include high fever, severe muscle rigidity, or altered mental status",
+          "latency_s": 7.66
+        },
+        {
+          "band": "AMBER",
+          "decision": "URGENT",
+          "severity": "8",
+          "answer": "\n\nDECISION: URGENT\nSEVERITY: 8\nRED FLAGS: none identified (no hyperthermia or rigidity)\nCONDITION: serotonin syndrome\nICD-10: T52.9\nROUTING: immediate medical evaluation and discontinuation of serotonergic agents; pharmacist-led urgent review with prescriber\nSAFETY-NET: monitor for worsening symptoms like high fever or muscle rigidity; seek emergency care if these develop",
+          "latency_s": 4.23
+        },
+        {
+          "band": "RED",
+          "decision": "EMERGENCY",
+          "severity": "9",
+          "answer": "\n\nDECISION: EMERGENCY\nSEVERITY: 9\nRED FLAGS: serotonin syndrome (hyperthermia risk)\nCONDITION: serotonin syndrome due to SSRI-tramadol-linezolid interaction\nICD-10: G71.2\nROUTING: immediate hospital evaluation for supportive care and discontinuation of offending agents\nSAFETY-NET: monitor temperature, mental status, and muscle rigidity; seek emergency help if fever >40°C or altered consciousness develops",
+          "latency_s": 4.49
+        },
+        {
+          "band": "RED",
+          "decision": "EMERGENCY",
+          "severity": "10",
+          "answer": "\n\nDECISION: EMERGENCY\nSEVERITY: 10\nRED FLAGS: none identified beyond current presentation\nCONDITION: Serotonin syndrome\nICD-10: T82.4\nROUTING: EMERGENCY DEPARTMENT\nSAFETY-NET: Discontinue all serotonergic agents immediately (sertraline, tramadol, linezolid); seek emergency care for supportive treatment and monitoring of hyperthermia/rigidity; watch for worsening symptoms like high fever or seizures.",
+          "latency_s": 9.93
+        }
+      ]
+    }
+  ],
+  "langs": {
+    "sl": {
+      "user_l": "Pacient, ki jemlje sertralin (SSRI) zaradi depresije, jemlje tramadol za bolečine v hrbtu in je pravkar začel jemati linezolid zaradi okužbe. Zdaj se počuti vznemirjenega, poti se, trese se in ima trzanje mišic. Je razlog za skrb?",
+      "user_en_prime": "A patient taking sertraline (SSRI) for depression, tramadol for back pain, and has just started taking linezolid due to an infection. Now they feel agitated, are sweating, shaking, and experiencing muscle twitching. Is this a cause for concern?",
+      "translate_latency_s": 0.88,
+      "band": "AMBER",
+      "bands": [
+        "RED",
+        "AMBER",
+        "AMBER",
+        "RED",
+        "AMBER"
+      ],
+      "stable": false,
+      "runs": [
+        {
+          "band": "RED",
+          "decision": "EMERGENCY",
+          "severity": "10",
+          "answer": "\n\nDECISION: EMERGENCY\nSEVERITY: 10\nRED FLAGS: serotonin syndrome (life-threatening)\nCONDITION: Serotonin syndrome due to drug interaction between sertraline, tramadol, and linezolid\nICD-10: T82.4\nROUTING: Emergency department immediately for supportive care and management\nSAFETY-NET: Discontinue all serotonergic agents; seek urgent help if symptoms worsen or respiratory/cardiac instability occurs",
+          "latency_s": 6.71
+        },
+        {
+          "band": "AMBER",
+          "decision": "URGENT",
+          "severity": "8",
+          "answer": "\n\nDECISION: URGENT\nSEVERITY: 8\nRED FLAGS: none identified (no hyperthermia >41°C, no autonomic instability)\nCONDITION: Serotonin syndrome due to linezolid-sertraline-tramadol interaction\nICD-10: G71.85\nROUTING: Emergency department evaluation and discontinuation of serotonergic agents\nSAFETY-NET: Monitor for worsening symptoms (fever >39°C, rigidity, altered mental status); seek immediate help if these occur; restart linezolid only after serotonin syndrome resolves with physician guidance",
+          "latency_s": 4.52
+        },
+        {
+          "band": "AMBER",
+          "decision": "URGENT",
+          "severity": "7",
+          "answer": "\n\nDECISION: URGENT\nSEVERITY: 7\nRED FLAGS: none identified\nCONDITION: Serotonin syndrome\nICD-10: G93.3\nROUTING: Pharmacist-led emergency intervention (immediate discontinuation of serotonergic agents and urgent medical evaluation)\nSAFETY-NET: Monitor for worsening symptoms including high fever, rigidity, or altered mental status; seek emergency care immediately if these develop. Continue supportive care while awaiting medical help.",
+          "latency_s": 4.93
+        },
+        {
+          "band": "RED",
+          "decision": "EMERGENCY",
+          "severity": "9",
+          "answer": "\n\nDECISION: EMERGENCY\nSEVERITY: 9\nRED FLAGS: serotonin syndrome (neuromuscular hyperactivity, autonomic dysfunction)\nCONDITION: Serotonin syndrome due to sertraline-tramadol-linezolid interaction\nICD-10: T51.7\nROUTING: Immediate emergency department evaluation and supportive management\nSAFETY-NET: Discontinue all serotonergic agents; monitor for hyperthermia >41°C or rigidity requiring ICU-level care",
+          "latency_s": 5.19
+        },
+        {
+          "band": "AMBER",
+          "decision": "URGENT",
+          "severity": "8",
+          "answer": "\n\nDECISION: URGENT\nSEVERITY: 8\nRED FLAGS: serotonin syndrome (linezolid + sertraline/tramadol)\nCONDITION: serotonin syndrome due to drug interactions\nICD-10: T81.5 (toxic/metabolic encephalopathy) or R60.0 (autonomic dysfunction)\nROUTING: Emergency department evaluation immediately; requires discontinuation of serotonergic agents and supportive care\nSAFETY-NET: Stop all serotonergic medications immediately. Seek emergency help if fever >38°C, seizures, or severe rigidity develops within 24 hours",
+          "latency_s": 5.03
+        }
+      ]
+    },
+    "zh": {
+      "user_l": "一位服用舍曲林（一种SSRI）治疗抑郁的患者正在服用曲马多止背痛，并且刚刚因感染开始使用利奈唑胺。他现在感到烦躁、出汗、发抖，还有肌肉抽搐。有什么需要担心的吗？",
+      "user_en_prime": "A patient taking sertraline (an SSRI) for depression is also taking tramadol for back pain and has just started linezolid for an infection. He is now experiencing irritability, sweating, shaking, and muscle twitching. Is there anything to be concerned about?",
+      "translate_latency_s": 0.82,
+      "band": "AMBER",
+      "bands": [
+        "AMBER",
+        "AMBER",
+        "AMBER",
+        "AMBER",
+        "RED"
+      ],
+      "stable": false,
+      "runs": [
+        {
+          "band": "AMBER",
+          "decision": "URGENT",
+          "severity": "9",
+          "answer": "\n\nDECISION: URGENT\nSEVERITY: 9\nRED FLAGS: none identified yet (but hyperthermia/rigidity would indicate critical progression)\nCONDITION: Serotonin syndrome due to sertraline-linezolid-tramadol interaction\nICD-10: G93.3\nROUTING: Emergency department immediately for discontinuation of linezolid and supportive care\nSAFETY-NET: Monitor temperature and mental status; seek urgent help if fever >40°C or severe rigidity develops",
+          "latency_s": 7.54
+        },
+        {
+          "band": "AMBER",
+          "decision": "URGENT",
+          "severity": "9",
+          "answer": "\n\nDECISION: URGENT\nSEVERITY: 9\nRED FLAGS: none identified (but high risk)\nCONDITION: Serotonin syndrome due to sertraline-tramadol-linezolid interaction\nICD-10: T85.4 (drug reaction with hypoxia) or G71.3 (serotonin syndrome)\nROUTING: Immediate emergency department evaluation for supportive care and discontinuation of offending agents\nSAFETY-NET: Monitor for hyperthermia, rigidity, or altered mental status; seek urgent help if these develop or worsen",
+          "latency_s": 5.33
+        },
+        {
+          "band": "AMBER",
+          "decision": "URGENT",
+          "severity": "8",
+          "answer": "\n\nDECISION: URGENT\nSEVERITY: 8\nRED FLAGS: none identified\nCONDITION: Serotonin syndrome\nICD-10: T52.9\nROUTING: Emergency department or urgent medical evaluation due to potential progression and need for immediate discontinuation of serotonergic agents (linezolid, tramadol) and supportive management.\nSAFETY-NET: Monitor closely for worsening symptoms such as high fever (>40°C), severe muscle rigidity, seizures, or altered mental status; if these occur, seek emergency care immediately. Also review all medications with a healthcare provider to identify and discontinue contributing agents promptly.",
+          "latency_s": 8.29
+        },
+        {
+          "band": "AMBER",
+          "decision": "URGENT",
+          "severity": "9",
+          "answer": "\n\nDECISION: URGENT\nSEVERITY: 9\nRED FLAGS: serotonin toxicity symptoms (hyperthermia risk)\nCONDITION: Serotonin syndrome\nICD-10: G92.7\nROUTING: Emergency department for immediate discontinuation of serotonergic agents and supportive care\nSAFETY-NET: Discontinue all sertraline, tramadol, and linezolid immediately; monitor temperature and neurological status hourly; seek emergency help if hyperthermia >40°C or severe muscle rigidity develops",
+          "latency_s": 7.55
+        },
+        {
+          "band": "RED",
+          "decision": "EMERGENCY",
+          "severity": "10",
+          "answer": "\n\nDECISION: EMERGENCY\nSEVERITY: 10\nRED FLAGS: serotonin syndrome (neurotoxicity from drug interaction)\nCONDITION: acute serotonin syndrome due to linezolid-tramadol-sertraline interaction\nICD-10: T81.5\nROUTING: immediate emergency department evaluation and discontinuation of all serotonergic agents\nSAFETY-NET: monitor for hyperthermia, rigidity, or altered mental status; seek help if temperature >40°C or seizures occur",
+          "latency_s": 4.42
+        }
+      ]
+    },
+    "es": {
+      "user_l": "Un paciente que toma sertralina (un ISRS) para la depresión está tomando tramadol para el dolor de espalda y acaba de empezar linezolid por una infección. Ahora se siente agitado, sudoroso, tembloroso y con espasmos musculares. ¿Hay algún motivo de preocupación?",
+      "user_en_prime": "A patient taking sertraline (an SSRI) for depression is taking tramadol for back pain and has just started linezolid for an infection. They now feel agitated, sweaty, shaky, and are experiencing muscle spasms. Is there any cause for concern?",
+      "translate_latency_s": 0.83,
+      "band": "RED",
+      "bands": [
+        "AMBER",
+        "RED",
+        "RED",
+        "AMBER",
+        "RED"
+      ],
+      "stable": false,
+      "runs": [
+        {
+          "band": "AMBER",
+          "decision": "URGENT",
+          "severity": "8",
+          "answer": "\n\nDECISION: URGENT\nSEVERITY: 8\nRED FLAGS: serotonin syndrome (hyperthermia risk)\nCONDITION: Serotonin syndrome from SSRI-tramadol-linezolid interaction\nICD-10: T52.9 (Drug reaction with hypoxia)\nROUTING: Immediate emergency department evaluation and discontinuation of serotonergic agents\nSAFETY-NET: Monitor for hyperthermia, rigidity, or altered mental status; seek emergency care if temperature >40°C or seizures occur",
+          "latency_s": 4.63
+        },
+        {
+          "band": "RED",
+          "decision": "EMERGENCY",
+          "severity": "8",
+          "answer": "\n\nDECISION: EMERGENCY | URGENT\nSEVERITY: 8\nRED FLAGS: serotonin syndrome (agitation, hyperhidrosis, tremor, muscle spasms with serotonergic drug interactions)\nCONDITION: Serotonin syndrome\nICD-10: G93.3\nROUTING: Emergency department immediately for supportive care and discontinuation of offending agents\nSAFETY-NET: Discontinue all serotonergic medications (sertraline, tramadol, linezolid) urgently; monitor vital signs and mental status; seek emergency help if hyperthermia (>40°C), severe rigidity, or altered consciousness develops",
+          "latency_s": 7.79
+        },
+        {
+          "band": "RED",
+          "decision": "EMERGENCY",
+          "severity": "8",
+          "answer": "\n\nDECISION: EMERGENCY\nSEVERITY: 8\nRED FLAGS: serotonin syndrome (hyperthermia, autonomic instability)\nCONDITION: serotonin syndrome\nICD-10: G93.3\nROUTING: emergency department immediately for supportive management and discontinuation of offending agents\nSAFETY-NET: stop sertraline and linezolid; monitor temperature and mental status; seek urgent help if hyperthermia >40°C or rigidity worsens",
+          "latency_s": 9.01
+        },
+        {
+          "band": "AMBER",
+          "decision": "URGENT",
+          "severity": "7",
+          "answer": "\n\nDECISION: URGENT\nSEVERITY: 7\nRED FLAGS: none identified (but high risk)\nCONDITION: Serotonin syndrome due to linezolid (MAOI) interaction with sertraline and tramadol\nICD-10: G93.3\nROUTING: Emergency department immediately for discontinuation of offending agents, supportive care, and monitoring\nSAFETY-NET: Monitor for worsening hyperthermia (>41°C), seizures, or respiratory failure; seek immediate help if these occur",
+          "latency_s": 5.18
+        },
+        {
+          "band": "RED",
+          "decision": "EMERGENCY",
+          "severity": "9",
+          "answer": "\n\nDECISION: EMERGENCY\nSEVERITY: 9\nRED FLAGS: hyperthermia not identified\nCONDITION: Serotonin syndrome\nICD-10: T52.9\nROUTING: Emergency department immediately due to high-risk drug interactions (SSRI + tramadol + linezolid) causing life-threatening serotonin syndrome\nSAFETY-NET: Discontinue all serotonergic agents; monitor for hyperthermia, rigidity, or altered mental status; seek urgent help if symptoms worsen",
+          "latency_s": 9.29
+        }
+      ]
+    }
+  }
+}

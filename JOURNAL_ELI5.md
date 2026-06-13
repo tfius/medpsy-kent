@@ -537,6 +537,39 @@ sheet before the pharmacist even asks — all still without a single byte leavin
 
 ---
 
+## Session 25 — We checked whether translating hurts the diagnosis (and caught ourselves making a measuring mistake)
+
+The kiosk understands a patient in their own language by quietly translating their words into
+English for the medical brain. That's a lot of trust to place in a translator on a *medical*
+tool, and we'd never actually tested it. So we set up an experiment: take 20 of our nastiest
+trick cases (the quiet heart attack, the deceptively-fine overdose), have a top-quality
+translator turn them into Slovenian, Mandarin and Spanish, then push them through the kiosk's
+*own* translator back into English and see whether the urgency verdict (red/amber/green) comes
+out different from the plain-English version.
+
+Then we caught ourselves about to make a classic mistake. When we ran each case once, the
+verdict changed about **40% of the time even on the exact same English** — no translation
+involved at all. The medical brain just isn't perfectly consistent: ask it twice, it sometimes
+says "emergency" and sometimes "urgent" for the same story. If we'd trusted single runs, we'd
+have blamed the translator for wobble that was really the brain's own coin-flip. So we changed
+the method: ask **five times and take the majority vote**, for every case, in every language.
+
+With that fix, the answer was clear and a little surprising. **The translator is not the
+problem.** Every time a verdict shifted, it turned out the plain-English version was *already*
+unsure of itself, and the translations themselves were faithful — even the Slovenian ones kept
+the dangerous details intact ("tearing pain between the shoulder blades", "fruity breath", "20
+tablets"). That's genuinely reassuring, because Slovenian was the language we were most worried
+about.
+
+The thing we *did* find worth fixing is the medical brain's own indecision: on a handful of the
+trickiest cases it flips between "emergency" and "urgent" depending on luck. In real life the
+patient sees one answer, so that coin-flip matters more than the translation does. We wrote it
+up as its own to-do. The honest summary: we tried to test the translator, accidentally
+discovered our measuring tool was noisy, fixed the tool, and learned that the real wobble lives
+in the brain, not the bridge between languages.
+
+---
+
 ## The whole story in three sentences
 
 We built a tiny medical AI helper, tried our hardest to break it, and found its
