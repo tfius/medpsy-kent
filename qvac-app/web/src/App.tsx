@@ -7,6 +7,7 @@ import { useEncounter, type Encounter } from "./store";
 import { usePrefs, useT, type UiScale } from "./lib/prefs";
 import { HelpProvider, HelpButton } from "./lib/ui";
 import Audit from "./pages/Audit";
+import Agent from "./pages/Agent";
 import { audit } from "./lib/audit";
 
 type Step = { path: string; key: string; el: ReactNode; clinician?: boolean };
@@ -74,6 +75,7 @@ export default function App() {
               ))}
             </div>
             <button type="button" className="btn ghost newpt" onClick={newPatient}>↺ {T("newPatient")}</button>
+            <NavLink to="/agent" className="btn ghost newpt" title="Ask MedPsy (tool-calling agent)">🤖 Agent</NavLink>
             <NavLink to="/audit" className="btn ghost newpt" title="Audit log">🛡 {T("audit") !== "audit" ? T("audit") : "Audit"}</NavLink>
             <HelpButton />
           </div>
@@ -97,6 +99,7 @@ export default function App() {
           <Routes>
             {STEPS.map((s) => <Route key={s.path} path={s.path} element={s.el} />)}
             <Route path="/audit" element={<Audit />} />
+            <Route path="/agent" element={<Agent />} />
           </Routes>
         </main>
 

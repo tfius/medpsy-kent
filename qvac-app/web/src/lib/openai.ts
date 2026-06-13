@@ -1,6 +1,7 @@
 // Minimal OpenAI-compatible chat client. Hits /v1 (Vite proxies to LM Studio today,
 // or a QVAC CLI server later). Same contract either way.
 import { getAuditEncounter } from "./audit";
+import { readSSE } from "./sse";
 
 export type Msg = { role: "system" | "user" | "assistant"; content: string };
 
@@ -62,30 +63,15 @@ export async function chatStream(
     }),
   });
   if (!res.ok || !res.body) throw new Error(`LLM ${res.status}: ${await res.text().catch(() => "")}`);
-  const reader = res.body.getReader();
-  const dec = new TextDecoder();
-  let buf = "", content = "", reasoningField = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    const lines = buf.split("\n");
-    buf = lines.pop() || "";
-    for (const line of lines) {
-      const l = line.trim();
-      if (!l.startsWith("data:")) continue;
-      const payload = l.slice(5).trim();
-      if (payload === "[DONE]") continue;
-      try {
-        const delta = JSON.parse(payload).choices?.[0]?.delta || {};
-        if (delta.reasoning_content) reasoningField += delta.reasoning_content;
-        if (delta.content) content += delta.content;
-        if (delta.reasoning_content || delta.content) {
-          const { reasoning, answer } = splitThink(content);
-          onProgress({ reasoning: (reasoningField + "\n" + reasoning).trim(), answer });
-        }
-      } catch { /* ignore keep-alives / partial frames */ }
+  let content = "", reasoningField = "";
+  await readSSE(res, (frame) => {
+    const delta = (frame as { choices?: { delta?: { content?: string; reasoning_content?: string } }[] }).choices?.[0]?.delta || {};
+    if (delta.reasoning_content) reasoningField += delta.reasoning_content;
+    if (delta.content) content += delta.content;
+    if (delta.reasoning_content || delta.content) {
+      const { reasoning, answer } = splitThink(content);
+      onProgress({ reasoning: (reasoningField + "\n" + reasoning).trim(), answer });
     }
-  }
+  });
   return splitThink(content).answer;
 }

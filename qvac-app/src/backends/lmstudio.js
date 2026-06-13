@@ -1,6 +1,7 @@
 // LM Studio (OpenAI-compatible) provider — works TODAY against your running server
 // (medpsy-4b + nomic embeddings). No QVAC native build, no model copy needed for dev.
 import { LMSTUDIO_URL, LMSTUDIO_LLM, LMSTUDIO_EMBED, TEMPERATURE, MAX_TOKENS } from "../config.js";
+import { stripThink } from "../think.js";
 
 export function makeLmStudioProvider() {
   return {
@@ -66,6 +67,29 @@ export function makeLmStudioProvider() {
       if (!r.ok) throw new Error(`LM Studio embeddings ${r.status}: ${await r.text()}`);
       const d = await r.json();
       return d.data.map((x) => x.embedding); // number[][]
+    },
+
+    // One agent turn with tools (OpenAI tools API). Returns the assistant message:
+    // { content, toolCalls, reasoning, finish }. medpsy-4b emits native tool_calls.
+    async chatWithTools(history, tools, { temperature = TEMPERATURE, maxTokens = MAX_TOKENS, signal } = {}) {
+      const r = await fetch(`${LMSTUDIO_URL}/v1/chat/completions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          model: LMSTUDIO_LLM, messages: history, tools, tool_choice: "auto",
+          temperature, max_tokens: maxTokens, stream: false,
+        }),
+        signal,
+      });
+      if (!r.ok) throw new Error(`LM Studio ${r.status}: ${await r.text()}`);
+      const d = await r.json();
+      const m = d.choices?.[0]?.message || {};
+      return {
+        content: stripThink(m.content || ""),
+        toolCalls: m.tool_calls || [],
+        reasoning: (m.reasoning_content || "").trim(),
+        finish: d.choices?.[0]?.finish_reason,
+      };
     },
 
     async close() {},
