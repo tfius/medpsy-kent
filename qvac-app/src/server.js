@@ -11,6 +11,7 @@ import { searchKnowledge } from "./knowledge.js";
 import * as audit from "./audit.js";
 import * as identity from "./identity.js";
 import { createFactStore, NodeFileAdapter, makeFactstoreTools } from "@qvac/factstore";
+import { seedInteractions, makeInteractionTool } from "./medlens.js";
 
 // On-device speech is optional (needs @qvac/sdk + models). Loaded lazily on first use.
 let speech = null;
@@ -48,6 +49,8 @@ const facts = createFactStore({
   signer: { sign: identity.sign, identity: identity.getIdentity },
   verify: identity.verify,
 });
+// Seed the authored drug-interaction graph into kb:medical (idempotent).
+seedInteractions(facts).catch((e) => console.warn(`[facts] interaction seed skipped: ${e?.message || e}`));
 
 // Warm the on-device STT model now so the first dictation isn't "stuck" loading.
 getSpeech().then((sp) => { sp.prewarmStt?.(); sp.prewarmTts?.(); }).catch(() => {});
@@ -266,7 +269,10 @@ http.createServer(async (req, res) => {
       // Give the agent patient-aware memory: facts tools bound to this patient's log,
       // write-gated to "propose" (agent facts land low-confidence, pending confirmation).
       const factTools = encounterId
-        ? makeFactstoreTools(facts, { log: `patient:${encounterId}`, subject: `patient:${encounterId}`, allowWrite: "propose" })
+        ? [
+            ...makeFactstoreTools(facts, { log: `patient:${encounterId}`, subject: `patient:${encounterId}`, allowWrite: "propose" }),
+            makeInteractionTool(facts, { patientLog: `patient:${encounterId}`, kbLog: "kb:medical" }), // graph-grounded
+          ]
         : [];
       await runAgent({
         provider, icdIndex: index, messages, signal: ac.signal, extraTools: factTools,
