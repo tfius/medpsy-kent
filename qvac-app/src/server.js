@@ -9,6 +9,8 @@ import { getProvider } from "./backend.js";
 import { loadOrBuildIndex, verifyIcd } from "./icd-index.js";
 import { searchKnowledge } from "./knowledge.js";
 import * as audit from "./audit.js";
+import * as identity from "./identity.js";
+import { createFactStore, NodeFileAdapter, makeFactstoreTools } from "@qvac/factstore";
 
 // On-device speech is optional (needs @qvac/sdk + models). Loaded lazily on first use.
 let speech = null;
@@ -37,6 +39,15 @@ const index = await loadOrBuildIndex(provider, (d, t) => {
   if (d % 2560 === 0 || d === t) process.stdout.write(`\r  embedding ICD ${d}/${t}`);
 });
 console.log(`\n[icd-api] ready on http://localhost:${PORT}`);
+
+// Bi-temporal fact store (@qvac/factstore) — on-device patient/agent memory. PHI lives
+// under MEDPSY_FACTS_DIR (gitignored, like ./audit). Bundles are ed25519-signed with the
+// same device identity used for audit handoff. Purely additive: nothing else depends on it.
+const facts = createFactStore({
+  adapter: new NodeFileAdapter({ dir: process.env.MEDPSY_FACTS_DIR || path.join(import.meta.dirname, "..", "facts") }),
+  signer: { sign: identity.sign, identity: identity.getIdentity },
+  verify: identity.verify,
+});
 
 // Warm the on-device STT model now so the first dictation isn't "stuck" loading.
 getSpeech().then((sp) => { sp.prewarmStt?.(); sp.prewarmTts?.(); }).catch(() => {});
@@ -231,23 +242,122 @@ http.createServer(async (req, res) => {
     }
     return;
   }
-  // On-device STT: POST raw WAV bytes (16 kHz mono) -> {text}
-  // ?lang=yue routes Cantonese to SenseVoice; other langs use the Nemotron chain.
+  // Agent: medpsy as a tool-calling loop (ICD grounding / knowledge / interactions),
+  // separate from the scripted triage. POST {messages, encounterId} -> SSE stream of
+  // {type: reasoning|tool_call|tool_result|answer|done|error}. Tools run on-device.
+  if (req.method === "POST" && req.url === "/api/agent") {
+    const body = await readBody(req);
+    let parsed;
+    try { parsed = JSON.parse(body.toString() || "{}"); }
+    catch { res.writeHead(400, { "content-type": "application/json" }); res.end(JSON.stringify({ error: "bad json" })); return; }
+    const { messages = [], encounterId } = parsed;
+    if (typeof provider.chatWithTools !== "function") {
+      res.writeHead(501, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: `backend ${provider.name} has no tool-calling support` })); return;
+    }
+    res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive", "x-accel-buffering": "no" });
+    // Stop the (compute-heavy) loop if the client disconnects, and never write to a
+    // closed socket — a stray res.write after close throws and would crash the handler.
+    const ac = new AbortController();
+    req.on("close", () => ac.abort());
+    const send = (o) => { if (res.writableEnded || ac.signal.aborted) return; try { res.write(`data: ${JSON.stringify(o)}\n\n`); } catch { ac.abort(); } };
+    try {
+      const { runAgent } = await import("./agent.js");
+      // Give the agent patient-aware memory: facts tools bound to this patient's log,
+      // write-gated to "propose" (agent facts land low-confidence, pending confirmation).
+      const factTools = encounterId
+        ? makeFactstoreTools(facts, { log: `patient:${encounterId}`, subject: `patient:${encounterId}`, allowWrite: "propose" })
+        : [];
+      await runAgent({
+        provider, icdIndex: index, messages, signal: ac.signal, extraTools: factTools,
+        onEvent: (e) => {
+          send(e);
+          if (!encounterId) return;
+          if (e.type === "tool_call") audit.append(encounterId, "agent.tool", { name: e.name, args: e.args }, "model").catch(() => {});
+          else if (e.type === "answer") audit.append(encounterId, "agent.answer", { text: e.text }, "model").catch(() => {});
+          else if (e.type === "tool_result") {
+            // Pin decisions to the exact facts used: log the read receipt / written fact
+            // into the tamper-evident encounter audit chain.
+            const r = e.result || {};
+            if (r.receipt) audit.append(encounterId, "facts.read", { tool: e.name, query: r.receipt.query, validAt: r.receipt.validAt, knownAt: r.receipt.knownAt, statements: r.receipt.statements }, "model").catch(() => {});
+            if (r.recorded) audit.append(encounterId, "facts.assert", { tool: e.name, ...r.recorded }, "model").catch(() => {});
+          }
+        },
+      });
+      send({ type: "done" });
+    } catch (e) {
+      send({ type: "error", error: String(e?.message || e) });
+    }
+    try { if (!res.writableEnded) { res.write("data: [DONE]\n\n"); res.end(); } } catch { /* socket already gone */ }
+    return;
+  }
+  // Warm the on-device speech models for a language ahead of use (called when the
+  // language is chosen on the welcome step), so they're resident before anyone speaks.
+  // POST {lang, voice} -> {ok}. Best-effort; never blocks the UI.
+  if (req.method === "POST" && req.url === "/api/speech/prewarm") {
+    const buf = await readBody(req);
+    try {
+      const { lang, voice } = JSON.parse(buf.toString() || "{}");
+      (await getSpeech()).prewarmFor?.(lang, voice);
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: true }));
+    } catch (e) {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: false, error: String(e) }));
+    }
+    return;
+  }
+  // On-device STT: POST raw WAV bytes (16 kHz mono) -> {text, locale}
+  // ?lang=yue routes Cantonese to SenseVoice; other langs transcribe Nemotron in that
+  // locale. `locale` in the reply is what the model ACTUALLY used (auto if it fell back).
   if (req.method === "POST" && req.url.split("?")[0] === "/api/stt") {
     const buf = await readBody(req);
     const lang = new URL(req.url, "http://localhost").searchParams.get("lang") || undefined;
     const tmp = path.join(os.tmpdir(), `stt-${Date.now()}.wav`);
     try {
       fs.writeFileSync(tmp, buf);
-      const text = await (await getSpeech()).transcribe(tmp, { lang });
+      const { text, locale } = await (await getSpeech()).transcribe(tmp, { lang });
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ text }));
+      res.end(JSON.stringify({ text, locale }));
     } catch (e) {
       res.writeHead(503, { "content-type": "application/json" });
       res.end(JSON.stringify({ error: `on-device STT unavailable (@qvac/sdk + model): ${e}` }));
     } finally {
       fs.existsSync(tmp) && fs.unlinkSync(tmp);
     }
+    return;
+  }
+  // Bi-temporal fact store API (@qvac/factstore). GET fold/timeline/verify/export, POST
+  // assert/end/correct/retract/import. Additive; the kiosk flow doesn't depend on it.
+  // NB: unauthenticated like the rest of this server (CORS *) — a PHI read/write surface;
+  // production needs auth + per-log access control before this is exposed beyond localhost.
+  if (req.url.split("?")[0].startsWith("/api/facts")) {
+    const seg = req.url.split("?")[0].split("/").filter(Boolean); // [api, facts, log?, action?]
+    const log = seg[2] ? decodeURIComponent(seg[2]) : null;
+    const action = seg[3] || null;
+    const q = new URL(req.url, "http://localhost").searchParams;
+    const json = (code, obj) => { res.writeHead(code, { "content-type": "application/json" }); res.end(JSON.stringify(obj)); };
+    const opt = (k) => q.get(k) || undefined;
+    try {
+      if (req.method === "GET" && !log) { json(200, { logs: await facts.adapter.list() }); return; }
+      if (req.method === "GET" && log && action === "timeline") { json(200, { timeline: await facts.timeline(log, { subject: opt("subject"), predicate: opt("predicate") }) }); return; }
+      if (req.method === "GET" && log && action === "verify") { json(200, await facts.verify(log)); return; }
+      if (req.method === "GET" && log && action === "export") { json(200, await facts.exportBundle(log)); return; }
+      if (req.method === "GET" && log) { json(200, await facts.fold(log, { subject: opt("subject"), predicate: opt("predicate"), validAt: opt("validAt"), knownAt: opt("knownAt") })); return; }
+      if (req.method === "POST" && log && action === "import") { json(200, await facts.importBundle(JSON.parse((await readBody(req)).toString() || "{}"))); return; }
+      if (req.method === "POST" && log) {
+        const b = JSON.parse((await readBody(req)).toString() || "{}");
+        const op = b.op || "assert";
+        let r;
+        if (op === "assert") r = await facts.assert(log, b);
+        else if (op === "end") r = await facts.end(log, b.statementId, b.validTo, b);
+        else if (op === "correct") r = await facts.correct(log, b.statementId, b);
+        else if (op === "retract") r = await facts.retract(log, b.statementId, b);
+        else { json(400, { error: `unknown op '${op}'` }); return; }
+        json(200, { statementId: r.payload.statementId, seq: r.seq, hash: r.hash }); return;
+      }
+      json(404, { error: "unknown facts route" });
+    } catch (e) { json(400, { error: String(e?.message || e) }); }
     return;
   }
   res.writeHead(404); res.end();

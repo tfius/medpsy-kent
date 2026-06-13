@@ -12,6 +12,8 @@ const TYPE_ICON: Record<string, string> = {
   "encounter.start": "🟢", "stage.enter": "📄", patient: "🧑", consent: "✅",
   "message.user": "🗣️", "message.assistant": "🤖", "model.io": "⚙️",
   stt: "🎤", tts: "🔊", translation: "🌐", icd: "🏷️", outcome: "🩺", "knowledge.search": "📚",
+  "agent.user": "💬", "agent.tool": "🔧", "agent.answer": "🤖",
+  "facts.read": "📂", "facts.assert": "🧾",
   signoff: "✍️", note: "📝", "encounter.end": "🔴",
 };
 
@@ -25,11 +27,16 @@ function summarize(ev: AuditEvent): string {
     case "message.user": return String(d.text || "");
     case "message.assistant": return String(d.text || "");
     case "model.io": return `${d.model} · ${(String(d.content || "")).replace(/<think>[\s\S]*?<\/think>/g, "").slice(0, 80)}…`;
-    case "stt": return `“${d.text}” (${d.lang})`;
+    case "stt": return `“${d.text}” (${d.lang}${d.locale && d.locale !== d.lang ? `→${d.locale}` : ""})`;
     case "tts": return `“${String(d.text || "").slice(0, 60)}” [${d.voice ?? ""}]`;
     case "translation": return `${d.from}→${d.to} · ${String(d.src || "").slice(0, 30)} ⇒ ${String(d.out || "").slice(0, 30)}`;
     case "icd": return `${d.condition} → ${d.verified} ${d.description ?? ""}`;
     case "knowledge.search": return `${String(d.query || "").slice(0, 40)} → ${((d.results as { doc: string }[] | undefined) || []).map((r) => r.doc).join(", ")}`;
+    case "agent.user": return String(d.text || "");
+    case "agent.tool": return `${d.name}(${Object.values((d.args as Record<string, unknown>) || {}).map(String).join(", ").slice(0, 40)})`;
+    case "agent.answer": return String(d.text || "").slice(0, 80);
+    case "facts.read": return `${d.tool} → ${((d.statements as { statementId: string }[] | undefined) || []).length} fact(s)`;
+    case "facts.assert": return `${d.tool} · ${String(d.statementId || "").slice(0, 16)}`;
     case "outcome": return `${d.decision ?? ""} ${d.band ?? ""}`;
     case "signoff": return `${d.validatedBy ?? ""} · ${d.decision ?? ""} · ${String(d.hash || "").slice(0, 12)}…`;
     default: return "";

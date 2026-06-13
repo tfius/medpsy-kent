@@ -22,3 +22,6 @@ data/device-key.json
 
 # Generated knowledge-base chunk index (rebuilds automatically from data/knowledge/)
 data/knowledge.index.json
+
+# Bi-temporal fact store (PHI; @qvac/factstore) — on-device, like ./audit
+facts/
