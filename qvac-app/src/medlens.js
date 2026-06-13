@@ -5,7 +5,16 @@
 // Deterministic and grounded — the interaction comes from authored edges + recorded meds,
 // not the model's memory or a fuzzy prose match.
 
-export const drugId = (name) => "drug:" + String(name || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+// Normalize a drug name to a graph id. Strips dose/strength ("warfarin 5mg" -> warfarin)
+// so a med recorded with its dose still matches the bare drug node — a missed match here
+// is a dangerous interaction false-negative. (Salt forms / brand names still need a
+// synonym map — RxNorm — for production; this handles the common dose case.)
+export const drugId = (name) => {
+  const base = String(name || "").toLowerCase().trim()
+    .replace(/\b\d+(\.\d+)?\s*(mg|mcg|g|ml|units?|iu|%)\b.*$/i, "") // drop "5mg ...", "400 mg", etc.
+    .trim();
+  return "drug:" + base.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+};
 
 // Authored interaction edges (a, b) with severity + a one-line rationale. Curated from
 // data/knowledge/*.md. Add to this list as the corpus grows; it's data, not inference.
@@ -25,14 +34,19 @@ const INTERACTIONS = [
 ];
 
 // Seed the interaction graph into `kb:medical` (idempotent — deterministic statementIds,
-// so re-seeding an updated list upserts rather than duplicates). Edges are bidirectional.
+// so re-seeding an updated list upserts rather than duplicates). Skips entirely when the
+// full set is already present, so it doesn't append redundant records on every restart.
+// Edges are bidirectional.
 export async function seedInteractions(store, { log = "kb:medical" } = {}) {
+  const present = (await store.fold(log, { predicate: "interacts_with" })).facts.length;
+  if (present >= INTERACTIONS.length * 2) return { seeded: 0 };
   for (const [a, b, severity, note] of INTERACTIONS) {
     const [da, db] = [drugId(a), drugId(b)];
     const meta = { severity, note, schema: "medical/interaction" };
     await store.assert(log, { statementId: `ix:${da}>${db}`, subject: da, predicate: "interacts_with", object: { ref: db }, source: "authored", meta });
     await store.assert(log, { statementId: `ix:${db}>${da}`, subject: db, predicate: "interacts_with", object: { ref: da }, source: "authored", meta });
   }
+  return { seeded: INTERACTIONS.length * 2 };
 }
 
 // Screen a candidate drug against the patient's current meds (drug refs or names).
