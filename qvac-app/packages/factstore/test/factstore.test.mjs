@@ -239,3 +239,52 @@ test("trust: source-ranked conflict resolution surfaces the loser", async () => 
   assert.equal(r.facts[0].object.dose, "2.5mg");
   assert.equal(r.facts[0].conflict[0].source, "intake", "the overridden source is surfaced");
 });
+
+test("interaction-graph traversal: join patient meds against the kb interaction graph", async () => {
+  const s = createFactStore();
+  // authored kb:medical interaction graph (NOT LLM-extracted)
+  await s.assert("kb:medical", { subject: "drug:warfarin", predicate: "interacts_with", object: { ref: "drug:ibuprofen" }, meta: { severity: "major" }, source: "authored" });
+  // patient's current meds, as drug references
+  await s.assert("patient:1", { subject: "patient:1", predicate: "takes", object: { ref: "drug:warfarin" }, source: "intake" });
+
+  // "is it safe to add ibuprofen?" -> drug set = current meds + candidate
+  const meds = (await s.fold("patient:1", { subject: "patient:1", predicate: "takes" })).facts.map((f) => f.object.ref);
+  const edges = await s.edgesAmong("kb:medical", [...meds, "drug:ibuprofen"], { predicate: "interacts_with" });
+  assert.equal(edges.length, 1);
+  assert.equal(edges[0].from, "drug:warfarin");
+  assert.equal(edges[0].to, "drug:ibuprofen");
+  assert.equal(edges[0].meta.severity, "major", "carries the authored severity");
+  // no interaction when the candidate isn't in the graph
+  assert.equal((await s.edgesAmong("kb:medical", [...meds, "drug:paracetamol"], { predicate: "interacts_with" })).length, 0);
+});
+
+test("multi-writer merge: foldView unions per-device sub-logs (CRDT, latest-tx-time wins)", async () => {
+  const s = createFactStore();
+  // Device A records the patient on warfarin Jan 1; Device B (offline, separate chain)
+  // records a NEW condition AND a correction to the dose, later.
+  await s.assert("patient:9@deviceA", { statementId: "med1", subject: "patient:9", predicate: "takes", object: { name: "warfarin", dose: "5mg" }, validFrom: "2024-01-01" });
+  await s.assert("patient:9@deviceB", { statementId: "cond1", subject: "patient:9", predicate: "diagnosed", object: { name: "hypertension" }, validFrom: "2023-01-01" });
+  // each sub-log verifies independently
+  assert.ok((await s.verify("patient:9@deviceA")).ok);
+  assert.ok((await s.verify("patient:9@deviceB")).ok);
+
+  // The merged VIEW sees both devices' facts.
+  const view = await s.foldView("patient:9", { subject: "patient:9", validAt: "2026-06-01" });
+  assert.equal(view.facts.length, 2);
+  assert.deepEqual(view.sublogs.sort(), ["patient:9@deviceA", "patient:9@deviceB"]);
+  const preds = view.facts.map((f) => f.predicate).sort();
+  assert.deepEqual(preds, ["diagnosed", "takes"]);
+});
+
+test("multi-writer merge: a correction on one device wins over the other by transaction time", async () => {
+  const s = new FactStore({ adapter: new MemoryAdapter(), hash: sha256hex, now: () => clk.t, newId: () => "x" });
+  const clk = { t: "2026-01-01T00:00:00.000Z" };
+  // Device A asserts dose 5mg (shared statementId — the same logical fact synced earlier).
+  await s.assert("p@A", { statementId: "m1", subject: "p", predicate: "takes", object: { dose: "5mg" }, validFrom: "2024-01-01" });
+  // Device B later corrects the SAME statement to 2.5mg.
+  clk.t = "2026-02-01T00:00:00.000Z";
+  await s.correct("p@B", "m1", { object: { dose: "2.5mg" } });
+  const view = await s.foldView("p", { subject: "p", validAt: "2026-06-01" });
+  assert.equal(view.facts.length, 1, "one logical fact across two devices");
+  assert.equal(view.facts[0].object.dose, "2.5mg", "the later correction wins");
+});

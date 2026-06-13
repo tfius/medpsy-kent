@@ -8,11 +8,17 @@
     ".": "./src/index.js",
     "./tools": "./src/tools.js",
     "./core": "./src/store.js",
-    "./okf": "./src/okf.js"
+    "./okf": "./src/okf.js",
+    "./hypercore": "./src/adapters/hypercore.js"
   },
   "main": "./src/index.js",
   "scripts": {
     "test": "node --test"
+  },
+  "peerDependenciesMeta": {
+    "corestore": { "optional": true },
+    "hypercore": { "optional": true },
+    "b4a": { "optional": true }
   },
   "files": ["src", "README.md"]
 }
