@@ -7,6 +7,7 @@ import {
   p2pSend, p2pReceive, p2pStatus,
   type AuditEvent, type EncounterSummary, type Integrity, type P2pOfferStatus,
 } from "../lib/audit";
+import { getEncounterOKF, downloadOkfBundle, type OkfEncounter } from "../lib/okf";
 
 const TYPE_ICON: Record<string, string> = {
   "encounter.start": "🟢", "stage.enter": "📄", patient: "🧑", consent: "✅",
@@ -57,6 +58,7 @@ export default function Audit() {
   const [integrity, setIntegrity] = useState<Integrity | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [okf, setOkf] = useState<OkfEncounter | null>(null); // lossy OKF view of the selected encounter
   const fileRef = useRef<HTMLInputElement>(null);
   // P2P handoff state: an active outgoing offer, and the receive-code input.
   const [offer, setOffer] = useState<P2pOfferStatus | null>(null);
@@ -70,9 +72,18 @@ export default function Audit() {
   useEffect(() => stopPoll, []); // clear any live offer poll on unmount
 
   async function open(id: string) {
-    setSel(id); setBusy(true); setMsg("");
+    setSel(id); setBusy(true); setMsg(""); setOkf(null);
     const r = await getEncounter(id);
     setEvents(r?.events || []); setIntegrity(r?.integrity || null); setBusy(false);
+  }
+
+  // Lossy, human-readable OKF view of the encounter (NOT the audit record — the signed
+  // bundle is). For OKF tooling / quick reading.
+  async function doOkfView(id: string) {
+    setMsg("");
+    const r = await getEncounterOKF(id);
+    if (!r) { setMsg("OKF view failed"); return; }
+    setOkf(r);
   }
 
   async function doExport(id: string) {
@@ -203,7 +214,25 @@ export default function Audit() {
                 )}
                 <button className="btn ghost" onClick={() => doExport(sel)}>⬇ Export / share</button>
                 <button className="btn ghost" onClick={() => doSend(sel)}>📡 Send to device</button>
+                <button className="btn ghost" onClick={() => doOkfView(sel)}>📄 OKF view</button>
               </div>
+
+              {okf && okf.encounterId === sel && (
+                <div className="card" style={{ marginTop: 8 }}>
+                  <div className="row" style={{ alignItems: "center" }}>
+                    <strong>OKF view</strong>
+                    <span className="pill AMBER">non-authoritative</span>
+                    <span style={{ flex: 1 }} />
+                    <button className="btn ghost" onClick={() => downloadOkfBundle(sel, okf.files)}>⬇ Download .okf.json</button>
+                    <button className="btn ghost" onClick={() => setOkf(null)}>✕ Close</button>
+                  </div>
+                  <p className="note">Human-readable Open Knowledge Format rendering for OKF tooling. The tamper-evident
+                    record of truth is the signed bundle above (Export / share), not this.</p>
+                  <pre className="mono audit-raw" style={{ whiteSpace: "pre-wrap" }}>
+                    {okf.files[`encounter/${sel}.md`] || Object.values(okf.files)[0]}
+                  </pre>
+                </div>
+              )}
               {busy && <p className="note">loading…</p>}
               <ol className="audit-timeline">
                 {events.map((ev) => (
