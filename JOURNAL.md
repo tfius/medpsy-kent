@@ -1355,3 +1355,68 @@ the hash is injected → runs in Node/Bare/browser.
 agent. New: `packages/factstore/**`, `src/medlens.js`. Touched additively: `src/server.js`,
 `src/tools.js`/`agent.js`/backends, `web/src/pages/Audit.tsx`, `package.json`, `.gitignore`.
 Issue #5 Phases 2/3 (kiosk timeline UI, real-MRN longitudinal, hyperswarm replication) remain.
+
+## 2026-06-14 — The agent push: a separate agentic triage, full audit coverage, and OKF wiring
+
+A focused investment in the tool-calling agent — measured, grounded, voiced, and given its own
+patient-facing flow — then made every step auditable, and finally wired OKF interchange.
+
+**Grounding + measurement + a page.** The `/agent` loop now recalls **confirmed-only** patient
+facts (`recallStatus:"confirmed"` so it grounds on clinician-trusted data, not its own unconfirmed
+proposals), streams answers token-by-token, speaks/listens (mic + read-aloud), and surfaces its
+proposed facts in a **Confirm/Reject** panel. An eval harness (`scripts/agent_eval.mjs`,
+12 cases, majority-of-N) scores tool-use / grounding / escalation — **11/12**; the one miss was
+decode noise (3/3 on re-run), not a logic bug. We hardened against that noise with retry-on-empty.
+
+**Agentic triage (`/atriage`) — a SEPARATE flow.** The user was explicit: do **not** wire the
+agent into the scripted 9-step kiosk triage; build a new AI-led one alongside it. So
+`src/triage-agent.js` runs the interview itself — asks one question at a time, grounds with the
+on-device tools (recall, knowledge search, graph interaction screen, verified ICD), and finishes by
+calling a `conclude` tool **whose JSON schema IS the structured outcome** (decision / severity /
+condition / icd / red-flags / routing / safety-net — forced JSON, not regex-scraped). The server
+re-verifies the ICD against the stated condition and records the working diagnosis as a *proposed*
+fact for the pharmacist. medpsy fights this in three ways during a long interview, each handled:
+(1) **empty/transient failures** → `persistentTurn` retries empties AND errors with backoff (the
+user asked for "very persistent — more than once"; default 6 attempts); (2) writes `conclude` as
+**text JSON** instead of a native tool call → `parseTextConclude` recovers it; (3) puts its
+**reasoning before the question** → `splitQuestion` separates them. On the reasoning: the user
+corrected an early version that *discarded* it — "reasoning is not leaked; it's valuable." So the
+reasoning is now **preserved** — shown to the patient collapsed (`🧠`), and written to the audit.
+Per-encounter server-side session holds the conversation; confirmed patient facts are pre-injected
+so the interview is record-aware even if the model doesn't call recall. Smoke (LLM-patient sim):
+atypical MI and anticoagulated head-injury both → **EMERGENCY / RED / severity 10**.
+
+**Full, kiosk-compatible audit coverage.** "Everything should be in the audit logs." The agentic
+loop now lands **every** step in the same tamper-evident hash chain (`src/audit.js`) the kiosk uses
+— and deliberately reuses the kiosk's event vocabulary so a single encounter reads/verifies
+uniformly across both flows: the **conversation** layer (`message.user` / `message.assistant` /
+`outcome`) and the **facts** layer (`facts.read` / `facts.assert`) are shared; the agentic-only
+internals (`atriage.reasoning` / `.tool` / `.tool_result` / `.error`) are additive. Previously the
+patient's own utterances, the tool results, the proposed diagnosis, and errors were unaudited —
+all fixed. The page bootstraps a fresh encounter when entered directly (bypassing kiosk Identify)
+so it's always one listable, verifiable chain. Verified live: an anticoagulated-head-injury
+interview produced a 6-event chain (`message.user`×2, `atriage.reasoning`, `message.assistant`,
+`outcome`, `facts.assert`), `integrity: ok`, listed with decision/band, null-patient handled.
+
+**OKF wiring (two directions, honest about each).** OKF (Google's Open Knowledge Format) is a
+directory of markdown concept docs with untyped links — the right portable format for the **non-PHI
+knowledge layer**, the wrong one for tamper-evident PHI audit. So:
+- **Knowledge round-trip** (lossless-enough interchange): `GET /api/facts/:log/okf` exports a kb:*
+  log (e.g. `kb:medical`, the authored interaction graph) to a **real .md directory on disk** the
+  OKF visualizer can open (and returns the bundle for browser download); `POST …/okf-import` reads
+  one back. A new **Knowledge** pharmacist page (`/knowledge`) lists the graph and drives both, with
+  a banner stating the documented lossiness (typed `interacts_with` edges flatten to untyped links
+  and re-import as `links_to`) and pointing at the signed factstore bundle as the lossless record.
+  Verified: 16 drug concepts + index round-tripped (56 facts imported), edges correctly flattened.
+- **Lossy audit OKF *view*** (`src/audit-okf.js`, `GET /api/audit/:id/okf`): renders an encounter as
+  OKF markdown (frontmatter + event timeline + a working-diagnosis concept edge) for OKF tooling,
+  with `authoritative: false` and a frontmatter note that the tamper-evidence lives in the signed
+  bundle. An "OKF view" button on the Audit page shows it with a `non-authoritative` pill. The key
+  judgment held: **OKF never becomes the audit format** — flattening to markdown drops exactly the
+  hash chain / signature / per-event provenance the audit exists to provide.
+
+Touched additively: `src/server.js` (OKF + agentic-triage endpoints, audit coverage), `agent.js`
+(`persistentTurn`), `backends/lmstudio.js` (tool-call streaming). New: `src/triage-agent.js`,
+`src/audit-okf.js`, `scripts/agent_eval*.{mjs,json}`, `scripts/agentic_triage_smoke.mjs`,
+`web/src/pages/{AgenticTriage,Knowledge}.tsx`, `web/src/lib/{atriage,okf}.ts`. The scripted 9-step
+triage was not touched. `okf/` is gitignored (regenerated on demand).

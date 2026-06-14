@@ -623,6 +623,41 @@ and a case where a dosed medicine name wouldn't match the danger list. Both fixe
 status: the memory and its safety features are built and tested; making records actually sync
 between two physical devices over the air is the next step.
 
+## Session 29 — Letting the helper run the interview itself, writing down everything, and a way to share what it knows
+
+Until now the kiosk asked the questions in a fixed nine-step order, and the AI just helped at the
+end. This time we let the AI **run the conversation itself** — a separate "agentic triage" we built
+*alongside* the old flow without touching it (so nothing we trusted got disturbed). It asks one
+question at a time, looks things up in its on-device tools as it goes, and finishes with a proper
+structured assessment a pharmacist reviews. In a test where someone had a head injury *and* was on a
+blood thinner, it correctly drove straight to **EMERGENCY** — that's the combination that can bleed
+in the brain.
+
+The little model is flaky — sometimes it returns nothing, sometimes it scribbles its answer in the
+wrong format, sometimes it "thinks out loud" before the actual question. So we made the helper
+**stubborn**: if it comes back empty, try again, and again. We taught it to recognise the
+wrong-format answers and read them anyway. And the thinking-out-loud part — we first threw that away,
+but the user stopped us: *that reasoning is valuable, don't bin it.* So now the patient sees just the
+clean question, and the helper's reasoning is tucked into a little fold-out you can open, **and**
+it's written into the permanent record.
+
+Which brings us to the big theme: **write down everything.** Every visit already had a sealed,
+tamper-proof logbook. We made sure the new AI-led interview writes *every* step into that same
+logbook — what the patient said, what the helper reasoned, what it looked up, and the final call —
+using the *same* labels the old flow uses, so any visit reads the same way whether the AI ran it or
+not. (Before, some of those — like the patient's own answers — weren't being saved at all. Now they
+are.)
+
+Finally, a way to **share what the helper knows**. There's an open standard from Google called OKF —
+basically a tidy folder of plain text files describing facts and how they connect — that lets
+different tools swap knowledge. We wired it up two ways. The helper's drug-interaction map can now be
+**exported as one of these folders** (and read back in), so a pharmacist could share or update it
+with the wider ecosystem; we were honest in the app that this format is a bit lossy (it forgets the
+*type* of each connection), so the sealed version stays the real one. And you can now look at any
+visit's logbook **rendered in that same shareable format** — clearly stamped "not the official
+record," because turning the sealed logbook into plain text would throw away the very seals that make
+it trustworthy. Knowing when *not* to use a format is half the job.
+
 ---
 
 ## The whole story in three sentences
