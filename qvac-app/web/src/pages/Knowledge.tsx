@@ -10,7 +10,7 @@ import {
   filesToOkfBundle, downloadOkfBundle, type Fact,
 } from "../lib/okf";
 import { getKbStatus, shareKb, joinKb, type KbStatus } from "../lib/kb";
-import { getLearning, proposeEdge, vetEdge, promoteEdge, rejectEdge, drug, type Learning, type Verdict } from "../lib/learn";
+import { getLearning, proposeEdge, vetEdge, promoteEdge, rejectEdge, drug, type Learning, type VetResult } from "../lib/learn";
 
 const objText = (o: unknown): string =>
   o && typeof o === "object"
@@ -32,7 +32,7 @@ export default function Knowledge() {
   // Edge-learning loop.
   const [learn, setLearn] = useState<Learning | null>(null);
   const [teach, setTeach] = useState({ a: "", b: "", severity: "major", note: "" });
-  const [verdicts, setVerdicts] = useState<Record<string, Verdict | "vetting">>({});
+  const [verdicts, setVerdicts] = useState<Record<string, VetResult | "vetting">>({});
   const refreshLearn = () => getLearning().then(setLearn);
 
   async function doTeach() {
@@ -44,7 +44,7 @@ export default function Knowledge() {
   async function doVet(id: string) {
     setVerdicts((v) => ({ ...v, [id]: "vetting" }));
     const r = await vetEdge(id);
-    setVerdicts((v) => ({ ...v, [id]: r || { real: false, reason: "vet failed" } }));
+    setVerdicts((v) => ({ ...v, [id]: r || { local: { real: false, reason: "vet failed" } } }));
     refreshLearn();
   }
   async function doPromote(id: string, severity?: string) { await promoteEdge(id, severity); refreshLearn(); loadFacts(log); }
@@ -191,16 +191,21 @@ export default function Knowledge() {
                     {c.note && <span className="note"> · {c.note}</span>}
                     <span style={{ flex: 1 }} />
                     <button className="btn ghost" onClick={() => doVet(c.id)} disabled={v === "vetting"}>{v === "vetting" ? "vetting…" : "🔬 Vet"}</button>
-                    <button className="btn ghost" onClick={() => doPromote(c.id, typeof v === "object" ? v.severity : undefined)}>✓ Promote</button>
+                    <button className="btn ghost" onClick={() => doPromote(c.id, typeof v === "object" ? v.local.severity : undefined)}>✓ Promote</button>
                     <button className="btn ghost" onClick={() => doReject(c.id)}>✕ Reject</button>
                   </div>
                   {typeof v === "object" && (
                     <div className="note" style={{ marginTop: 4 }}>
-                      medpsy verdict: <span className={`pill ${v.real ? "GREEN" : "RED"}`}>{v.real ? "REAL" : "REFUTED"}</span>
-                      {v.severity ? ` (${v.severity})` : ""} — {v.reason}
+                      <span>this kiosk: <span className={`pill ${v.local.real ? "GREEN" : "RED"}`}>{v.local.real ? "REAL" : "REFUTED"}</span>{v.local.severity ? ` (${v.local.severity})` : ""} — {v.local.reason}</span>
+                      {v.peer && !v.peer.error && (
+                        <div>peer {v.peer.by} {v.peer.signatureOk ? "✓" : "✗sig"}: <span className={`pill ${v.peer.real ? "GREEN" : "RED"}`}>{v.peer.real ? "REAL" : "REFUTED"}</span>{v.peer.severity ? ` (${v.peer.severity})` : ""} — {v.peer.reason}</div>
+                      )}
+                      {v.peer?.error && <div>peer vet: {v.peer.error}</div>}
                     </div>
                   )}
-                  {c.contributedBy && <div className="note">contributed by {c.contributedBy} · {c.votes.length} vote(s)</div>}
+                  {(c.contributedBy || c.votes.length > 0) && (
+                    <div className="note">{c.contributedBy ? `contributed by ${c.contributedBy} · ` : ""}{c.votes.length} vote(s){c.votes.length ? `: ${c.votes.filter((vo) => vo.real).length} real / ${c.votes.length}` : ""}</div>
+                  )}
                 </li>
               );
             })}
