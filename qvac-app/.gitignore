@@ -25,3 +25,6 @@ data/knowledge.index.json
 
 # Bi-temporal fact store (PHI; @qvac/factstore) — on-device, like ./audit
 facts/
+
+# OKF (Open Knowledge Format) interchange exports — regenerated on demand
+okf/

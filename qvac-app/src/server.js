@@ -11,7 +11,25 @@ import { searchKnowledge } from "./knowledge.js";
 import * as audit from "./audit.js";
 import * as identity from "./identity.js";
 import { createFactStore, NodeFileAdapter, makeFactstoreTools } from "@qvac/factstore";
+import { exportOKF, importOKF } from "@qvac/factstore/okf";
 import { seedInteractions, makeInteractionTool } from "./medlens.js";
+import { encounterToOKF } from "./audit-okf.js";
+
+// OKF (Open Knowledge Format) interchange directory — exported knowledge bundles are
+// written here as real .md directories the OKF visualizer/catalog can open. Knowledge
+// layer only; PHI audit logs are NEVER written here (they stay signed/hash-chained).
+const OKF_DIR = process.env.MEDPSY_OKF_DIR || path.join(import.meta.dirname, "..", "okf");
+const okfSlug = (s) => String(s).replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "log";
+// Write an OKF bundle ({ "<path>.md": content }) to disk under baseDir, creating nested
+// concept subdirs. Returns the absolute base directory written to.
+function writeOKFDir(baseDir, files) {
+  for (const [rel, content] of Object.entries(files)) {
+    const full = path.join(baseDir, rel);
+    fs.mkdirSync(path.dirname(full), { recursive: true });
+    fs.writeFileSync(full, content);
+  }
+  return baseDir;
+}
 
 // On-device speech is optional (needs @qvac/sdk + models). Loaded lazily on first use.
 let speech = null;
@@ -180,6 +198,13 @@ http.createServer(async (req, res) => {
       if (req.method === "GET" && !id) { json(200, { encounters: audit.list() }); return; }   // list
       if (req.method === "GET" && id && action === "export") { json(200, audit.exportBundle(id)); return; }
       if (req.method === "GET" && id && action === "verify") { json(200, audit.verify(audit.read(id))); return; }
+      // Lossy, human-readable OKF VIEW of an encounter (NOT the audit record — see
+      // audit-okf.js). For OKF tooling; the signed bundle (export) stays authoritative.
+      if (req.method === "GET" && id && action === "okf") {
+        const files = encounterToOKF(id);
+        if (!files) { json(404, { error: "no such encounter" }); return; }
+        json(200, { encounterId: id, authoritative: false, files }); return;
+      }
       if (req.method === "GET" && id) {                              // GET /api/audit/:id  -> events
         const events = audit.read(id);
         json(200, { encounterId: id, events, integrity: audit.verify(events) }); return;
@@ -434,8 +459,23 @@ http.createServer(async (req, res) => {
       if (req.method === "GET" && log && action === "timeline") { json(200, { timeline: await facts.timeline(log, { subject: opt("subject"), predicate: opt("predicate") }) }); return; }
       if (req.method === "GET" && log && action === "verify") { json(200, await facts.verify(log)); return; }
       if (req.method === "GET" && log && action === "export") { json(200, await facts.exportBundle(log)); return; }
+      // OKF (Open Knowledge Format) export of a knowledge log — writes a real .md directory
+      // the OKF visualizer/catalog can open, AND returns the bundle for the browser. Lossy
+      // interchange (typed edges flatten to untyped links); the signed factstore bundle
+      // (action=export) is the lossless, authoritative one.
+      if (req.method === "GET" && log && action === "okf") {
+        const files = await exportOKF(facts, { log });
+        const dir = writeOKFDir(path.join(OKF_DIR, okfSlug(log)), files);
+        json(200, { log, dir, count: Object.keys(files).length, files }); return;
+      }
       if (req.method === "GET" && log) { json(200, await facts.fold(log, { subject: opt("subject"), predicate: opt("predicate"), validAt: opt("validAt"), knownAt: opt("knownAt"), status: opt("status") })); return; }
       if (req.method === "POST" && log && action === "import") { json(200, await facts.importBundle(JSON.parse((await readBody(req)).toString() || "{}"))); return; }
+      // Import an OKF bundle ({ files: { "<path>.md": content } }) into a knowledge log.
+      // Facts land source:"okf" (non-authoritative interchange provenance).
+      if (req.method === "POST" && log && action === "okf-import") {
+        const b = JSON.parse((await readBody(req)).toString() || "{}");
+        json(200, await importOKF(b.files || {}, facts, { log, source: "okf", actor: "clinician" })); return;
+      }
       if (req.method === "POST" && log) {
         const b = JSON.parse((await readBody(req)).toString() || "{}");
         const op = b.op || "assert";
