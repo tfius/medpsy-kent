@@ -1500,3 +1500,43 @@ New: `src/kb-sync.js`, `src/consult.js`, `web/src/{lib/trust.ts,lib/kb.ts,pages/
 `scripts/{kb_sync,kb_swarm,consult}_smoke.mjs`, `scripts/consult_responder.mjs`. Touched additively:
 `packages/factstore/.../hypercore.js`, `src/{server,medlens}.js`, `scripts/{agent_eval,start.sh}`,
 `web/src/{App,pages/{Knowledge,Audit}}.tsx`. `kb-cores/` gitignored. All four roadmap items done.
+
+## 2026-06-14 — The edge-learning loop: a clinic that learns from corrections, with no PHI leaving
+
+The apex feature — and the answer to "what would blow our minds": a **federated, privacy-preserving,
+self-improving** clinical knowledge loop, built entirely from primitives we already had (#1 on-device
+agent, #2 consult, #3 hypercore replication, factstore confirm/reject, the audit chain).
+
+The insight: a *learned knowledge edge* has the same lifecycle as a patient fact — `proposed →
+vetted → promoted | rejected` — so reuse the factstore machinery at the knowledge layer. And the two
+channels split cleanly: **replication** distributes the graph (gossip); **consult** collects vetting
+verdicts (so no multi-writer is needed); the **contributor promotes its own edge** and the promotion
+gossips. PHI never enters the knowledge channel *by construction* — an edge is two drug names + a
+generalized note + provenance; the patient is never in it. The generalization IS the de-identification,
+and medpsy does it on-device.
+
+The loop:
+1. **Propose** (`src/edge-learning.js`): a clinician/agent proposes a candidate interaction edge into
+   the shared `kb:medical` graph as `proposed:true`. `screenInteractions` **never grounds on a
+   candidate** (only promoted edges) — the agent can't act on un-vetted knowledge.
+2. **Adversarial vet:** medpsy, prompted as a *skeptical pharmacologist* told to refute weak claims,
+   returns `{real, severity, reason}`. (Peer kiosks can vote too over the consult channel.)
+3. **Promote:** a survivor flips `proposed:false` (confidence 1) → enters the grounded graph and
+   gossips to peers via the replication merge (now trust-state-aware so promotions propagate).
+4. **Provenance:** every step (`learn.propose/vet/promote/reject`) lands in a tamper-evident
+   `kb-learning` audit chain — you can trace *why* the network believes any learned fact.
+
+Surfaced as a "Learn" panel on the Knowledge page (teach a pair → 🔬 Vet → ✓ Promote / ✕ Reject, with
+medpsy's REAL/REFUTED verdict + contributor/vote provenance) and `learn.*` events in the audit viewer.
+
+**Verified, on-device and across devices:**
+- `edge_learning_smoke` (on QVAC): a candidate is ignored by screening; medpsy vets warfarin+fluconazole
+  **REAL/major** with the correct CYP2C9 rationale; promoted → grounds. PASS.
+- `edge_federation_smoke`: kiosk A proposes → replicates to B → **B does NOT ground the candidate**; A
+  promotes → it federates → **B now grounds on it**. The safety property holds across devices. PASS.
+- Live over `/api/learn`: propose→vet→promote, `kb-learning` chain integrity ok, graph 24→26.
+
+This is federated learning **without the gradients, the cloud, or the data leak** — a clinic network
+whose collective judgment compounds, every learned fact auditable and refutable, PHI provably local.
+New: `src/edge-learning.js`, `web/src/lib/learn.ts`, `scripts/edge_{learning,federation}_smoke.mjs`.
+Touched: `src/{server,medlens}.js`, `web/src/pages/{Knowledge,Audit}.tsx`.

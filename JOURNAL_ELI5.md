@@ -715,6 +715,33 @@ That completes the four things we set out to do this stretch: get the clever ass
 real on-device engine, let it phone a colleague, share knowledge between kiosks live, and put a trust
 dashboard on top — all of it local-first, all of it verifiable.
 
+## Session 32 — The clinic that learns from its mistakes (without anyone's data ever leaving)
+
+This is the big one — the thing that, if it works, is genuinely new. Here's the problem with normal
+medical AI: to get smarter, it has to slurp up everyone's records into a cloud. We did the opposite.
+
+Imagine a pharmacist notices the assistant *missed* a dangerous drug combination. Normally that
+correction is lost. Now: the pharmacist (or the assistant itself) writes down the lesson as a tiny,
+anonymous fact — just "drug A + drug B = dangerous, because…", with no patient attached. That lesson
+doesn't get trusted yet. First it's **challenged**: the assistant is told to play devil's advocate and
+try to *disprove* it. (When we tested it with a real interaction — warfarin and a common antifungal —
+it correctly confirmed it, and even explained the biochemistry.) If the lesson survives the challenge,
+a clinician approves it, and only then does it become part of the shared knowledge — and it spreads,
+device to device, to every other kiosk, which immediately starts catching that combination too. Every
+step is written into a sealed, tamper-proof logbook, so you can always see *why* the network believes
+something and who approved it.
+
+The crucial safety bit: an *unproven* lesson is never acted on — we tested that the assistant ignores
+a not-yet-approved warning, even after it has arrived from another device, and only starts using it
+once it's been approved. We proved the whole journey end-to-end: one kiosk learns it, a second kiosk
+receives it, refuses to use it while it's unproven, then starts using it the moment it's approved —
+and through all of that, the only thing that ever travelled between devices was two drug names. No
+patient, ever.
+
+So the network of kiosks gets collectively smarter from real-world corrections, every lesson is
+challenged and approved and traceable, and no one's private health data ever leaves the room. That's
+the part that's hard to do anywhere but on a device-to-device, on-device stack like this one.
+
 ---
 
 ## The whole story in three sentences
