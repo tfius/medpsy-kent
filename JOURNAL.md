@@ -1566,3 +1566,16 @@ transcript) or a direct `{correction}`, distils → auto-proposes (the guard dro
 from a correction) and live (simvastatin+itraconazole auto-proposed into the pending queue, chain
 integrity ok). **The loop is now closed with no human in the propose step:** correction → distil →
 propose → jury-vet → human-promote → federate.
+
+**Follow-up 3 — privacy hardening + a warm consult swarm (review/improve).** Two production-readiness
+fixes. Privacy: `sanitizeNote` best-effort de-ids the ONE free-text field that leaves the device (a
+learned-edge note) — strips long digit runs (MRN/phone) and dates, which are never clinical (CYP2C9 /
+J18.9 / "5mg" have only short digit groups), applied to proposed AND distilled notes; and
+`/api/learn/distill` now feeds the distiller only the LOW-PHI triage outcome, not the patient's raw
+words, so it can't echo specifics. Latency: `createConsultClient` is a PERSISTENT consult client that
+joins the topic once and keeps connections warm (routing responses by request id) — the server holds
+one for both the agent's `consult_peer` and the vetting jury, so repeated round-trips skip the ~5–15 s
+DHT discovery the one-shot helpers pay each call. Verified: `consult_client_smoke` — first consult
+1030 ms, second **1 ms** (warm), jury vet over the reused connection; clinical terms preserved /
+MRN+DOB stripped; one-shot smokes still pass; the live server's warm client returned a signed peer
+vote. New: `scripts/consult_client_smoke.mjs`.

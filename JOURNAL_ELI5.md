@@ -763,6 +763,15 @@ itraconazole" out of another. A human still has to approve before it's trusted �
 assistant turns that into a candidate lesson → a jury of AIs on different devices vote on it → a human
 approves → and it spreads to every kiosk. All on people's own devices, nobody's records ever leaving.
 
+Finally, two bits of polish that matter for the real world. First, privacy: the one piece of free text
+that travels between devices (the short "why" note on a lesson) now gets scrubbed of anything that
+looks like an ID or a date of birth before it's shared — and the assistant that writes lessons is only
+shown the anonymous summary of a visit, never the patient's own words. (We checked it leaves real
+medical terms like "CYP2C9" alone but blanks out a medical-record number.) Second, speed: asking
+another device used to take 5–15 seconds each time because it had to *find* the other device on the
+network from scratch; now the kiosk keeps a warm line open, so the second question and every one after
+comes back almost instantly — we measured one second down to one millisecond.
+
 ---
 
 ## The whole story in three sentences
