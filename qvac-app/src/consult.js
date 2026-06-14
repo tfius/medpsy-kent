@@ -122,9 +122,9 @@ export function consultVetAll(code, edge, { timeoutMs = 15000, collectMs = 6000,
       onJsonLine(conn, (msg) => {
         if (msg.kind !== "consult-response" || msg.id !== id || !msg.verdict) return;
         const pub = msg.from?.publicKey;
-        if (pub && seen.has(pub)) return; // one vote per device
-        if (pub) seen.add(pub);
-        votes.push({ verdict: msg.verdict, peer: msg.from || null, signatureOk: !!(pub && verify(resSignable(id, resPayload(msg)), msg.sig || "", pub)) });
+        if (!pub || pub === getIdentity().publicKey || seen.has(pub)) return; // one vote per device; never self
+        seen.add(pub);
+        votes.push({ verdict: msg.verdict, peer: msg.from || null, signatureOk: !!verify(resSignable(id, resPayload(msg)), msg.sig || "", pub) });
         if (votes.length >= maxPeers) return finish();
         clearTimeout(settle); settle = setTimeout(finish, collectMs); // wait a bit for more jurors
       });
@@ -133,22 +133,34 @@ export function consultVetAll(code, edge, { timeoutMs = 15000, collectMs = 6000,
   });
 }
 
-// A PERSISTENT consult client — joins the topic once and keeps connections warm, so repeated
-// consults/vets skip the ~5–15 s DHT discovery the one-shot helpers pay every call. The server
-// holds one of these. `ask` returns the first signed answer; `askVetAll` collects the jury.
-export function createConsultClient(code, { bootstrap = BOOTSTRAP } = {}) {
+// A PERSISTENT consult peer — joins the topic ONCE (as both server and client when vetFn/
+// answerFn are given) and keeps connections warm. One swarm per kiosk: it ANSWERS peers'
+// requests (so every kiosk is a juror) AND asks its own — no self-connection, no per-call DHT
+// discovery. `ask` returns the first signed answer; `askVetAll` collects the jury.
+export function createConsultClient(code, { vetFn = null, answerFn = null, bootstrap = BOOTSTRAP } = {}) {
+  const serves = !!(vetFn || answerFn);
   const swarm = new Hyperswarm({ bootstrap });
   const conns = new Set();
   const pending = new Map(); // request id -> (msg) => void
   const active = new Map();  // request id -> wire (in-flight, replayed to peers that join late)
+  async function serve(conn, msg) {
+    let out;
+    if (msg.vet && vetFn) { let verdict; try { verdict = await vetFn(msg.vet, { from: msg.from }); } catch (e) { verdict = { real: false, reason: `vet error: ${e?.message || e}` }; } out = { kind: "consult-response", id: msg.id, verdict }; }
+    else if (answerFn) { let answer = ""; try { answer = String(await answerFn(msg.question || "", msg.context || "", { from: msg.from })); } catch (e) { answer = `consult error: ${e?.message || e}`; } out = { kind: "consult-response", id: msg.id, answer }; }
+    else return;
+    try { sendJson(conn, { ...out, from: getIdentity(), sig: sign(resSignable(msg.id, resPayload(out))) }); } catch { /* dead conn */ }
+  }
   swarm.on("connection", (conn) => {
     conn.on("error", () => {});
     conn.on("close", () => conns.delete(conn));
     conns.add(conn);
-    onJsonLine(conn, (msg) => { if (msg.kind === "consult-response" && pending.has(msg.id)) pending.get(msg.id)(msg); });
+    onJsonLine(conn, (msg) => {
+      if (msg.kind === "consult-response" && pending.has(msg.id)) pending.get(msg.id)(msg);
+      else if (msg.kind === "consult-request" && msg.id && serves) serve(conn, msg);
+    });
     for (const wire of active.values()) { try { sendJson(conn, wire); } catch { /* dead conn */ } } // catch late jurors
   });
-  swarm.join(topicFor(code), { server: false, client: true });
+  swarm.join(topicFor(code), { server: serves, client: true });
 
   const waitForConn = (ms) => conns.size ? Promise.resolve(true) : new Promise((res) => {
     const t = setTimeout(() => { swarm.off("connection", h); res(false); }, ms);
@@ -171,7 +183,11 @@ export function createConsultClient(code, { bootstrap = BOOTSTRAP } = {}) {
         let done = false;
         const fin = (err, val) => { if (done) return; done = true; clearTimeout(t); settle(id); err ? reject(err) : resolve(val); };
         const t = setTimeout(() => fin(new Error("no peer answered the consult in time")), timeoutMs);
-        pending.set(id, (msg) => fin(null, { answer: msg.answer || "", peer: msg.from || null, signatureOk: !!(msg.from?.publicKey && verify(resSignable(id, resPayload(msg)), msg.sig || "", msg.from.publicKey)) }));
+        pending.set(id, (msg) => {
+          const pub = msg.from?.publicKey;
+          if (!pub || pub === getIdentity().publicKey) return; // ignore self; wait for a real peer
+          fin(null, { answer: msg.answer || "", peer: msg.from || null, signatureOk: !!verify(resSignable(id, resPayload(msg)), msg.sig || "", pub) });
+        });
         broadcast({ kind: "consult-request", id, question, context });
       });
     },
@@ -187,8 +203,9 @@ export function createConsultClient(code, { bootstrap = BOOTSTRAP } = {}) {
         pending.set(id, (msg) => {
           if (!msg.verdict) return;
           const pub = msg.from?.publicKey;
-          if (pub && seen.has(pub)) return; if (pub) seen.add(pub);
-          votes.push({ verdict: msg.verdict, peer: msg.from || null, signatureOk: !!(pub && verify(resSignable(id, resPayload(msg)), msg.sig || "", pub)) });
+          if (!pub || pub === getIdentity().publicKey || seen.has(pub)) return; // one vote per device; never self
+          seen.add(pub);
+          votes.push({ verdict: msg.verdict, peer: msg.from || null, signatureOk: !!verify(resSignable(id, resPayload(msg)), msg.sig || "", pub) });
           if (votes.length >= maxPeers) return fin();
           clearTimeout(settleTimer); settleTimer = setTimeout(fin, collectMs);
         });

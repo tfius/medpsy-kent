@@ -108,15 +108,23 @@ async function mergePeerGraph(peerLog) {
 // P2P "consult a colleague" — when a consult code is configured, the agent gets a tool to
 // reach a paired senior-clinician device for a second opinion (src/consult.js). No cloud.
 const CONSULT_CODE = process.env.MEDPSY_CONSULT_CODE || null;
-const consultClient = CONSULT_CODE ? createConsultClient(CONSULT_CODE) : null; // persistent (warm) swarm
+// One persistent consult swarm per kiosk: it ASKS peers (the jury / second opinion) AND
+// ANSWERS them (so every kiosk is a juror — it vets peers' edges with its own medpsy). The
+// client ignores its own pubkey, so a kiosk never votes on its own edge.
+const CONSULT_SYS = "You are a SENIOR clinician giving a brief second opinion to a community pharmacist's triage assistant. 2-4 sentences: red flags, safest disposition, anything to add. Advisory.";
+const consultClient = CONSULT_CODE ? createConsultClient(CONSULT_CODE, {
+  answerFn: async (q, ctx) => (await provider.complete([{ role: "system", content: CONSULT_SYS }, { role: "user", content: ctx ? `${q}\n\nContext: ${ctx}` : q }], { temperature: 0.3 })).trim(),
+  vetFn: async (edge) => (await import("./edge-learning.js")).vetEdge(provider, edge),
+}) : null;
 const consultTools = consultClient ? [makeConsultTool(consultClient)] : [];
-if (CONSULT_CODE) console.log(`[consult] peer-consult enabled (code "${CONSULT_CODE}") — agent can ask + vet with a paired clinician device`);
+if (CONSULT_CODE) console.log(`[consult] peer-consult enabled (code "${CONSULT_CODE}") — this kiosk asks AND answers (juror)`);
 
 // Agentic-triage conversations, kept per encounter (in-memory; a kiosk session is short).
 const triageSessions = new Map(); // encounterId -> { messages: [] }
 
 // Warm the on-device STT model now so the first dictation isn't "stuck" loading.
-getSpeech().then((sp) => { sp.prewarmStt?.(); sp.prewarmTts?.(); }).catch(() => {});
+// Skippable so the two-kiosk demo (two server processes) doesn't spin up 4 speech workers.
+if (process.env.MEDPSY_NO_SPEECH !== "1") getSpeech().then((sp) => { sp.prewarmStt?.(); sp.prewarmTts?.(); }).catch(() => {});
 
 const cors = (res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -140,6 +148,7 @@ http.createServer(async (req, res) => {
     res.end(JSON.stringify({
       backend: provider.name, mode: BACKEND, onDevice, cloud: false,
       peerConsult: !!CONSULT_CODE, // agent can reach a paired clinician device (P2P)
+      consultPeers: consultClient?.peerCount?.() ?? null, // connected consult peers (jurors)
       model: onDevice ? QVAC_LLM_GGUF : `${LMSTUDIO_LLM} @ ${LMSTUDIO_URL}`,
       note: onDevice
         ? "All inference runs on this device via @qvac/sdk (local .gguf) — no cloud, no outbound model calls."
@@ -546,6 +555,12 @@ http.createServer(async (req, res) => {
         peer._timer = setInterval(() => mergePeerGraph(peerLog).catch(() => {}), 15000);
         const total = (await kbStore.fold("kb:medical", { predicate: "interacts_with" })).facts.length;
         json(200, { joined: peerLog, imported, total }); return;
+      }
+      if (req.method === "POST" && action === "sync") {
+        let merged = 0;
+        for (const p of kbPeers) merged += await mergePeerGraph(p.log).catch(() => 0);
+        const count = (await kbStore.fold("kb:medical", { predicate: "interacts_with" })).facts.length;
+        json(200, { peers: kbPeers.length, merged, count }); return;
       }
       if (req.method === "POST" && action === "leave") {
         const { key } = JSON.parse((await readBody(req)).toString() || "{}");

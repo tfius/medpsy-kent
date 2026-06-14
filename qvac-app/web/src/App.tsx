@@ -12,6 +12,7 @@ import AgenticTriage from "./pages/AgenticTriage";
 import Knowledge from "./pages/Knowledge";
 import Trust from "./pages/Trust";
 import Demo from "./pages/Demo";
+import TwoKiosk from "./pages/TwoKiosk";
 import { audit } from "./lib/audit";
 
 type Step = { path: string; key: string; el: ReactNode; clinician?: boolean };
@@ -84,6 +85,7 @@ export default function App() {
             <NavLink to="/knowledge" className="btn ghost newpt" title="Knowledge base + OKF interchange">📚 Knowledge</NavLink>
             <NavLink to="/trust" className="btn ghost newpt" title="Trust: on-device, grounded, measured">📊 Trust</NavLink>
             <NavLink to="/demo" className="btn ghost newpt" title="Guided demo: the edge-learning loop">✨ Demo</NavLink>
+            <NavLink to="/two-kiosk" className="btn ghost newpt" title="Two-kiosk federated learning">🔗 2-Kiosk</NavLink>
             <NavLink to="/audit" className="btn ghost newpt" title="Audit log">🛡 {T("audit") !== "audit" ? T("audit") : "Audit"}</NavLink>
             <HelpButton />
           </div>
@@ -112,6 +114,7 @@ export default function App() {
             <Route path="/knowledge" element={<Knowledge />} />
             <Route path="/trust" element={<Trust />} />
             <Route path="/demo" element={<Demo />} />
+            <Route path="/two-kiosk" element={<TwoKiosk />} />
           </Routes>
         </main>
 
