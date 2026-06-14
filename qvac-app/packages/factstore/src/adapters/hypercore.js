@@ -20,8 +20,35 @@ export class HypercoreAdapter {
     if (!storage) throw new Error("HypercoreAdapter requires { storage } (a directory path or storage instance)");
     this.store = new Corestore(storage);
     this.cores = new Map();
+    this.remotes = new Set(); // log names backed by a REPLICATED remote core (read-only)
     this._manifest = null;
   }
+
+  // --- replication (the "shared log" path: one writer, N read-only replicas) ---
+
+  // The public key of a local log's core — hand this to a peer so they can replicate it.
+  async coreKey(log) {
+    const core = await this._core(log);
+    return b4a.toString(core.key, "hex");
+  }
+
+  // Alias a log name to a PEER's core (by hex key) — a read-only replica that syncs over any
+  // stream passed to replicate(). Reads call core.update() first (see read()).
+  async addRemoteCore(log, keyHex) {
+    if (this.cores.has(log)) return this.cores.get(log);
+    const core = this.store.get({ key: b4a.from(keyHex, "hex") });
+    await core.ready();
+    this.cores.set(log, core);
+    this.remotes.add(log);
+    return core;
+  }
+
+  // discoveryKey for a log's core — the hyperswarm topic both sides join.
+  async discoveryKey(log) { return (await this._core(log)).discoveryKey; }
+
+  // Wire a replication stream (a hyperswarm connection, or a piped duplex in tests) into this
+  // corestore — replicates every core both sides share interest in.
+  replicate(stream, opts) { return this.store.replicate(stream, opts); }
 
   async _core(log) {
     if (this.cores.has(log)) return this.cores.get(log);
@@ -44,17 +71,22 @@ export class HypercoreAdapter {
 
   async read(log) {
     const core = await this._core(log);
+    // A REPLICATED remote core is sparse: learn the peer's latest length first. update()
+    // returns once the swarm has a current view (or immediately if not connected).
+    if (!core.writable) { try { await core.update(); } catch { /* offline — read what we have */ } }
     const out = [];
-    // Assumes locally-available blocks (always true for the writer). A REPLICATED remote
-    // core may be sparse — reading it needs core.update() + a {wait:false}/timeout policy,
-    // which lands with the hyperswarm replication wiring (the documented next step).
-    for (let i = 0; i < core.length; i++) out.push(b4a.toString(await core.get(i)));
+    // get() downloads the block if it's not local yet (remote cores); a short timeout keeps a
+    // missing/offline block from hanging the fold.
+    for (let i = 0; i < core.length; i++) {
+      try { out.push(b4a.toString(await core.get(i, core.writable ? {} : { timeout: 5000 }))); }
+      catch { break; } // can't fetch a block (peer gone) — return the contiguous prefix we have
+    }
     return out;
   }
 
   async list() {
     const man = await this._names();
-    const names = new Set();
+    const names = new Set(this.remotes);
     for (let i = 0; i < man.length; i++) names.add(b4a.toString(await man.get(i)));
     return [...names];
   }
