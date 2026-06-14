@@ -684,6 +684,37 @@ on the wish-list: letting the helper phone a colleague's device for a second opi
 medicine-danger map between devices live, and a little dashboard that shows off the on-device
 scorecard.)
 
+## Session 31 — Showing the trust, sharing the knowledge, and phoning a colleague
+
+Three features that only make sense because everything runs on your own device and devices can talk
+straight to each other — no cloud in the middle.
+
+**A "trust" page.** If a pharmacist (or a hackathon judge) is going to rely on this, they should be
+able to *check* it in ten seconds. So we added a dashboard that shows three things at a glance: it's
+running on this device (not some server far away), the assistant's answers come from looking things
+up (not guessing) — with a live scorecard of how often it does that right — and every decision is
+written into the sealed logbook. We also made a single command that runs the whole thing fully
+on-device.
+
+**A shared medicine-danger map that updates live.** Until now each kiosk had its own copy of the
+drug-interaction map. Now one kiosk can *share* its map and another can *join* it — straight between
+the two devices, no server — and if you add a new danger on one, the other's assistant knows about it
+moments later. The tricky bit was timing: when the second device first connects, it briefly thinks
+the map is empty before the data arrives, so we taught it to wait for the data instead of trusting
+that first empty glance. We proved it works two ways, including over the real internet between two
+copies.
+
+**Phoning a senior colleague.** The big one for a clinic with no cloud: mid-conversation, the
+assistant can now *consult another device* — a senior clinician's station — for a second opinion, and
+get a signed answer back, all device-to-device. The signature means each side knows exactly which
+device it's talking to, and the whole exchange gets written into the visit's sealed logbook. We
+proved the round-trip works over the real network: ask a question, the other device's AI answers, the
+answer comes back signed and verified.
+
+That completes the four things we set out to do this stretch: get the clever assistant running on the
+real on-device engine, let it phone a colleague, share knowledge between kiosks live, and put a trust
+dashboard on top — all of it local-first, all of it verifiable.
+
 ---
 
 ## The whole story in three sentences

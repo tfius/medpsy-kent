@@ -1459,3 +1459,44 @@ tool pick + `recall-meds` answer text that majority voting recovers); `agentic_t
 quality. Touched: `src/backends/qvac.js`; new harnesses `scripts/qvac_agent_smoke.mjs`,
 `scripts/qvac_dialect_probe.mjs`. (Roadmap remaining: P2P "consult a peer" agent tool; live
 hypercore-replicated shared KB; an in-app trust/parity surface + QVAC-default toggle.)
+
+## 2026-06-14 — The "why QVAC" trio: a trust dashboard, a live shared KB, and a P2P consult
+
+With the agent proven on-device, three features that only make sense on a local-first, P2P stack —
+each verified end-to-end (the two networked ones over the real hyperswarm DHT, not mocks).
+
+**Trust dashboard (`/trust`) + one-command on-device.** A judge/clinician surface for "why you can
+trust this": (1) inference runs ON THIS DEVICE — `/api/backend` reports on-device (QVAC) vs the dev
+LM Studio server, neither cloud, with the model path; (2) it's MEASURED — `agent_eval.mjs` now writes
+a results JSON that `/api/eval` serves, rendered as tool-use / grounding / escalation score bars +
+per-case; (3) it's RECORDED — grounding receipts in the hash-chained audit. `npm run start:qvac`
+runs the whole stack on-device (start.sh routes the web's `/v1` proxy at the server's QVAC shim — no
+LM Studio). Populated on-device: escalation 4/4, grounding 92%.
+
+**Live shared interaction graph, federated kiosk-to-kiosk (`src/kb-sync.js`).** Kiosks share an
+*updatable* drug-interaction graph over hyperswarm with **no server** — edit it on one and the
+others' agents ground on it, live. The `@qvac/factstore` `HypercoreAdapter` could write/read local
+cores but not replicate a peer's; this wires the "remaining step": `coreKey`/`addRemoteCore`/
+`replicate` + replica-aware reads (a non-writable core gets `core.update()` first, sparse blocks
+download with a timeout). A separate hypercore `kbStore` holds the graph (kept apart from the PHI
+`facts` store — only authored edges federate, never PHI); `screenInteractions` takes an optional
+`kbStore` so the agent reads the federated graph while meds stay local. `/api/kb` share/join +
+a "Federate (P2P)" card. **The gotcha:** `core.update()` resolves *before* the replication handshake
+completes, so the first read sees length 0 — you must race it against the first `append` event
+(`waitForSync`). Verified two ways: `kb_sync_smoke` (direct streams, offline) and `kb_swarm_smoke`
+(real DHT) — both replicate the 24-edge graph writer→reader AND propagate a live write (→25).
+
+**P2P "consult a colleague" agent tool (`src/consult.js`).** Mid-triage, the agent can reach a
+paired senior-clinician device over hyperswarm for a second opinion — no cloud — and the signed
+exchange lands in the audit. Same transport/identity as the audit handoff: a shared consult code
+derives the DHT topic, request+response are ed25519-signed over a hash of the question/answer (each
+side verifies *which* device), and `consult_peer` is bound into both agent paths when
+`MEDPSY_CONSULT_CODE` is set. `scripts/consult_responder.mjs` is the clinician station (answers with
+its own medpsy, senior-clinician prompt). Verified: `consult_smoke` PASS (signed answer over the
+DHT); the bound tool returns a signed peer answer; the server audits `consult.response` with the
+peer's identity + signature-valid flag.
+
+New: `src/kb-sync.js`, `src/consult.js`, `web/src/{lib/trust.ts,lib/kb.ts,pages/Trust.tsx}`,
+`scripts/{kb_sync,kb_swarm,consult}_smoke.mjs`, `scripts/consult_responder.mjs`. Touched additively:
+`packages/factstore/.../hypercore.js`, `src/{server,medlens}.js`, `scripts/{agent_eval,start.sh}`,
+`web/src/{App,pages/{Knowledge,Audit}}.tsx`. `kb-cores/` gitignored. All four roadmap items done.
