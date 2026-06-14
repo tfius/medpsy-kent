@@ -52,6 +52,9 @@ const facts = createFactStore({
 // Seed the authored drug-interaction graph into kb:medical (idempotent).
 seedInteractions(facts).catch((e) => console.warn(`[facts] interaction seed skipped: ${e?.message || e}`));
 
+// Agentic-triage conversations, kept per encounter (in-memory; a kiosk session is short).
+const triageSessions = new Map(); // encounterId -> { messages: [] }
+
 // Warm the on-device STT model now so the first dictation isn't "stuck" loading.
 getSpeech().then((sp) => { sp.prewarmStt?.(); sp.prewarmTts?.(); }).catch(() => {});
 
@@ -295,6 +298,68 @@ http.createServer(async (req, res) => {
       send({ type: "error", error: String(e?.message || e) });
     }
     try { if (!res.writableEnded) { res.write("data: [DONE]\n\n"); res.end(); } } catch { /* socket already gone */ }
+    return;
+  }
+
+  // Agentic triage — medpsy conducts the interview itself, grounding with the on-device
+  // tools, and finishes by calling conclude (structured outcome). Separate from the scripted
+  // 9-step triage. POST {encounterId, message, reset?} -> SSE {reasoning|tool_call|
+  // tool_result|question|conclusion|done|error}. Conversation is held per encounter server-side.
+  if (req.method === "POST" && req.url === "/api/agentic-triage") {
+    const body = await readBody(req);
+    let parsed;
+    try { parsed = JSON.parse(body.toString() || "{}"); }
+    catch { res.writeHead(400, { "content-type": "application/json" }); res.end(JSON.stringify({ error: "bad json" })); return; }
+    const { encounterId, message, reset } = parsed;
+    if (typeof provider.chatWithTools !== "function") {
+      res.writeHead(501, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: `backend ${provider.name} has no tool-calling support` })); return;
+    }
+    if (!encounterId) { res.writeHead(400, { "content-type": "application/json" }); res.end(JSON.stringify({ error: "encounterId required" })); return; }
+    if (reset) triageSessions.delete(encounterId);
+    const session = triageSessions.get(encounterId) || { messages: [] };
+    triageSessions.set(encounterId, session);
+    if (message) session.messages.push({ role: "user", content: String(message) });
+
+    res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive", "x-accel-buffering": "no" });
+    const ac = new AbortController();
+    req.on("close", () => ac.abort());
+    const send = (o) => { if (res.writableEnded || ac.signal.aborted) return; try { res.write(`data: ${JSON.stringify(o)}\n\n`); } catch { ac.abort(); } };
+    try {
+      const { runTriageAgent } = await import("./triage-agent.js");
+      const log = `patient:${encounterId}`;
+      const extraTools = [
+        ...makeFactstoreTools(facts, { log, subject: log, recallStatus: "confirmed" }), // read-only recall for grounding
+        makeInteractionTool(facts, { patientLog: log, kbLog: "kb:medical" }),
+      ];
+      // Pre-inject the patient's confirmed facts so the interview is patient-aware even if
+      // the model doesn't call recall itself.
+      let context = "";
+      try {
+        const pf = (await facts.fold(log, { status: "confirmed" })).facts;
+        context = pf.map((f) => `- ${f.predicate}: ${typeof f.object === "object" ? JSON.stringify(f.object) : f.object}`).join("\n");
+      } catch { /* no facts yet */ }
+      const r = await runTriageAgent({
+        provider, icdIndex: index, extraTools, context, messages: session.messages, signal: ac.signal,
+        onEvent: (e) => {
+          send(e);
+          if (e.type === "reasoning") audit.append(encounterId, "atriage.reasoning", { text: e.text }, "model").catch(() => {});
+          else if (e.type === "tool_call") audit.append(encounterId, "atriage.tool", { name: e.name, args: e.args }, "model").catch(() => {});
+          else if (e.type === "question") audit.append(encounterId, "atriage.question", { text: e.text }, "model").catch(() => {});
+          else if (e.type === "conclusion") {
+            audit.append(encounterId, "outcome", e.outcome, "model").catch(() => {});
+            // record the working diagnosis as a PROPOSED fact for the pharmacist to confirm
+            facts.assert(log, { subject: log, predicate: "diagnosed", object: { name: e.outcome.condition, icd: e.outcome.icd },
+              source: "triage", confidence: 0.6, meta: { proposed: true, band: e.outcome.band } }).catch(() => {});
+          }
+        },
+      });
+      if (r?.messages) session.messages = r.messages; // persist the conversation incl. tool turns
+      send({ type: "done" });
+    } catch (e) {
+      send({ type: "error", error: String(e?.message || e) });
+    }
+    try { if (!res.writableEnded) { res.write("data: [DONE]\n\n"); res.end(); } } catch { /* socket gone */ }
     return;
   }
   // Warm the on-device speech models for a language ahead of use (called when the
