@@ -17,6 +17,7 @@ const TYPE_ICON: Record<string, string> = {
   "atriage.reasoning": "🧠", "atriage.tool": "🔧", "atriage.tool_result": "📊",
   "atriage.question": "❓", "atriage.error": "⚠️",
   "consult.request": "👤", "consult.response": "👥",
+  "learn.propose": "🧠", "learn.vet": "🔬", "learn.promote": "✅", "learn.reject": "🚫",
   "facts.read": "📂", "facts.assert": "🧾",
   signoff: "✍️", note: "📝", "encounter.end": "🔴",
 };
@@ -45,6 +46,10 @@ function summarize(ev: AuditEvent): string {
     case "atriage.question": return String(d.text || "").slice(0, 80);
     case "atriage.error": return String(d.error || "").slice(0, 80);
     case "consult.response": return `${(d.peer as { name?: string })?.name ?? "peer"} ${d.signatureOk ? "✓" : "✗sig"}: ${String(d.answer || d.error || "").slice(0, 60)}`;
+    case "learn.propose": return `${d.a} + ${d.b} (${d.severity})`;
+    case "learn.vet": return `${d.edgeId} → ${d.real ? "REAL" : "refuted"} by ${d.by}`;
+    case "learn.promote": return `promoted ${d.edgeId}`;
+    case "learn.reject": return `rejected ${d.edgeId}`;
     case "facts.read": return `${d.tool} → ${((d.statements as { statementId: string }[] | undefined) || []).length} fact(s)`;
     case "facts.assert": return `${d.tool} · ${String(d.statementId || "").slice(0, 16)}`;
     case "outcome": return `${d.decision ?? ""} ${d.band ?? ""}`;

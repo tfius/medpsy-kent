@@ -10,6 +10,7 @@ import {
   filesToOkfBundle, downloadOkfBundle, type Fact,
 } from "../lib/okf";
 import { getKbStatus, shareKb, joinKb, type KbStatus } from "../lib/kb";
+import { getLearning, proposeEdge, vetEdge, promoteEdge, rejectEdge, drug, type Learning, type Verdict } from "../lib/learn";
 
 const objText = (o: unknown): string =>
   o && typeof o === "object"
@@ -28,6 +29,26 @@ export default function Knowledge() {
   const [peerKey, setPeerKey] = useState("");
   const [kbMsg, setKbMsg] = useState("");
   const refreshKb = () => getKbStatus().then(setKb);
+  // Edge-learning loop.
+  const [learn, setLearn] = useState<Learning | null>(null);
+  const [teach, setTeach] = useState({ a: "", b: "", severity: "major", note: "" });
+  const [verdicts, setVerdicts] = useState<Record<string, Verdict | "vetting">>({});
+  const refreshLearn = () => getLearning().then(setLearn);
+
+  async function doTeach() {
+    if (!teach.a.trim() || !teach.b.trim()) return;
+    await proposeEdge(teach);
+    setTeach({ a: "", b: "", severity: "major", note: "" });
+    refreshLearn();
+  }
+  async function doVet(id: string) {
+    setVerdicts((v) => ({ ...v, [id]: "vetting" }));
+    const r = await vetEdge(id);
+    setVerdicts((v) => ({ ...v, [id]: r || { real: false, reason: "vet failed" } }));
+    refreshLearn();
+  }
+  async function doPromote(id: string, severity?: string) { await promoteEdge(id, severity); refreshLearn(); loadFacts(log); }
+  async function doReject(id: string) { await rejectEdge(id); refreshLearn(); }
 
   // A directory <input> needs the non-standard webkitdirectory attribute (not in React's
   // types) — set it on the element so the picker selects an OKF folder, not a single file.
@@ -45,7 +66,7 @@ export default function Knowledge() {
 
   const loadFacts = (l: string) => { if (l) getFacts(l).then(setFacts); };
   useEffect(() => { loadFacts(log); }, [log]);
-  useEffect(() => { refreshKb(); }, []);
+  useEffect(() => { refreshKb(); refreshLearn(); }, []);
 
   async function doShare() {
     setKbMsg("starting…");
@@ -137,6 +158,55 @@ export default function Knowledge() {
           {kb ? `graph: ${kb.count} edges · ${kb.peers.length} peer(s) joined${kb.sharing ? " · sharing" : ""}` : "loading…"}
           {kbMsg && ` — ${kbMsg}`}
         </p>
+      </div>
+
+      {/* Edge-learning loop: propose → adversarial vet → promote into the grounded graph. */}
+      <div className="card">
+        <h2 style={{ marginTop: 0 }}>🧠 Learn (edge proposals) <span className="badge">on-device · PHI-free</span></h2>
+        <p className="note">Teach the network a drug interaction. It's adversarially vetted by medpsy, then a
+          clinician promotes it into the grounded, federated graph — with a tamper-evident provenance trail.
+          Only two drug names + a note ever leave; never a patient.</p>
+
+        <div className="row" style={{ flexWrap: "wrap", alignItems: "center" }}>
+          <input value={teach.a} placeholder="drug A" onChange={(e) => setTeach({ ...teach, a: e.target.value })} style={{ width: 120 }} />
+          <span className="note">+</span>
+          <input value={teach.b} placeholder="drug B" onChange={(e) => setTeach({ ...teach, b: e.target.value })} style={{ width: 120 }} />
+          <select value={teach.severity} onChange={(e) => setTeach({ ...teach, severity: e.target.value })}>
+            <option value="major">major</option><option value="moderate">moderate</option><option value="minor">minor</option>
+          </select>
+          <input value={teach.note} placeholder="mechanism / note" onChange={(e) => setTeach({ ...teach, note: e.target.value })} style={{ flex: 1, minWidth: 160 }} />
+          <button className="btn" onClick={doTeach} disabled={!teach.a.trim() || !teach.b.trim()}>Propose</button>
+        </div>
+
+        {learn && learn.pending.length > 0 && (
+          <ul className="kb-facts" style={{ marginTop: 10 }}>
+            {learn.pending.map((c) => {
+              const v = verdicts[c.id];
+              return (
+                <li key={c.id} className="kb-fact">
+                  <div className="row" style={{ alignItems: "center", flexWrap: "wrap" }}>
+                    <span className="pill AMBER">candidate</span>{" "}
+                    <span className="mono">{drug(c.a)} + {drug(c.b)}</span>{" "}
+                    <span className={`pill ${c.severity === "major" ? "RED" : "AMBER"}`}>{c.severity}</span>
+                    {c.note && <span className="note"> · {c.note}</span>}
+                    <span style={{ flex: 1 }} />
+                    <button className="btn ghost" onClick={() => doVet(c.id)} disabled={v === "vetting"}>{v === "vetting" ? "vetting…" : "🔬 Vet"}</button>
+                    <button className="btn ghost" onClick={() => doPromote(c.id, typeof v === "object" ? v.severity : undefined)}>✓ Promote</button>
+                    <button className="btn ghost" onClick={() => doReject(c.id)}>✕ Reject</button>
+                  </div>
+                  {typeof v === "object" && (
+                    <div className="note" style={{ marginTop: 4 }}>
+                      medpsy verdict: <span className={`pill ${v.real ? "GREEN" : "RED"}`}>{v.real ? "REAL" : "REFUTED"}</span>
+                      {v.severity ? ` (${v.severity})` : ""} — {v.reason}
+                    </div>
+                  )}
+                  {c.contributedBy && <div className="note">contributed by {c.contributedBy} · {c.votes.length} vote(s)</div>}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {learn && <p className="note" style={{ marginTop: 6 }}>{learn.pending.length} candidate(s) · {learn.promoted.length} learned edge(s) promoted into the graph</p>}
       </div>
 
       <div className="card">
