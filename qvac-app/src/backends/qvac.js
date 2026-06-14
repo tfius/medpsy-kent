@@ -113,7 +113,7 @@ export async function makeQvacProvider() {
   async function toolTurn(history, tools, { temperature = TEMPERATURE, signal } = {}, onDelta) {
     // Inject the tool-emission instruction into the system message so medpsy emits a
     // parseable call (the SDK doesn't prime it). Stream content unless it turns out to be a
-    // text-emitted tool call — we don't want a half-JSON blob spoken to the patient.
+    // text-emitted tool call — we don't want a half-JSON blob streamed to the client.
     const qHistory = toQvacHistory(history);
     if ((tools || []).length) {
       const pre = toolPreamble(tools);
@@ -127,9 +127,26 @@ export async function makeQvacProvider() {
     });
     let content = "", reasoning = "";
     const calls = [];
+    // Decide once, on the first non-whitespace content char, whether to stream: a tool-call
+    // turn outputs ONLY a JSON object (per the preamble), and we recover+suppress it — so we
+    // must NOT stream that JSON to the client. Prose answers (anything not starting with `{`)
+    // stream normally.
+    let streamDecided = false, streamOn = false;
     for await (const event of run.events) {
       if (signal?.aborted) { try { run.cancel?.(); } catch { /* best effort */ } break; }
-      if (event.type === "contentDelta") { content += event.text; onDelta?.(event.text); }
+      if (event.type === "contentDelta") {
+        content += event.text;
+        if (onDelta) {
+          if (!streamDecided) {
+            const head = content.replace(/^\s+/, "");
+            if (!head) continue;                  // still leading whitespace — wait
+            streamDecided = true; streamOn = !/^(\{|```)/.test(head); // `{` or a ```json fence ⇒ a tool call
+            if (streamOn) onDelta(head);           // flush the buffered first prose token(s)
+            continue;
+          }
+          if (streamOn) onDelta(event.text);
+        }
+      }
       else if (event.type === "thinkingDelta") reasoning += event.text;
       else if (event.type === "toolCall") calls.push(event.call);
     }
