@@ -20,6 +20,14 @@ const reverseId = (id) => { const [a, b] = id.replace(/^lx:/, "").split(">"); re
 export async function proposeEdge(kbStore, { a, b, severity = "moderate", note = "", contributedBy = null, evidence = null, log = KB }) {
   const [da, db] = [drugId(a), drugId(b)];
   if (!da || !db || da === db || da === "drug:" || db === "drug:") throw new Error("two distinct drug names required");
+  // Don't duplicate an edge that already exists for this pair (seeded OR learned). If it's
+  // already promoted it's known; if it's a pending candidate, return it (idempotent).
+  const existing = (await kbStore.fold(log, { predicate: "interacts_with" })).facts
+    .find((f) => (f.subject === da && f.object?.ref === db) || (f.subject === db && f.object?.ref === da));
+  if (existing) {
+    if (!existing.meta?.proposed) throw new Error(`${drugName(da)} + ${drugName(db)} is already a known interaction`);
+    return { id: existing.statementId.startsWith("lx:") ? existing.statementId : learnedId(da, db), a: da, b: db, severity: existing.meta?.severity, existing: true };
+  }
   const meta = { severity, note, proposed: true, learned: true, contributedBy, evidence, votes: [] };
   await kbStore.assert(log, { statementId: learnedId(da, db), subject: da, predicate: "interacts_with", object: { ref: db }, source: "learned", confidence: 0.5, meta });
   await kbStore.assert(log, { statementId: learnedId(db, da), subject: db, predicate: "interacts_with", object: { ref: da }, source: "learned", confidence: 0.5, meta });
