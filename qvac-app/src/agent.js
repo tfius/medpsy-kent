@@ -19,10 +19,35 @@ USE your on-device tools rather than relying on memory, in this order:
 
 Always cite what grounded your answer: the recalled facts and/or the source documents/interaction edges. Screen red flags first and flag anything life-threatening for immediate escalation. Be concise and evidence-based; state your uncertainty when information is incomplete. If you record a new fact about the patient (remember), say it is a PROPOSAL pending the pharmacist's confirmation.`;
 
+// One model turn, PERSISTENTLY. medpsy can return nothing or transiently fail; a clinical
+// agent (especially triage) must never give up on the first miss. Retries an empty
+// generation AND a transient backend error up to `retries` times (with a small backoff),
+// streaming content via onDelta when supported. Returns the turn; { aborted:true } if the
+// signal fired; an empty turn only after exhausting all attempts.
+export async function persistentTurn(provider, history, toolDefs, { signal, onDelta, retries = 4 } = {}) {
+  let lastErr = null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    if (signal?.aborted) return { content: "", toolCalls: [], aborted: true };
+    try {
+      const turn = (onDelta && typeof provider.chatWithToolsStream === "function")
+        ? await provider.chatWithToolsStream(history, toolDefs, { signal }, onDelta)
+        : await provider.chatWithTools(history, toolDefs, { signal });
+      if ((turn.toolCalls && turn.toolCalls.length) || (turn.content || "").trim()) return turn; // got something
+      // empty generation -> retry
+    } catch (e) {
+      if (signal?.aborted) return { content: "", toolCalls: [], aborted: true };
+      lastErr = e;
+    }
+    if (attempt < retries) await new Promise((r) => setTimeout(r, 150 * (attempt + 1))); // brief backoff
+  }
+  if (lastErr) throw lastErr; // exhausted on errors -> surface the last one
+  return { content: "", toolCalls: [] }; // exhausted, every attempt was empty
+}
+
 // Run the agent loop. `messages` is the conversation so far ({role,content}[]). onEvent
 // is called with {type, ...} events: "reasoning", "tool_call", "tool_result", "answer".
 // Returns { answer, history } (history includes the tool turns, for multi-turn continuation).
-export async function runAgent({ provider, icdIndex, messages, onEvent = () => {}, maxSteps = 6, signal, extraTools = [] }) {
+export async function runAgent({ provider, icdIndex, messages, onEvent = () => {}, maxSteps = 6, signal, extraTools = [], retries = 4 }) {
   if (typeof provider.chatWithTools !== "function") {
     throw new Error(`backend ${provider.name} has no tool-calling support`);
   }
@@ -33,14 +58,11 @@ export async function runAgent({ provider, icdIndex, messages, onEvent = () => {
 
   // Stream the final answer token-by-token when the backend supports it. A tool-call turn
   // emits no content (so no answer_delta); only the answer turn streams.
-  const stream = typeof provider.chatWithToolsStream === "function";
-  let emptyRetries = 0;
+  const onDelta = (t) => onEvent({ type: "answer_delta", text: t });
   for (let step = 0; step < maxSteps; step++) {
     if (signal?.aborted) return { answer: "", history, aborted: true };
-    const turn = stream
-      ? await provider.chatWithToolsStream(history, toolDefs, { signal }, (t) => onEvent({ type: "answer_delta", text: t }))
-      : await provider.chatWithTools(history, toolDefs, { signal });
-    if (signal?.aborted) return { answer: "", history, aborted: true };
+    const turn = await persistentTurn(provider, history, toolDefs, { signal, onDelta, retries });
+    if (turn.aborted || signal?.aborted) return { answer: "", history, aborted: true };
     if (turn.reasoning) onEvent({ type: "reasoning", text: turn.reasoning });
 
     if (turn.toolCalls?.length) {
@@ -65,10 +87,8 @@ export async function runAgent({ provider, icdIndex, messages, onEvent = () => {
 
     const text = turn.content || "";
     if (!text) {
-      // No tool call and no answer — medpsy occasionally emits an empty generation (issue
-      // #4). It's almost always transient, so retry the turn once before giving up.
-      if (emptyRetries++ < 1) { step--; continue; }
-      onEvent({ type: "error", error: "the model returned an empty response" });
+      // Empty even after persistentTurn exhausted its retries — give up this turn.
+      onEvent({ type: "error", error: "the model returned an empty response after retries" });
       return { answer: "", history };
     }
     onEvent({ type: "answer", text });
