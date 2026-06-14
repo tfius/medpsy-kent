@@ -12,6 +12,15 @@ import { drugId } from "./medlens.js";
 
 const KB = "kb:medical";
 const drugName = (id) => String(id).replace(/^drug:/, "");
+
+// Best-effort de-identification of a free-text note before it's stored/shared. Strips long
+// digit runs (MRN/phone) and dates — patterns that are NEVER clinical (CYP2C9, J18.9, "5mg"
+// have only short digit groups, so they're untouched). The human review at promotion is the
+// real backstop; this is defence in depth for the one free-text field that leaves the device.
+export const sanitizeNote = (s) => String(s || "")
+  .replace(/\b\d{7,}\b/g, "[id]")
+  .replace(/\b\d{1,2}[/.\-]\d{1,2}[/.\-]\d{2,4}\b/g, "[date]")
+  .replace(/\s+/g, " ").trim().slice(0, 200);
 const learnedId = (a, b) => `lx:${a}>${b}`;            // learned edge (distinct from seeded ix:)
 const reverseId = (id) => { const [a, b] = id.replace(/^lx:/, "").split(">"); return `lx:${b}>${a}`; };
 
@@ -28,7 +37,7 @@ export async function proposeEdge(kbStore, { a, b, severity = "moderate", note =
     if (!existing.meta?.proposed) throw new Error(`${drugName(da)} + ${drugName(db)} is already a known interaction`);
     return { id: existing.statementId.startsWith("lx:") ? existing.statementId : learnedId(da, db), a: da, b: db, severity: existing.meta?.severity, existing: true };
   }
-  const meta = { severity, note, proposed: true, learned: true, contributedBy, evidence, votes: [] };
+  const meta = { severity, note: sanitizeNote(note), proposed: true, learned: true, contributedBy, evidence, votes: [] };
   await kbStore.assert(log, { statementId: learnedId(da, db), subject: da, predicate: "interacts_with", object: { ref: db }, source: "learned", confidence: 0.5, meta });
   await kbStore.assert(log, { statementId: learnedId(db, da), subject: db, predicate: "interacts_with", object: { ref: da }, source: "learned", confidence: 0.5, meta });
   return { id: learnedId(da, db), a: da, b: db, severity };
@@ -97,7 +106,7 @@ export async function distillEdges(provider, { meds = [], transcript = "", corre
   try {
     const o = JSON.parse(m[0]);
     const edges = (Array.isArray(o.edges) ? o.edges : []).filter((e) => e && e.a && e.b)
-      .map((e) => ({ a: String(e.a), b: String(e.b), severity: ["major", "moderate", "minor"].includes(e.severity) ? e.severity : "moderate", note: String(e.note || "").slice(0, 200) }));
+      .map((e) => ({ a: String(e.a), b: String(e.b), severity: ["major", "moderate", "minor"].includes(e.severity) ? e.severity : "moderate", note: sanitizeNote(e.note) }));
     return { edges };
   } catch { return { edges: [] }; }
 }

@@ -133,9 +133,71 @@ export function consultVetAll(code, edge, { timeoutMs = 15000, collectMs = 6000,
   });
 }
 
-// Agent tool: consult the paired clinician device for a second opinion. Bound into the agent
-// toolset only when a consult code is configured (MEDPSY_CONSULT_CODE).
-export function makeConsultTool(code) {
+// A PERSISTENT consult client — joins the topic once and keeps connections warm, so repeated
+// consults/vets skip the ~5–15 s DHT discovery the one-shot helpers pay every call. The server
+// holds one of these. `ask` returns the first signed answer; `askVetAll` collects the jury.
+export function createConsultClient(code, { bootstrap = BOOTSTRAP } = {}) {
+  const swarm = new Hyperswarm({ bootstrap });
+  const conns = new Set();
+  const pending = new Map(); // request id -> (msg) => void
+  swarm.on("connection", (conn) => {
+    conn.on("error", () => {});
+    conn.on("close", () => conns.delete(conn));
+    conns.add(conn);
+    onJsonLine(conn, (msg) => { if (msg.kind === "consult-response" && pending.has(msg.id)) pending.get(msg.id)(msg); });
+  });
+  swarm.join(topicFor(code), { server: false, client: true });
+
+  const waitForConn = (ms) => conns.size ? Promise.resolve(true) : new Promise((res) => {
+    const t = setTimeout(() => { swarm.off("connection", h); res(false); }, ms);
+    const h = () => { clearTimeout(t); res(true); };
+    swarm.once("connection", h);
+  });
+  const broadcast = (req) => {
+    const wire = { ...req, from: getIdentity(), sig: sign(reqSignable(req.id, reqPayload(req))) };
+    for (const c of conns) { try { sendJson(c, wire); } catch { /* dead conn */ } }
+  };
+
+  return {
+    async ask(question, { context = "", timeoutMs = RESPONSE_TIMEOUT_MS } = {}) {
+      await waitForConn(Math.min(timeoutMs, 12000));
+      if (!conns.size) throw new Error("no peer connected");
+      return new Promise((resolve, reject) => {
+        const id = crypto.randomBytes(8).toString("hex");
+        let done = false;
+        const fin = (err, val) => { if (done) return; done = true; clearTimeout(t); pending.delete(id); err ? reject(err) : resolve(val); };
+        const t = setTimeout(() => fin(new Error("no peer answered the consult in time")), timeoutMs);
+        pending.set(id, (msg) => fin(null, { answer: msg.answer || "", peer: msg.from || null, signatureOk: !!(msg.from?.publicKey && verify(resSignable(id, resPayload(msg)), msg.sig || "", msg.from.publicKey)) }));
+        broadcast({ kind: "consult-request", id, question, context });
+      });
+    },
+    async askVetAll(edge, { timeoutMs = 12000, collectMs = 5000, maxPeers = 12 } = {}) {
+      await waitForConn(Math.min(timeoutMs, 10000));
+      return new Promise((resolve) => {
+        const id = crypto.randomBytes(8).toString("hex");
+        const votes = [], seen = new Set();
+        let done = false, settle = null;
+        const fin = () => { if (done) return; done = true; clearTimeout(overall); clearTimeout(settle); pending.delete(id); resolve(votes); };
+        const overall = setTimeout(fin, timeoutMs);
+        if (!conns.size) return fin();
+        pending.set(id, (msg) => {
+          if (!msg.verdict) return;
+          const pub = msg.from?.publicKey;
+          if (pub && seen.has(pub)) return; if (pub) seen.add(pub);
+          votes.push({ verdict: msg.verdict, peer: msg.from || null, signatureOk: !!(pub && verify(resSignable(id, resPayload(msg)), msg.sig || "", pub)) });
+          if (votes.length >= maxPeers) return fin();
+          clearTimeout(settle); settle = setTimeout(fin, collectMs);
+        });
+        broadcast({ kind: "consult-request", id, vet: edge });
+      });
+    },
+    close() { return swarm.destroy().catch(() => {}); },
+  };
+}
+
+// Agent tool: consult the paired clinician device for a second opinion. Uses a persistent
+// consult client (createConsultClient) so the round-trip is warm.
+export function makeConsultTool(client) {
   return {
     def: { type: "function", function: {
       name: "consult_peer",
@@ -144,7 +206,7 @@ export function makeConsultTool(code) {
         question: { type: "string", description: "the specific clinical question for the senior clinician" },
       }, required: ["question"] } } },
     run: async ({ question }) => {
-      try { const r = await consult(code, question || ""); return { answer: r.answer, peer: r.peer, signatureOk: r.signatureOk }; }
+      try { const r = await client.ask(question || ""); return { answer: r.answer, peer: r.peer, signatureOk: r.signatureOk }; }
       catch (e) { return { error: String(e?.message || e) }; }
     },
   };

@@ -14,7 +14,7 @@ import { createFactStore, NodeFileAdapter, makeFactstoreTools } from "@qvac/fact
 import { HypercoreAdapter } from "@qvac/factstore/hypercore";
 import { exportOKF, importOKF } from "@qvac/factstore/okf";
 import { shareLog, joinLog } from "./kb-sync.js";
-import { makeConsultTool, consultVetAll } from "./consult.js";
+import { makeConsultTool, createConsultClient } from "./consult.js";
 import { proposeEdge, vetEdge, recordVote, promoteEdge, rejectEdge, pendingEdges, distillEdges } from "./edge-learning.js";
 import { seedInteractions, makeInteractionTool } from "./medlens.js";
 import { encounterToOKF } from "./audit-okf.js";
@@ -108,8 +108,9 @@ async function mergePeerGraph(peerLog) {
 // P2P "consult a colleague" — when a consult code is configured, the agent gets a tool to
 // reach a paired senior-clinician device for a second opinion (src/consult.js). No cloud.
 const CONSULT_CODE = process.env.MEDPSY_CONSULT_CODE || null;
-const consultTools = CONSULT_CODE ? [makeConsultTool(CONSULT_CODE)] : [];
-if (CONSULT_CODE) console.log(`[consult] peer-consult enabled (code "${CONSULT_CODE}") — agent can ask a paired clinician device`);
+const consultClient = CONSULT_CODE ? createConsultClient(CONSULT_CODE) : null; // persistent (warm) swarm
+const consultTools = consultClient ? [makeConsultTool(consultClient)] : [];
+if (CONSULT_CODE) console.log(`[consult] peer-consult enabled (code "${CONSULT_CODE}") — agent can ask + vet with a paired clinician device`);
 
 // Agentic-triage conversations, kept per encounter (in-memory; a kiosk session is short).
 const triageSessions = new Map(); // encounterId -> { messages: [] }
@@ -592,8 +593,8 @@ http.createServer(async (req, res) => {
         audit.append("kb-learning", "learn.vet", { edgeId, real: verdict.real, severity: verdict.severity, by: `local:${provider.name}` }, "model").catch(() => {});
         // Peer-network vetting: EVERY paired kiosk's medpsy casts an independent, SIGNED vote (a jury).
         const peers = [];
-        if (CONSULT_CODE) {
-          const jury = await consultVetAll(CONSULT_CODE, { a: e.a, b: e.b, severity: e.severity, note: e.note }).catch(() => []);
+        if (consultClient) {
+          const jury = await consultClient.askVetAll({ a: e.a, b: e.b, severity: e.severity, note: e.note }).catch(() => []);
           for (const j of jury) {
             const p = { real: j.verdict.real, severity: j.verdict.severity, reason: j.verdict.reason, by: j.peer?.name || "peer", signatureOk: j.signatureOk };
             await recordVote(kbStore, edgeId, { voter: j.peer?.publicKey || `peer:${p.by}`, by: `peer:${p.by}`, real: p.real, severity: p.severity, reason: p.reason, signatureOk: p.signatureOk });
@@ -608,7 +609,9 @@ http.createServer(async (req, res) => {
         let meds = Array.isArray(medsIn) ? medsIn : [], transcript = "";
         if (encounterId) {
           try { meds = (await facts.fold(`patient:${encounterId}`, { predicate: "takes" })).facts.map((f) => String(f.object?.ref || f.object?.name || "").replace(/^drug:/, "")).filter(Boolean); } catch { /* no meds */ }
-          try { transcript = audit.read(encounterId).filter((e) => ["message.user", "message.assistant", "outcome", "atriage.reasoning"].includes(e.type)).map((e) => `${e.type}: ${e.data?.text || JSON.stringify(e.data).slice(0, 120)}`).join("\n"); } catch { /* no transcript */ }
+          // Feed the distiller only LOW-PHI structured signal (the triage outcome), NOT the
+          // patient's raw utterances — so it can't echo patient specifics into a shared note.
+          try { transcript = audit.read(encounterId).filter((e) => e.type === "outcome").map((e) => `outcome: ${e.data?.decision ?? ""} ${e.data?.condition ?? ""} ${e.data?.icd ?? ""}`).join("\n"); } catch { /* no transcript */ }
         }
         const { edges, error } = await distillEdges(provider, { meds, transcript, correction });
         const proposed = [];
