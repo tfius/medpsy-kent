@@ -13,6 +13,7 @@ const TYPE_ICON: Record<string, string> = {
   "message.user": "🗣️", "message.assistant": "🤖", "model.io": "⚙️",
   stt: "🎤", tts: "🔊", translation: "🌐", icd: "🏷️", outcome: "🩺", "knowledge.search": "📚",
   "agent.user": "💬", "agent.tool": "🔧", "agent.answer": "🤖",
+  "atriage.reasoning": "🧠", "atriage.tool": "🔧", "atriage.question": "❓",
   "facts.read": "📂", "facts.assert": "🧾",
   signoff: "✍️", note: "📝", "encounter.end": "🔴",
 };
@@ -35,6 +36,9 @@ function summarize(ev: AuditEvent): string {
     case "agent.user": return String(d.text || "");
     case "agent.tool": return `${d.name}(${Object.values((d.args as Record<string, unknown>) || {}).map(String).join(", ").slice(0, 40)})`;
     case "agent.answer": return String(d.text || "").slice(0, 80);
+    case "atriage.reasoning": return String(d.text || "").slice(0, 80);
+    case "atriage.tool": return `${d.name}(${Object.values((d.args as Record<string, unknown>) || {}).map(String).join(", ").slice(0, 40)})`;
+    case "atriage.question": return String(d.text || "").slice(0, 80);
     case "facts.read": return `${d.tool} → ${((d.statements as { statementId: string }[] | undefined) || []).length} fact(s)`;
     case "facts.assert": return `${d.tool} · ${String(d.statementId || "").slice(0, 16)}`;
     case "outcome": return `${d.decision ?? ""} ${d.band ?? ""}`;
