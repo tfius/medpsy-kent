@@ -92,6 +92,51 @@ export function makeLmStudioProvider() {
       };
     },
 
+    // Streaming agent turn: emits content tokens via onDelta as they arrive (the final
+    // answer streams; a tool-call turn produces no content), assembling tool_calls from the
+    // streamed deltas. Returns the same { content, toolCalls, reasoning } shape.
+    async chatWithToolsStream(history, tools, { temperature = TEMPERATURE, maxTokens = MAX_TOKENS, signal } = {}, onDelta) {
+      const r = await fetch(`${LMSTUDIO_URL}/v1/chat/completions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          model: LMSTUDIO_LLM, messages: history, tools, tool_choice: "auto",
+          temperature, max_tokens: maxTokens, stream: true,
+        }),
+        signal,
+      });
+      if (!r.ok || !r.body) throw new Error(`LM Studio ${r.status}: ${await r.text().catch(() => "")}`);
+      const reader = r.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "", content = "", reasoning = "";
+      const calls = []; // assembled by index
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() || "";
+        for (const line of lines) {
+          const l = line.trim();
+          if (!l.startsWith("data:")) continue;
+          const p = l.slice(5).trim();
+          if (p === "[DONE]") continue;
+          let delta;
+          try { delta = JSON.parse(p).choices?.[0]?.delta || {}; } catch { continue; }
+          if (delta.reasoning_content) reasoning += delta.reasoning_content;
+          if (delta.content) { content += delta.content; onDelta?.(delta.content); }
+          for (const tc of delta.tool_calls || []) {
+            const i = tc.index ?? 0;
+            calls[i] ??= { id: tc.id, type: "function", function: { name: "", arguments: "" } };
+            if (tc.id) calls[i].id = tc.id;
+            if (tc.function?.name) calls[i].function.name += tc.function.name;
+            if (tc.function?.arguments) calls[i].function.arguments += tc.function.arguments;
+          }
+        }
+      }
+      return { content: stripThink(content), toolCalls: calls.filter(Boolean), reasoning: reasoning.trim() };
+    },
+
     async close() {},
   };
 }

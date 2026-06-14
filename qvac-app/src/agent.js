@@ -11,12 +11,13 @@ import { makeTools } from "./tools.js";
 
 export const AGENT_SYSTEM = `You are MedPsy, a clinical decision-support assistant for a registered community pharmacist. You support the pharmacist's decision; you are NOT a standalone diagnostician, and the pharmacist makes the final call.
 
-You have on-device tools — USE them rather than relying on memory:
-- lookup_icd10(condition): the VERIFIED ICD-10 code. NEVER state a code without calling this.
-- search_knowledge(query): local protocols + drug-interaction monographs. Consult before advising; cite the returned source by name.
-- check_interactions(medications): screen a medication list for interactions/cautions.
+USE your on-device tools rather than relying on memory, in this order:
+1. recall() — ALWAYS start by recalling what is already known about THIS patient (current medications, conditions, allergies). Ground your answer in these confirmed facts; do not assume meds the patient isn't recorded as taking.
+2. screen_interactions(candidate) — for ANY "is drug X safe / can they take X" question, use this. It checks X against the patient's recorded meds via the verified interaction graph. Prefer it over check_interactions for patient-specific safety.
+3. lookup_icd10(condition) — the VERIFIED ICD-10 code. NEVER state a code without calling this.
+4. search_knowledge(query) — local protocols + drug-interaction monographs for detail/rationale. Cite the returned source document by name.
 
-Screen red flags first and flag anything life-threatening for immediate escalation. Be concise and evidence-based, and state your uncertainty when information is incomplete. When you used search_knowledge, name the source document you relied on.`;
+Always cite what grounded your answer: the recalled facts and/or the source documents/interaction edges. Screen red flags first and flag anything life-threatening for immediate escalation. Be concise and evidence-based; state your uncertainty when information is incomplete. If you record a new fact about the patient (remember), say it is a PROPOSAL pending the pharmacist's confirmation.`;
 
 // Run the agent loop. `messages` is the conversation so far ({role,content}[]). onEvent
 // is called with {type, ...} events: "reasoning", "tool_call", "tool_result", "answer".
@@ -30,9 +31,14 @@ export async function runAgent({ provider, icdIndex, messages, onEvent = () => {
   const byName = Object.fromEntries(tools.map((t) => [t.def.function.name, t]));
   const history = [{ role: "system", content: AGENT_SYSTEM }, ...messages];
 
+  // Stream the final answer token-by-token when the backend supports it. A tool-call turn
+  // emits no content (so no answer_delta); only the answer turn streams.
+  const stream = typeof provider.chatWithToolsStream === "function";
   for (let step = 0; step < maxSteps; step++) {
     if (signal?.aborted) return { answer: "", history, aborted: true };
-    const turn = await provider.chatWithTools(history, toolDefs, { signal });
+    const turn = stream
+      ? await provider.chatWithToolsStream(history, toolDefs, { signal }, (t) => onEvent({ type: "answer_delta", text: t }))
+      : await provider.chatWithTools(history, toolDefs, { signal });
     if (signal?.aborted) return { answer: "", history, aborted: true };
     if (turn.reasoning) onEvent({ type: "reasoning", text: turn.reasoning });
 

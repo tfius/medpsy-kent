@@ -1,10 +1,12 @@
 // Agent — medpsy as a tool-calling assistant, running ALONGSIDE the scripted triage
-// (not on the patient rail). The pharmacist asks free-form questions; medpsy calls the
-// on-device tools (ICD grounding, knowledge base, interaction checks) and answers with
-// the tool results shown inline. Clinician-facing, English.
+// (not on the patient rail). The pharmacist asks free-form questions (typed or spoken);
+// medpsy recalls the patient's confirmed facts, calls the on-device tools (ICD grounding,
+// knowledge base, graph interaction screen), and answers — streamed, read-aloud, with the
+// tools shown inline. Agent-proposed facts are surfaced for the clinician to confirm/reject.
 import { useEffect, useRef, useState } from "react";
-import { runAgent, toolLabel, type AgentMsg } from "../lib/agent";
+import { runAgent, toolLabel, listProposals, resolveProposal, factText, type AgentMsg, type Proposal } from "../lib/agent";
 import { logEvent } from "../lib/audit";
+import { MicButton, SpeakButton } from "../lib/voice";
 
 type ToolStep = { id: string; name: string; args: Record<string, unknown>; result?: unknown };
 type Turn =
@@ -21,12 +23,14 @@ export default function Agent() {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [proposals, setProposals] = useState<Proposal[]>([]);
   const msgs = useRef<AgentMsg[]>([]); // conversation sent to the API (no system prompt)
   const abortRef = useRef<AbortController | null>(null);
   useEffect(() => () => abortRef.current?.abort(), []); // cancel an in-flight stream on unmount
 
-  // Update the last (bot) turn immutably as events stream in (no in-place mutation,
-  // no side effects — so React 18 StrictMode double-invocation is safe).
+  const refreshProposals = () => listProposals().then(setProposals);
+  useEffect(() => { refreshProposals(); }, []);
+
   const patchBot = (fn: (b: Extract<Turn, { who: "bot" }>) => void) =>
     setTurns((ts) => {
       const last = ts[ts.length - 1];
@@ -49,16 +53,21 @@ export default function Agent() {
       if (e.type === "reasoning") patchBot((b) => { b.reasoning = (b.reasoning + "\n" + e.text).trim(); });
       else if (e.type === "tool_call") patchBot((b) => { b.tools = [...b.tools, { id: e.id, name: e.name, args: e.args }]; });
       else if (e.type === "tool_result") patchBot((b) => { b.tools = b.tools.map((t) => t.id === e.id ? { ...t, result: e.result } : t); });
+      else if (e.type === "answer_delta") { answer += e.text; patchBot((b) => { b.text = answer; }); }
       else if (e.type === "answer") { answer = e.text; patchBot((b) => { b.text = e.text; }); }
       else if (e.type === "error") patchBot((b) => { b.text = `⚠ ${e.error}`; });
     }, ac.signal);
     abortRef.current = null;
 
-    // Persist the assistant answer for the next turn (a plain ref write, NOT inside a
-    // setState updater — updaters must stay pure / can run twice).
     if (answer) msgs.current.push({ role: "assistant", content: answer });
     else patchBot((b) => { if (!b.text) b.text = "⚠ No response."; });
     setBusy(false);
+    refreshProposals(); // the turn may have proposed facts to confirm
+  }
+
+  async function resolve(p: Proposal, op: "confirm" | "reject") {
+    await resolveProposal(p.statementId, op);
+    refreshProposals();
   }
 
   function reset() { abortRef.current?.abort(); abortRef.current = null; setTurns([]); msgs.current = []; setInput(""); setBusy(false); }
@@ -67,9 +76,24 @@ export default function Agent() {
     <>
       <div className="eyebrow">Agent <span className="badge">tools</span></div>
       <h1>Ask MedPsy</h1>
-      <p className="lead">Free-form clinical questions. MedPsy reasons and calls on-device tools —
-        verified ICD-10 lookup, the local knowledge base, and interaction checks — then answers with
-        the sources it used. Runs alongside the structured triage; the pharmacist decides.</p>
+      <p className="lead">Free-form clinical questions, typed or spoken. MedPsy recalls the patient's
+        confirmed facts, calls on-device tools — verified ICD-10, the knowledge base, the interaction
+        graph — then answers with the sources it used. Runs alongside the structured triage; the
+        pharmacist decides.</p>
+
+      {proposals.length > 0 && (
+        <div className="card" style={{ borderColor: "var(--amber, #c80)", marginBottom: 12 }}>
+          <b>🧾 Proposed facts — pending your confirmation ({proposals.length})</b>
+          <p className="note" style={{ marginTop: 4 }}>MedPsy suggested recording these about the patient. Confirm to add to the record, or reject.</p>
+          {proposals.map((p) => (
+            <div key={p.statementId} className="row" style={{ marginTop: 6, alignItems: "center" }}>
+              <span style={{ flex: 1 }}>{factText(p)} <span className="note">· {p.source}</span></span>
+              <button className="btn ghost" onClick={() => resolve(p, "confirm")}>✓ Confirm</button>
+              <button className="btn ghost" onClick={() => resolve(p, "reject")}>✕ Reject</button>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="card">
         <div className="chat">
@@ -98,7 +122,7 @@ export default function Agent() {
                 </details>
               ))}
               {t.text
-                ? <div className="bubble bot">{t.text}</div>
+                ? <div className="bubble bot">{t.text}{!busy && <SpeakButton text={t.text} compact />}</div>
                 : (busy && i === turns.length - 1 && <div className="typing">thinking…</div>)}
             </div>
           ))}
@@ -108,6 +132,7 @@ export default function Agent() {
           <input value={input} placeholder="Ask a clinical question…"
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && ask()} disabled={busy} />
+          <MicButton onText={(t) => ask(t)} disabled={busy} title="Ask by voice" />
           <button className="btn" onClick={() => ask()} disabled={busy || !input.trim()}>Ask</button>
         </div>
         {turns.length > 0 && (

@@ -270,7 +270,7 @@ http.createServer(async (req, res) => {
       // write-gated to "propose" (agent facts land low-confidence, pending confirmation).
       const factTools = encounterId
         ? [
-            ...makeFactstoreTools(facts, { log: `patient:${encounterId}`, subject: `patient:${encounterId}`, allowWrite: "propose" }),
+            ...makeFactstoreTools(facts, { log: `patient:${encounterId}`, subject: `patient:${encounterId}`, allowWrite: "propose", recallStatus: "confirmed" }),
             makeInteractionTool(facts, { patientLog: `patient:${encounterId}`, kbLog: "kb:medical" }), // graph-grounded
           ]
         : [];
@@ -349,7 +349,7 @@ http.createServer(async (req, res) => {
       if (req.method === "GET" && log && action === "timeline") { json(200, { timeline: await facts.timeline(log, { subject: opt("subject"), predicate: opt("predicate") }) }); return; }
       if (req.method === "GET" && log && action === "verify") { json(200, await facts.verify(log)); return; }
       if (req.method === "GET" && log && action === "export") { json(200, await facts.exportBundle(log)); return; }
-      if (req.method === "GET" && log) { json(200, await facts.fold(log, { subject: opt("subject"), predicate: opt("predicate"), validAt: opt("validAt"), knownAt: opt("knownAt") })); return; }
+      if (req.method === "GET" && log) { json(200, await facts.fold(log, { subject: opt("subject"), predicate: opt("predicate"), validAt: opt("validAt"), knownAt: opt("knownAt"), status: opt("status") })); return; }
       if (req.method === "POST" && log && action === "import") { json(200, await facts.importBundle(JSON.parse((await readBody(req)).toString() || "{}"))); return; }
       if (req.method === "POST" && log) {
         const b = JSON.parse((await readBody(req)).toString() || "{}");
@@ -365,6 +365,8 @@ http.createServer(async (req, res) => {
         else if (op === "end") r = await facts.end(log, b.statementId, b.validTo, stamp);
         else if (op === "correct") r = await facts.correct(log, b.statementId, { ...b, ...stamp });
         else if (op === "retract") r = await facts.retract(log, b.statementId, { ...b, ...stamp });
+        else if (op === "confirm") r = await facts.confirm(log, b.statementId, { actor: "clinician" }); // promote an agent proposal
+        else if (op === "reject") r = await facts.reject(log, b.statementId, { actor: "clinician" });
         else { json(400, { error: `unknown op '${op}'` }); return; }
         json(200, { statementId: r.payload.statementId, seq: r.seq, hash: r.hash }); return;
       }
