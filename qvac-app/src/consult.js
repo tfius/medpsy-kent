@@ -103,6 +103,36 @@ export const consult = (code, question, opts = {}) =>
 export const consultVet = (code, edge, opts = {}) =>
   consultRaw(code, { vet: edge }, opts).then((r) => ({ verdict: r.verdict || { real: false, reason: "no verdict" }, peer: r.peer, signatureOk: r.signatureOk }));
 
+// Requester: ask EVERY available peer on the topic to vet an edge, collecting their signed
+// verdicts — a jury. Resolves to an array of { verdict, peer, signatureOk } (one per device),
+// after a short settle window past the first vote (or maxPeers / the overall timeout). Never
+// rejects — an empty array means no peer was reachable.
+export function consultVetAll(code, edge, { timeoutMs = 15000, collectMs = 6000, maxPeers = 12, bootstrap = BOOTSTRAP } = {}) {
+  return new Promise((resolve) => {
+    const swarm = new Hyperswarm({ bootstrap });
+    const id = crypto.randomBytes(8).toString("hex");
+    const votes = [], seen = new Set();
+    let done = false, settle = null;
+    const finish = () => { if (done) return; done = true; clearTimeout(overall); clearTimeout(settle); swarm.destroy().catch(() => {}); resolve(votes); };
+    const overall = setTimeout(finish, timeoutMs);
+    swarm.on("connection", (conn) => {
+      conn.on("error", () => {});
+      const req = { kind: "consult-request", id, vet: edge };
+      sendJson(conn, { ...req, from: getIdentity(), sig: sign(reqSignable(id, reqPayload(req))) });
+      onJsonLine(conn, (msg) => {
+        if (msg.kind !== "consult-response" || msg.id !== id || !msg.verdict) return;
+        const pub = msg.from?.publicKey;
+        if (pub && seen.has(pub)) return; // one vote per device
+        if (pub) seen.add(pub);
+        votes.push({ verdict: msg.verdict, peer: msg.from || null, signatureOk: !!(pub && verify(resSignable(id, resPayload(msg)), msg.sig || "", pub)) });
+        if (votes.length >= maxPeers) return finish();
+        clearTimeout(settle); settle = setTimeout(finish, collectMs); // wait a bit for more jurors
+      });
+    });
+    swarm.join(topicFor(code), { server: false, client: true });
+  });
+}
+
 // Agent tool: consult the paired clinician device for a second opinion. Bound into the agent
 // toolset only when a consult code is configured (MEDPSY_CONSULT_CODE).
 export function makeConsultTool(code) {

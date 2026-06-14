@@ -8,8 +8,8 @@ export interface Candidate {
 export interface PromotedEdge { a: string; b: string; severity?: string; note?: string; by?: string }
 export interface Learning { pending: Candidate[]; promoted: PromotedEdge[] }
 export interface Verdict { real: boolean; severity?: string; reason?: string }
-export interface PeerVerdict extends Verdict { by?: string; signatureOk?: boolean; error?: string }
-export interface VetResult { local: Verdict; peer?: PeerVerdict | null }
+export interface PeerVerdict extends Verdict { by?: string; signatureOk?: boolean }
+export interface VetResult { local: Verdict; peers?: PeerVerdict[] }
 
 const post = async <T,>(url: string, b?: unknown): Promise<T | null> => {
   try {
@@ -26,5 +26,7 @@ export const proposeEdge = (e: { a: string; b: string; severity: string; note: s
 export const vetEdge = (edgeId: string) => post<VetResult>("/api/learn/vet", { edgeId });
 export const promoteEdge = (edgeId: string, severity?: string) => post<{ promoted: boolean }>("/api/learn/promote", { edgeId, severity });
 export const rejectEdge = (edgeId: string) => post<{ rejected: boolean }>("/api/learn/reject", { edgeId });
+export const distill = (correction: string, meds?: string[]) =>
+  post<{ distilled: number; proposed: { a: string; b: string }[]; error?: string }>("/api/learn/distill", { correction, meds });
 
 export const drug = (id: string) => String(id).replace(/^drug:/, "");

@@ -10,7 +10,7 @@ import {
   filesToOkfBundle, downloadOkfBundle, type Fact,
 } from "../lib/okf";
 import { getKbStatus, shareKb, joinKb, type KbStatus } from "../lib/kb";
-import { getLearning, proposeEdge, vetEdge, promoteEdge, rejectEdge, drug, type Learning, type VetResult } from "../lib/learn";
+import { getLearning, proposeEdge, vetEdge, promoteEdge, rejectEdge, distill, drug, type Learning, type VetResult } from "../lib/learn";
 
 const objText = (o: unknown): string =>
   o && typeof o === "object"
@@ -49,6 +49,18 @@ export default function Knowledge() {
   }
   async function doPromote(id: string, severity?: string) { await promoteEdge(id, severity); refreshLearn(); loadFacts(log); }
   async function doReject(id: string) { await rejectEdge(id); refreshLearn(); }
+  const [note, setNote] = useState("");
+  const [distilling, setDistilling] = useState(false);
+  const [distillMsg, setDistillMsg] = useState("");
+  async function doDistill() {
+    if (!note.trim()) return;
+    setDistilling(true); setDistillMsg("medpsy reading the correction…");
+    const r = await distill(note.trim());
+    setDistilling(false);
+    setDistillMsg(r ? `medpsy proposed ${r.proposed.length} edge(s)${r.proposed.length ? `: ${r.proposed.map((p) => `${drug(p.a)}+${drug(p.b)}`).join(", ")}` : " (nothing new)"}` : "distill failed");
+    if (r?.proposed.length) setNote("");
+    refreshLearn();
+  }
 
   // A directory <input> needs the non-standard webkitdirectory attribute (not in React's
   // types) — set it on the element so the picker selects an OKF folder, not a single file.
@@ -178,6 +190,12 @@ export default function Knowledge() {
           <button className="btn" onClick={doTeach} disabled={!teach.a.trim() || !teach.b.trim()}>Propose</button>
         </div>
 
+        <div className="row" style={{ marginTop: 8, alignItems: "flex-start" }}>
+          <textarea value={note} placeholder="…or paste a clinician correction (e.g. 'overrode triage — warfarin + miconazole, major, CYP inhibition'). medpsy will distill the edge itself." onChange={(e) => setNote(e.target.value)} style={{ flex: 1, minHeight: 44 }} />
+          <button className="btn ghost" onClick={doDistill} disabled={!note.trim() || distilling}>{distilling ? "distilling…" : "🧪 Auto-distill"}</button>
+        </div>
+        {distillMsg && <p className="note">{distillMsg}</p>}
+
         {learn && learn.pending.length > 0 && (
           <ul className="kb-facts" style={{ marginTop: 10 }}>
             {learn.pending.map((c) => {
@@ -197,10 +215,10 @@ export default function Knowledge() {
                   {typeof v === "object" && (
                     <div className="note" style={{ marginTop: 4 }}>
                       <span>this kiosk: <span className={`pill ${v.local.real ? "GREEN" : "RED"}`}>{v.local.real ? "REAL" : "REFUTED"}</span>{v.local.severity ? ` (${v.local.severity})` : ""} — {v.local.reason}</span>
-                      {v.peer && !v.peer.error && (
-                        <div>peer {v.peer.by} {v.peer.signatureOk ? "✓" : "✗sig"}: <span className={`pill ${v.peer.real ? "GREEN" : "RED"}`}>{v.peer.real ? "REAL" : "REFUTED"}</span>{v.peer.severity ? ` (${v.peer.severity})` : ""} — {v.peer.reason}</div>
-                      )}
-                      {v.peer?.error && <div>peer vet: {v.peer.error}</div>}
+                      {(v.peers || []).map((p, i) => (
+                        <div key={i}>peer {p.by} {p.signatureOk ? "✓" : "✗sig"}: <span className={`pill ${p.real ? "GREEN" : "RED"}`}>{p.real ? "REAL" : "REFUTED"}</span>{p.severity ? ` (${p.severity})` : ""} — {p.reason}</div>
+                      ))}
+                      {v.peers && v.peers.length === 0 && <div>no peer kiosks responded (vetted locally only)</div>}
                     </div>
                   )}
                   {(c.contributedBy || c.votes.length > 0) && (

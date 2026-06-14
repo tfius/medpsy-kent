@@ -48,11 +48,14 @@ export async function vetEdge(provider, { a, b, severity, note }) {
   catch { return { real: false, reason: "unparseable verdict" }; }
 }
 
-// Record a vetting vote on a candidate edge (from medpsy or a peer). Votes accumulate in meta.
+// Record a vetting vote on a candidate edge (from medpsy or a peer). One vote per VOTER (a
+// device pubkey, or "local") — re-vetting updates that voter's vote rather than inflating the
+// tally. Votes accumulate in meta.
 export async function recordVote(kbStore, edgeId, vote, { log = KB } = {}) {
   const facts = (await kbStore.fold(log, { predicate: "interacts_with" })).facts;
   const cur = facts.find((f) => f.statementId === edgeId)?.meta?.votes || [];
-  const votes = [...cur, vote];
+  const id = vote.voter || vote.by;
+  const votes = [...cur.filter((v) => (v.voter || v.by) !== id), vote];
   await kbStore.correct(log, edgeId, { meta: { votes }, source: "network" }).catch(() => {});
   await kbStore.correct(log, reverseId(edgeId), { meta: { votes }, source: "network" }).catch(() => {});
   return votes;
@@ -73,6 +76,30 @@ export async function rejectEdge(kbStore, edgeId, { reason = "rejected", log = K
   await kbStore.retract(log, edgeId, { reason, source: "network" }).catch(() => {});
   await kbStore.retract(log, reverseId(edgeId), { reason, source: "network" }).catch(() => {});
   return { id: edgeId, rejected: true };
+}
+
+// AUTO-DISTILL: medpsy reads a clinician correction and/or an encounter (its meds + notes)
+// and proposes NEW interaction edges — closing the loop with no human in the propose step
+// (a human still gates promotion). Conservative: only real, clinically significant edges.
+// Returns { edges:[{a,b,severity,note}] } — PHI-free (drug names + a generalized mechanism).
+export async function distillEdges(provider, { meds = [], transcript = "", correction = "" }) {
+  const sys = "You distill NEW drug-drug interactions worth adding to a triage decision-support knowledge base, from a community-pharmacy encounter. Be conservative: propose ONLY real, clinically significant interactions, and NEVER invent one. Output drug names and a GENERALIZED mechanism only — never any patient detail.";
+  const parts = [];
+  if (meds.length) parts.push(`Patient medications: ${meds.join(", ")}.`);
+  if (correction) parts.push(`Clinician correction / note: ${correction}`);
+  if (transcript) parts.push(`Encounter notes:\n${transcript.slice(0, 1500)}`);
+  const user = `${parts.join("\n")}\n\nWhat drug-drug interactions should a triage assistant know from this? Reply with ONLY JSON:\n{"edges":[{"a":"drug","b":"drug","severity":"major|moderate|minor","note":"<brief mechanism>"}]}\nReturn {"edges":[]} if there are none.`;
+  let text = "";
+  try { text = await provider.complete([{ role: "system", content: sys }, { role: "user", content: user }], { temperature: 0.2 }); }
+  catch (e) { return { edges: [], error: String(e?.message || e) }; }
+  const m = (text || "").replace(/<think>[\s\S]*?<\/think>/g, "").match(/\{[\s\S]*\}/);
+  if (!m) return { edges: [] };
+  try {
+    const o = JSON.parse(m[0]);
+    const edges = (Array.isArray(o.edges) ? o.edges : []).filter((e) => e && e.a && e.b)
+      .map((e) => ({ a: String(e.a), b: String(e.b), severity: ["major", "moderate", "minor"].includes(e.severity) ? e.severity : "moderate", note: String(e.note || "").slice(0, 200) }));
+    return { edges };
+  } catch { return { edges: [] }; }
 }
 
 // Candidate edges awaiting promotion (deduped to one direction), newest-ish first.
