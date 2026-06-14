@@ -8,6 +8,7 @@ import { MicButton, SpeakButton } from "../lib/voice";
 import { TriageResult, useHelp } from "../lib/ui";
 import { usePrefs } from "../lib/prefs";
 import { speak, stopSpeaking } from "../lib/speech";
+import { getAuditEncounter, newEncounter } from "../lib/audit";
 
 type ToolStep = { id: string; name: string; args: Record<string, unknown>; result?: unknown };
 type Turn = { who: "patient"; text: string } | { who: "agent"; text: string; reasoning: string; tools: ToolStep[] };
@@ -50,8 +51,17 @@ export default function AgenticTriage() {
     setBusy(false);
   }
 
-  function start(text: string) { setStarted(true); setOutcome(null); go(text, true); }
-  function restart() { abortRef.current?.abort(); stopSpeaking(); setStarted(false); setTurns([]); setOutcome(null); setInput(""); setBusy(false); }
+  function start(text: string) {
+    // Ensure a tamper-evident encounter exists even when the patient enters here directly
+    // (bypassing the kiosk's Identify step) — so the whole interview lands in one chain.
+    if (!getAuditEncounter()) newEncounter({ flow: "agentic-triage" });
+    setStarted(true); setOutcome(null); go(text, true);
+  }
+  function restart() {
+    abortRef.current?.abort(); stopSpeaking();
+    newEncounter({ flow: "agentic-triage" }); // a new triage = a new patient → its own chain
+    setStarted(false); setTurns([]); setOutcome(null); setInput(""); setBusy(false);
+  }
 
   return (
     <>

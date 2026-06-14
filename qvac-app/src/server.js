@@ -319,7 +319,12 @@ http.createServer(async (req, res) => {
     if (reset) triageSessions.delete(encounterId);
     const session = triageSessions.get(encounterId) || { messages: [] };
     triageSessions.set(encounterId, session);
-    if (message) session.messages.push({ role: "user", content: String(message) });
+    if (message) {
+      session.messages.push({ role: "user", content: String(message) });
+      // The patient's utterance — same event type the kiosk logs, so a single encounter
+      // chain reads uniformly across both flows.
+      audit.append(encounterId, "message.user", { text: String(message) }, "patient").catch(() => {});
+    }
 
     res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive", "x-accel-buffering": "no" });
     const ac = new AbortController();
@@ -341,16 +346,31 @@ http.createServer(async (req, res) => {
       } catch { /* no facts yet */ }
       const r = await runTriageAgent({
         provider, icdIndex: index, extraTools, context, messages: session.messages, signal: ac.signal,
+        // EVERY step of the loop lands in the tamper-evident chain. The conversation layer
+        // (message.user/message.assistant/outcome) and the facts layer (facts.read/.assert)
+        // reuse the kiosk's event types so both flows are auditable the same way; the
+        // agentic-only internals (private reasoning, raw tool I/O) use atriage.* types.
         onEvent: (e) => {
           send(e);
           if (e.type === "reasoning") audit.append(encounterId, "atriage.reasoning", { text: e.text }, "model").catch(() => {});
           else if (e.type === "tool_call") audit.append(encounterId, "atriage.tool", { name: e.name, args: e.args }, "model").catch(() => {});
-          else if (e.type === "question") audit.append(encounterId, "atriage.question", { text: e.text }, "model").catch(() => {});
+          else if (e.type === "tool_result") {
+            // Pin grounding to the exact facts used: a factstore recall carries a receipt
+            // (-> facts.read, as in /api/agent); other tools log their raw result.
+            const r = e.result || {};
+            if (r.receipt) audit.append(encounterId, "facts.read", { tool: e.name, query: r.receipt.query, validAt: r.receipt.validAt, knownAt: r.receipt.knownAt, statements: r.receipt.statements }, "model").catch(() => {});
+            else audit.append(encounterId, "atriage.tool_result", { name: e.name, result: r }, "model").catch(() => {});
+          }
+          else if (e.type === "question") audit.append(encounterId, "message.assistant", { text: e.text, kind: "triage.question" }, "model").catch(() => {});
+          else if (e.type === "error") audit.append(encounterId, "atriage.error", { error: e.error }, "model").catch(() => {});
           else if (e.type === "conclusion") {
             audit.append(encounterId, "outcome", e.outcome, "model").catch(() => {});
-            // record the working diagnosis as a PROPOSED fact for the pharmacist to confirm
+            // Record the working diagnosis as a PROPOSED fact for the pharmacist to confirm,
+            // and audit that assertion (statementId/hash) so the proposal is itself on-chain.
             facts.assert(log, { subject: log, predicate: "diagnosed", object: { name: e.outcome.condition, icd: e.outcome.icd },
-              source: "triage", confidence: 0.6, meta: { proposed: true, band: e.outcome.band } }).catch(() => {});
+              source: "triage", confidence: 0.6, meta: { proposed: true, band: e.outcome.band } })
+              .then((rec) => audit.append(encounterId, "facts.assert", { tool: "triage.conclude", statementId: rec?.payload?.statementId, hash: rec?.hash, subject: log, predicate: "diagnosed", object: { name: e.outcome.condition, icd: e.outcome.icd }, proposed: true, confidence: 0.6 }, "model"))
+              .catch(() => {});
           }
         },
       });
