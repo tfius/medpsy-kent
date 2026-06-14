@@ -789,6 +789,24 @@ we made the demo even friendlier: a one-click "auto-run" plays the whole story b
 bar shows where you are, and a little box literally lists the only thing that left the device — the two
 drug names — next to the words "Patient data shared: none."
 
+## Session 33 — Two kiosks, side by side: watch one teach the other
+
+This is the moment the whole idea becomes real to watch. We set up **two** separate kiosks running at
+the same time (think two pharmacies), each with its own private records and its own identity, and put
+them side by side on one screen. On the left, **Kiosk A**; on the right, **Kiosk B**. You teach a
+missed drug interaction on A — A's own assistant checks it, a second assistant *on Kiosk B* votes on
+whether it's true (a signed vote, so you know exactly which device agreed), you approve it — and then,
+on the right, Kiosk B's question "would I catch this combination?" flips from **NO** to **YES**. B
+learned it from A. And a little box shows the only thing that travelled between them: the two drug
+names. No patient, no records, no central server.
+
+Getting the "jury" to actually work took a real fix: each kiosk had been accidentally trying to ask
+*itself* for a second opinion (and politely ignoring its own answer), so no real votes came in. We
+gave each kiosk a single shared line that both asks neighbours and answers them — now they genuinely
+vote on each other's lessons. One command (`npm run demo:two-kiosk`) starts both kiosks, pairs them,
+and opens the page. It's the base idea — a clinic network that learns from every correction while no
+patient's data ever leaves the room — finally something you can point at and watch happen.
+
 ---
 
 ## The whole story in three sentences

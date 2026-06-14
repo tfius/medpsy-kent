@@ -1605,3 +1605,27 @@ an **▶▶ Auto-run** (hands-free; fixed the React stale-closure on the carried
 progress bar, and a **"🔒 What left this device"** panel showing the literal shared payload — two drug
 names + the de-identified note, "Patient data shared: none" — making the privacy guarantee tangible.
 Verified live (amiodarone+simvastatin): grounded false→true.
+
+## 2026-06-15 — Federated learning, made visible: a live two-kiosk demo + a real jury
+
+The base idea, finally shown end-to-end across **two running kiosks** — not a test, a thing you watch.
+
+**The jury was a panel of one — fixed.** Each kiosk ran *two* consult swarms (a client to ask + a
+separate `serveConsult` to answer); the client connected to its own server (loopback) and the self-vote
+filter dropped it, so peers never voted. Now `createConsultClient` is **one swarm per kiosk that both
+answers and asks** — every kiosk is a juror, vetting peers' edges with its own medpsy — and it ignores
+its own pubkey so it never self-votes. Verified live across two processes: Kiosk-A's candidate drew a
+**signed** vote from **Kiosk-B**.
+
+**The two-kiosk demo (`/two-kiosk`).** A page that talks to Kiosk A and Kiosk B by absolute URL (the
+servers send CORS): teach a missed interaction on A, and watch B's agent flip **"flags it?" NO → YES**,
+with a "🔒 what crossed the wire" panel (two drug names; *patient data: none*). `npm run demo:two-kiosk`
+(`scripts/demo_two_kiosk.sh`) starts A (:8787) + B (:8788) — each with its own KB / facts / audit /
+device identity — pairs them, and serves the web. Server gained `POST /api/kb/sync` (force a peer
+re-merge so the demo is snappy), `MEDPSY_NO_SPEECH=1` (skip the speech workers for the 2-process demo),
+and `consultPeers` in `/api/backend`.
+
+**Verified live, end to end:** B does NOT flag warfarin+ketoconazole → A distils the edge → the jury
+votes (A local **+ Kiosk-B signed**) → A promotes → B syncs → **B's agent NOW flags it (major)**.
+Federated learning, across two kiosks, only drug names crossing the wire, tamper-evident provenance on
+each side. New: `web/src/{lib/kiosk.ts,pages/TwoKiosk.tsx}`, `scripts/demo_two_kiosk.sh`.
