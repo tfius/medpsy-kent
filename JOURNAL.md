@@ -1629,3 +1629,11 @@ and `consultPeers` in `/api/backend`.
 votes (A local **+ Kiosk-B signed**) → A promotes → B syncs → **B's agent NOW flags it (major)**.
 Federated learning, across two kiosks, only drug names crossing the wire, tamper-evident provenance on
 each side. New: `web/src/{lib/kiosk.ts,pages/TwoKiosk.tsx}`, `scripts/demo_two_kiosk.sh`.
+
+**Follow-up — live (event-driven) federation.** The merge was poll-based (B caught A's lesson on a 15 s
+interval or a manual `/api/kb/sync`), which is why the demo had to call sync. Now `/api/kb/join` merges
+the **instant the peer's hypercore appends** (`core.on("append", …)`, overlap-guarded); the interval
+stays only as a 30 s catch-up backstop. **Verified live: B grounded A's promoted edge in ~0.5 s with no
+sync call.** The TwoKiosk page now polls B until its agent grounds (a live "B is learning…"), and shows
+a "jury: N peers ✓" readiness pill (A's `consultPeers`) so you know the jury is connected before you
+run. Federation now feels instant.
