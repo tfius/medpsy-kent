@@ -213,7 +213,8 @@ export default function Knowledge() {
                     <button className="btn ghost" onClick={() => doPromote(c.id, typeof v === "object" ? v.local.severity : undefined)}>✓ Promote</button>
                     <button className="btn ghost" onClick={() => doReject(c.id)}>✕ Reject</button>
                   </div>
-                  {typeof v === "object" && (
+                  {typeof v === "object" && !v.local && <div className="note" style={{ marginTop: 4 }}>vet failed — try again</div>}
+                  {typeof v === "object" && v.local && (
                     <div className="note" style={{ marginTop: 4 }}>
                       <span>this kiosk: <span className={`pill ${v.local.real ? "GREEN" : "RED"}`}>{v.local.real ? "REAL" : "REFUTED"}</span>{v.local.severity ? ` (${v.local.severity})` : ""} — {v.local.reason}</span>
                       {(v.peers || []).map((p, i) => (

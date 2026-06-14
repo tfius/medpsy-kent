@@ -13,6 +13,36 @@ import { drugId } from "./medlens.js";
 const KB = "kb:medical";
 const drugName = (id) => String(id).replace(/^drug:/, "");
 
+// Extract the FIRST balanced JSON object from a model reply — robust to a leading <think>
+// block and to trailing prose (even prose containing braces), which a greedy /\{[\s\S]*\}/
+// would over-match and fail to parse. Ignores braces inside strings.
+function extractJson(text) {
+  const s = String(text || "").replace(/<think>[\s\S]*?<\/think>/g, "");
+  const start = s.indexOf("{");
+  if (start === -1) return null;
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < s.length; i++) {
+    const c = s[i];
+    if (inStr) { if (esc) esc = false; else if (c === "\\") esc = true; else if (c === '"') inStr = false; }
+    else if (c === '"') inStr = true;
+    else if (c === "{") depth++;
+    else if (c === "}" && --depth === 0) { try { return JSON.parse(s.slice(start, i + 1)); } catch { return null; } }
+  }
+  return null;
+}
+
+// Serialize read-modify-write mutations per store (votes, propose-if-absent). The chainlog
+// already serializes APPENDS per log, but recordVote/proposeEdge read THEN write, so two
+// concurrent calls could both read the old state and clobber each other (a lost vote, or a
+// duplicate edge). One in-flight writer per store closes that window.
+const _storeLocks = new WeakMap();
+function withStoreLock(store, fn) {
+  const prev = _storeLocks.get(store) || Promise.resolve();
+  const run = prev.then(fn, fn);
+  _storeLocks.set(store, run.then(() => {}, () => {}));
+  return run;
+}
+
 // Best-effort de-identification of the ONE free-text field that leaves the device (a
 // learned-edge note). Strips the patient identifiers that could appear if the model/clinician
 // slips — emails, titled names, ages, dates, and long digit runs (MRN/phone) — while leaving
@@ -36,21 +66,25 @@ const reverseId = (id) => { const [a, b] = id.replace(/^lx:/, "").split(">"); re
 
 // A clinician/agent proposes a candidate interaction edge (bidirectional). Lands proposed —
 // replicates to peers but is NOT used for grounding until promoted.
-export async function proposeEdge(kbStore, { a, b, severity = "moderate", note = "", contributedBy = null, evidence = null, log = KB }) {
+export function proposeEdge(kbStore, { a, b, severity = "moderate", note = "", contributedBy = null, evidence = null, log = KB }) {
   const [da, db] = [drugId(a), drugId(b)];
   if (!da || !db || da === db || da === "drug:" || db === "drug:") throw new Error("two distinct drug names required");
-  // Don't duplicate an edge that already exists for this pair (seeded OR learned). If it's
-  // already promoted it's known; if it's a pending candidate, return it (idempotent).
-  const existing = (await kbStore.fold(log, { predicate: "interacts_with" })).facts
-    .find((f) => (f.subject === da && f.object?.ref === db) || (f.subject === db && f.object?.ref === da));
-  if (existing) {
-    if (!existing.meta?.proposed) throw new Error(`${drugName(da)} + ${drugName(db)} is already a known interaction`);
-    return { id: existing.statementId.startsWith("lx:") ? existing.statementId : learnedId(da, db), a: da, b: db, severity: existing.meta?.severity, existing: true };
-  }
-  const meta = { severity, note: sanitizeNote(note), proposed: true, learned: true, contributedBy, evidence, votes: [] };
-  await kbStore.assert(log, { statementId: learnedId(da, db), subject: da, predicate: "interacts_with", object: { ref: db }, source: "learned", confidence: 0.5, meta });
-  await kbStore.assert(log, { statementId: learnedId(db, da), subject: db, predicate: "interacts_with", object: { ref: da }, source: "learned", confidence: 0.5, meta });
-  return { id: learnedId(da, db), a: da, b: db, severity };
+  // Under the store lock: the check-then-assert below is read-modify-write — two concurrent
+  // proposes of the same pair must not both pass the "not existing" check.
+  return withStoreLock(kbStore, async () => {
+    // Don't duplicate an edge that already exists for this pair (seeded OR learned). If it's
+    // already promoted it's known; if it's a pending candidate, return it (idempotent).
+    const existing = (await kbStore.fold(log, { predicate: "interacts_with" })).facts
+      .find((f) => (f.subject === da && f.object?.ref === db) || (f.subject === db && f.object?.ref === da));
+    if (existing) {
+      if (!existing.meta?.proposed) throw new Error(`${drugName(da)} + ${drugName(db)} is already a known interaction`);
+      return { id: existing.statementId.startsWith("lx:") ? existing.statementId : learnedId(da, db), a: da, b: db, severity: existing.meta?.severity, existing: true };
+    }
+    const meta = { severity, note: sanitizeNote(note), proposed: true, learned: true, contributedBy, evidence, votes: [] };
+    await kbStore.assert(log, { statementId: learnedId(da, db), subject: da, predicate: "interacts_with", object: { ref: db }, source: "learned", confidence: 0.5, meta });
+    await kbStore.assert(log, { statementId: learnedId(db, da), subject: db, predicate: "interacts_with", object: { ref: da }, source: "learned", confidence: 0.5, meta });
+    return { id: learnedId(da, db), a: da, b: db, severity };
+  });
 }
 
 // Adversarial vet: ask medpsy, as a SKEPTIC, whether a proposed interaction is clinically
@@ -61,16 +95,16 @@ export async function vetEdge(provider, { a, b, severity, note }) {
   let text = "";
   try { text = await provider.complete([{ role: "system", content: sys }, { role: "user", content: user }], { temperature: 0.2 }); }
   catch (e) { return { real: false, reason: `vet error: ${e?.message || e}` }; }
-  const m = (text || "").replace(/<think>[\s\S]*?<\/think>/g, "").match(/\{[\s\S]*\}/);
-  if (!m) return { real: false, reason: "no parseable verdict" };
-  try { const v = JSON.parse(m[0]); return { real: !!v.real, severity: v.severity || severity, reason: String(v.reason || "").slice(0, 200) }; }
-  catch { return { real: false, reason: "unparseable verdict" }; }
+  const v = extractJson(text);
+  if (!v) return { real: false, reason: "no parseable verdict" };
+  return { real: !!v.real, severity: v.severity || severity, reason: String(v.reason || "").slice(0, 200) };
 }
 
 // Record a vetting vote on a candidate edge (from medpsy or a peer). One vote per VOTER (a
 // device pubkey, or "local") — re-vetting updates that voter's vote rather than inflating the
 // tally. Votes accumulate in meta.
 export async function recordVote(kbStore, edgeId, vote, { log = KB } = {}) {
+  return withStoreLock(kbStore, async () => {
   const facts = (await kbStore.fold(log, { predicate: "interacts_with" })).facts;
   const cur = facts.find((f) => f.statementId === edgeId)?.meta?.votes || [];
   const id = vote.voter || vote.by;
@@ -78,6 +112,7 @@ export async function recordVote(kbStore, edgeId, vote, { log = KB } = {}) {
   await kbStore.correct(log, edgeId, { meta: { votes }, source: "network" }).catch(() => {});
   await kbStore.correct(log, reverseId(edgeId), { meta: { votes }, source: "network" }).catch(() => {});
   return votes;
+  });
 }
 
 // Promote a vetted candidate into the grounded graph (proposed:false, confidence 1) — both
@@ -111,14 +146,11 @@ export async function distillEdges(provider, { meds = [], transcript = "", corre
   let text = "";
   try { text = await provider.complete([{ role: "system", content: sys }, { role: "user", content: user }], { temperature: 0.2 }); }
   catch (e) { return { edges: [], error: String(e?.message || e) }; }
-  const m = (text || "").replace(/<think>[\s\S]*?<\/think>/g, "").match(/\{[\s\S]*\}/);
-  if (!m) return { edges: [] };
-  try {
-    const o = JSON.parse(m[0]);
-    const edges = (Array.isArray(o.edges) ? o.edges : []).filter((e) => e && e.a && e.b)
-      .map((e) => ({ a: String(e.a), b: String(e.b), severity: ["major", "moderate", "minor"].includes(e.severity) ? e.severity : "moderate", note: sanitizeNote(e.note) }));
-    return { edges };
-  } catch { return { edges: [] }; }
+  const o = extractJson(text);
+  if (!o) return { edges: [] };
+  const edges = (Array.isArray(o.edges) ? o.edges : []).filter((e) => e && e.a && e.b && drugId(e.a) !== drugId(e.b))
+    .map((e) => ({ a: String(e.a), b: String(e.b), severity: ["major", "moderate", "minor"].includes(e.severity) ? e.severity : "moderate", note: sanitizeNote(e.note) }));
+  return { edges };
 }
 
 // Candidate edges awaiting promotion (deduped to one direction), newest-ish first.

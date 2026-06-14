@@ -2,8 +2,8 @@
 // a clinician's correction → medpsy distils the edge → a jury of on-device AIs vote → a human
 // promotes → and the agent on every kiosk now catches it. The before/after "would the agent
 // flag this?" check is the punchline. Clinician/judge-facing — English.
-import { useState } from "react";
-import { distill, vetEdge, promoteEdge, getLearning, checkPair, drug, type VetResult, type PairCheck } from "../lib/learn";
+import { useRef, useState } from "react";
+import { distill, vetEdge, promoteEdge, getLearning, checkPair, drug, type VetResult } from "../lib/learn";
 
 const SCENARIOS = [
   { a: "warfarin", b: "miconazole", correction: "Overrode the triage — patient on warfarin was prescribed oral miconazole gel. Miconazole inhibits CYP2C9/CYP3A4, markedly raising INR and bleeding risk. MAJOR interaction the assistant missed." },
@@ -18,11 +18,12 @@ export default function Demo() {
   const [edit, setEdit] = useState(SCENARIOS[0]);
   const [log, setLog] = useState<Entry[]>([]);
   const [step, setStep] = useState(0);
-  const [edgeId, setEdgeId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [shared, setShared] = useState<{ a: string; b: string; note: string } | null>(null);
+  const edgeRef = useRef<string | null>(null); // carried across steps (refs avoid stale closures in auto-run)
 
   const push = (e: Entry) => setLog((l) => [...l, e]);
-  function reset(i = sc) { setSc(i); setEdit(SCENARIOS[i]); setLog([]); setStep(0); setEdgeId(null); }
+  function reset(i = sc) { setSc(i); setEdit(SCENARIOS[i]); setLog([]); setStep(0); setShared(null); edgeRef.current = null; }
 
   const STEPS: { title: string; run: () => Promise<void> }[] = [
     {
@@ -39,26 +40,32 @@ export default function Demo() {
       run: async () => {
         const r = await distill(edit.correction);
         let id = r?.proposed?.[0]?.id || null;
-        if (!id) { const L = await getLearning(); id = L?.pending.find((c) => `${c.a}${c.b}`.includes(edit.b.toLowerCase()))?.id || L?.pending.slice(-1)[0]?.id || null; }
-        setEdgeId(id);
+        const L = await getLearning();
+        if (!id) id = L?.pending.find((c) => `${c.a}${c.b}`.includes(edit.b.toLowerCase()))?.id || L?.pending.slice(-1)[0]?.id || null;
+        edgeRef.current = id;
+        const cand = L?.pending.find((c) => c.id === id);
+        if (cand) setShared({ a: drug(cand.a), b: drug(cand.b), note: cand.note || "" }); // exactly what will leave the device
         push({ label: "Auto-distill", detail: r?.proposed?.length ? `medpsy read the correction and proposed: ${r.proposed.map((p) => `${drug(p.a)} + ${drug(p.b)}`).join(", ")} — a CANDIDATE (not yet trusted).` : "Nothing new proposed (already known?).", tone: r?.proposed?.length ? "ok" : "info" });
       },
     },
     {
       title: "3 · A jury of on-device AIs vote",
       run: async () => {
-        if (!edgeId) { push({ label: "Vet", detail: "no candidate to vet", tone: "warn" }); return; }
-        const v: VetResult | null = await vetEdge(edgeId);
-        const lines = [`this kiosk: ${v?.local.real ? "REAL" : "REFUTED"} (${v?.local.severity ?? "?"}) — ${v?.local.reason ?? ""}`,
-          ...(v?.peers || []).map((p) => `peer ${p.by} ${p.signatureOk ? "✓" : "✗"}: ${p.real ? "REAL" : "REFUTED"} (${p.severity ?? "?"})`)];
-        push({ label: "Adversarial vet", detail: lines.join("  •  ") + (v?.peers?.length ? "" : "  •  (no peer kiosks connected — local only)"), tone: v?.local.real ? "ok" : "warn" });
+        const id = edgeRef.current;
+        if (!id) { push({ label: "Vet", detail: "no candidate to vet", tone: "warn" }); return; }
+        const v: VetResult | null = await vetEdge(id);
+        if (!v?.local) { push({ label: "Vet", detail: `vet failed${(v as { error?: string })?.error ? `: ${(v as { error?: string }).error}` : ""}`, tone: "warn" }); return; }
+        const lines = [`this kiosk: ${v.local.real ? "REAL" : "REFUTED"} (${v.local.severity ?? "?"}) — ${v.local.reason ?? ""}`,
+          ...(v.peers || []).map((p) => `peer ${p.by} ${p.signatureOk ? "✓" : "✗"}: ${p.real ? "REAL" : "REFUTED"} (${p.severity ?? "?"})`)];
+        push({ label: "Adversarial vet", detail: lines.join("  •  ") + (v.peers?.length ? "" : "  •  (no peer kiosks connected — local only)"), tone: v.local.real ? "ok" : "warn" });
       },
     },
     {
       title: "4 · Clinician promotes it",
       run: async () => {
-        if (!edgeId) { push({ label: "Promote", detail: "no candidate", tone: "warn" }); return; }
-        await promoteEdge(edgeId);
+        const id = edgeRef.current;
+        if (!id) { push({ label: "Promote", detail: "no candidate", tone: "warn" }); return; }
+        await promoteEdge(id);
         push({ label: "Promote", detail: `Promoted into the shared, federated graph — it now replicates to every kiosk (no server).`, tone: "ok" });
       },
     },
@@ -73,10 +80,17 @@ export default function Demo() {
     },
   ];
 
+  async function runStep(i: number) { await STEPS[i].run(); setStep(i + 1); }
   async function next() {
     if (busy || step >= STEPS.length) return;
     setBusy(true);
-    try { await STEPS[step].run(); setStep((s) => s + 1); } finally { setBusy(false); }
+    try { await runStep(step); } finally { setBusy(false); }
+  }
+  async function runAll() {
+    if (busy) return;
+    setBusy(true);
+    try { for (let i = step; i < STEPS.length; i++) { await runStep(i); await new Promise((r) => setTimeout(r, 900)); } }
+    finally { setBusy(false); }
   }
 
   const done = step >= STEPS.length;
@@ -96,13 +110,29 @@ export default function Demo() {
           ))}
         </div>
         <textarea value={edit.correction} onChange={(e) => setEdit({ ...edit, correction: e.target.value })} style={{ width: "100%", minHeight: 56, marginTop: 8 }} disabled={step > 1} />
+        <div className="trust-bar-track" style={{ marginTop: 10 }}><div className="trust-bar-fill GREEN" style={{ width: `${(step / STEPS.length) * 100}%` }} /></div>
         <div className="row" style={{ marginTop: 8, alignItems: "center" }}>
           {!done
-            ? <button className="btn" onClick={next} disabled={busy}>{busy ? "running…" : `▶ Run step ${step + 1}: ${STEPS[step].title.replace(/^\d+ · /, "")}`}</button>
-            : <><span className="pill GREEN">loop complete</span> <a className="btn ghost" href="/audit">🛡 see the provenance (kb-learning)</a></>}
+            ? <>
+                <button className="btn" onClick={next} disabled={busy}>{busy ? "running…" : `▶ Step ${step + 1}/${STEPS.length}: ${STEPS[step].title.replace(/^\d+ · /, "")}`}</button>
+                <button className="btn ghost" onClick={runAll} disabled={busy}>▶▶ Auto-run</button>
+              </>
+            : <><span className="pill GREEN">✓ loop complete</span> <a className="btn ghost" href="/audit">🛡 see the provenance (kb-learning)</a></>}
           <button className="btn ghost" onClick={() => reset()} disabled={busy}>↻ Restart</button>
         </div>
       </div>
+
+      {shared && (
+        <div className="card" style={{ borderLeft: "3px solid var(--green)" }}>
+          <strong>🔒 What left this device</strong>
+          <div className="row" style={{ marginTop: 6, flexWrap: "wrap" }}>
+            <span className="pill GREEN">{shared.a}</span><span className="note">+</span><span className="pill GREEN">{shared.b}</span>
+            {shared.note && <span className="note">· “{shared.note}”</span>}
+          </div>
+          <p className="note" style={{ marginTop: 6 }}>Patient data shared: <strong>none</strong>. Two drug names + a generalized,
+            de-identified note replicate to peers — never the patient, the encounter, or any record.</p>
+        </div>
+      )}
 
       <ol className="audit-timeline">
         {log.map((e, i) => (
