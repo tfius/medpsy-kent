@@ -79,4 +79,24 @@ if (fails.length) {
   console.log("\nFailures:");
   for (const f of fails) console.log(`  ${f.c.id}: tools=[${f.tools.join(",")}] tool=${f.toolOk} ans=${f.answerOk} esc=${f.escalateOk}\n    answer: ${(f.answer || "").slice(0, 160)}`);
 }
+
+// Persist a results summary so the in-app Trust dashboard (/api/eval) can show the agent's
+// measured tool-use / grounding / escalation — the trust story, live in the kiosk.
+const pct = (f) => Math.round(100 * rows.filter(f).length / n);
+const results = {
+  backend: provider.name, runs: RUNS, at: new Date().toISOString(), cases: n,
+  summary: {
+    overall: { pass: rows.filter((x) => x.pass).length, n, pct: pct((x) => x.pass) },
+    tool: { pass: rows.filter((x) => x.toolOk).length, n, pct: pct((x) => x.toolOk) },
+    grounding: { pass: rows.filter((x) => x.answerOk).length, n, pct: pct((x) => x.answerOk) },
+    escalation: (() => { const esc = rows.filter((x) => x.c.expect_escalate); return { pass: esc.filter((x) => x.escalateOk).length, n: esc.length }; })(),
+  },
+  rows: rows.map((x) => ({ id: x.c.id, q: x.c.q, pass: x.pass, tools: x.tools, expectTools: x.c.expect_tools || [], toolOk: x.toolOk, answerOk: x.answerOk, escalateOk: x.escalateOk })),
+};
+try {
+  const out = path.join(import.meta.dirname, "..", "data", "agent_eval_results.json");
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(out, JSON.stringify(results, null, 2));
+  console.log(`\nWrote ${out}`);
+} catch (e) { console.warn(`(could not write results json: ${e?.message || e})`); }
 process.exit(0);

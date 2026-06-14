@@ -11,9 +11,12 @@
     "build-icd-index": "node src/build-index.js",
     "triage": "node src/cli.js",
     "serve": "node src/server.js",
+    "serve:qvac": "MEDPSY_BACKEND=qvac node src/server.js",
+    "agent-eval": "node scripts/agent_eval.mjs",
     "check": "node scripts/preflight.mjs",
     "download-models": "node scripts/preflight.mjs --download",
-    "start": "bash scripts/start.sh"
+    "start": "bash scripts/start.sh",
+    "start:qvac": "MEDPSY_BACKEND=qvac bash scripts/start.sh"
   },
   "dependencies": {
     "@qvac/factstore": "file:./packages/factstore",

@@ -274,3 +274,14 @@ html[data-scale="xl"] .content { zoom: 1.32; }
 .audit-ev-type { font-weight: 600; font-size: 14px; }
 .audit-ev-sum { margin: 2px 0; white-space: pre-wrap; }
 .audit-raw { background: var(--bg); border-radius: 8px; padding: 8px; max-height: 200px; overflow: auto; white-space: pre-wrap; }
+
+/* Trust dashboard + knowledge fact lists */
+.trust-metrics { display: flex; flex-direction: column; gap: 12px; }
+.trust-metric { display: flex; flex-direction: column; gap: 4px; }
+.trust-bar-track { height: 8px; background: #ececec; border-radius: 999px; overflow: hidden; }
+.trust-bar-fill { height: 100%; border-radius: 999px; transition: width .4s ease; }
+.trust-bar-fill.GREEN { background: var(--green); }
+.trust-bar-fill.AMBER { background: var(--amber); }
+.trust-bar-fill.RED { background: var(--red); }
+.kb-facts { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.kb-fact { padding: 4px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }

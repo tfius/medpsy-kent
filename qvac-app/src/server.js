@@ -14,6 +14,7 @@ import { createFactStore, NodeFileAdapter, makeFactstoreTools } from "@qvac/fact
 import { exportOKF, importOKF } from "@qvac/factstore/okf";
 import { seedInteractions, makeInteractionTool } from "./medlens.js";
 import { encounterToOKF } from "./audit-okf.js";
+import { BACKEND, QVAC_LLM_GGUF, LMSTUDIO_LLM, LMSTUDIO_URL } from "./config.js";
 
 // OKF (Open Knowledge Format) interchange directory — exported knowledge bundles are
 // written here as real .md directories the OKF visualizer/catalog can open. Knowledge
@@ -88,6 +89,27 @@ http.createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/api/health") {
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+  // Backend provenance for the Trust dashboard — is inference on-device (QVAC) or via the
+  // dev LM Studio server, and where the model lives. Neither path is cloud.
+  if (req.method === "GET" && req.url === "/api/backend") {
+    const onDevice = BACKEND === "qvac";
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({
+      backend: provider.name, mode: BACKEND, onDevice, cloud: false,
+      model: onDevice ? QVAC_LLM_GGUF : `${LMSTUDIO_LLM} @ ${LMSTUDIO_URL}`,
+      note: onDevice
+        ? "All inference runs on this device via @qvac/sdk (local .gguf) — no cloud, no outbound model calls."
+        : "Dev backend: LM Studio's local server on this machine (not cloud, but not the on-device QVAC path).",
+    }));
+    return;
+  }
+  // Latest agent-eval results (scripts/agent_eval.mjs writes them) — the measured trust story.
+  if (req.method === "GET" && req.url === "/api/eval") {
+    res.writeHead(200, { "content-type": "application/json" });
+    try { res.end(fs.readFileSync(path.join(import.meta.dirname, "..", "data", "agent_eval_results.json"), "utf8")); }
+    catch { res.end("null"); }
     return;
   }
   // OpenAI-compatible shim so the web UI can run through the QVAC (or LM Studio) provider

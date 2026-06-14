@@ -10,6 +10,7 @@ import Audit from "./pages/Audit";
 import Agent from "./pages/Agent";
 import AgenticTriage from "./pages/AgenticTriage";
 import Knowledge from "./pages/Knowledge";
+import Trust from "./pages/Trust";
 import { audit } from "./lib/audit";
 
 type Step = { path: string; key: string; el: ReactNode; clinician?: boolean };
@@ -80,6 +81,7 @@ export default function App() {
             <NavLink to="/atriage" className="btn ghost newpt" title="Agentic triage (AI-led interview)">🩺 AI&nbsp;Triage</NavLink>
             <NavLink to="/agent" className="btn ghost newpt" title="Ask MedPsy (tool-calling agent)">🤖 Agent</NavLink>
             <NavLink to="/knowledge" className="btn ghost newpt" title="Knowledge base + OKF interchange">📚 Knowledge</NavLink>
+            <NavLink to="/trust" className="btn ghost newpt" title="Trust: on-device, grounded, measured">📊 Trust</NavLink>
             <NavLink to="/audit" className="btn ghost newpt" title="Audit log">🛡 {T("audit") !== "audit" ? T("audit") : "Audit"}</NavLink>
             <HelpButton />
           </div>
@@ -106,6 +108,7 @@ export default function App() {
             <Route path="/agent" element={<Agent />} />
             <Route path="/atriage" element={<AgenticTriage />} />
             <Route path="/knowledge" element={<Knowledge />} />
+            <Route path="/trust" element={<Trust />} />
           </Routes>
         </main>
 

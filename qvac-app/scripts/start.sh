@@ -4,6 +4,16 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
+# Backend: lmstudio (dev default) or qvac (fully on-device). In QVAC mode, route the web's
+# /v1 proxy at the server's on-device shim instead of LM Studio — one fully-local command.
+BACKEND="${MEDPSY_BACKEND:-lmstudio}"
+if [ "$BACKEND" = "qvac" ]; then
+  export VITE_LLM_URL="${VITE_LLM_URL:-http://localhost:8787}"
+  echo "→ backend: QVAC (on-device) — web /v1 → server shim ($VITE_LLM_URL); no LM Studio needed"
+else
+  echo "→ backend: LM Studio (dev) — start it on :1234 (see preflight)"
+fi
+
 echo "→ preflight (model + dependency check)"
 node scripts/preflight.mjs || echo "  …continuing; missing pieces just degrade gracefully."
 
