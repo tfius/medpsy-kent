@@ -1592,3 +1592,16 @@ stepper that walks the whole loop — correction → `distil` → jury `vet` →
 **before/after agent check** (`GET /api/learn/check?a=&b=` → grounded vs proposed) as the punchline.
 Verified live end-to-end: warfarin+miconazole flipped `grounded` false→true across the steps. The story
 now lands in ~60 s. New: `web/src/pages/Demo.tsx`, `scripts/consult_client_jury_smoke.mjs`.
+
+**Follow-up 5 — bug-hunt + a hands-free demo.** A review pass (predicting failure modes, not just
+reading) caught three real bugs, all fixed: (1) **`recordVote`/`proposeEdge` read-modify-write race** —
+the chainlog serializes *appends*, but these fold-then-write, so two concurrent votes on one edge both
+read the old array and one is lost; added a per-store async lock (verified 3 concurrent votes all
+survive). (2) **Fragile model-JSON parse** — a greedy `/\{[\s\S]*\}/` over-matches any trailing prose
+with a brace and drops a valid verdict/distillation; replaced with a string-aware balanced-brace
+`extractJson`. (3) **UI crash on a vet error** — `Demo`/`Knowledge` did `v.local.real`, which throws if
+the API returns an error body; guarded with optional chaining + a fallback. Then the demo (`/demo`) got
+an **▶▶ Auto-run** (hands-free; fixed the React stale-closure on the carried edge id with a ref), a
+progress bar, and a **"🔒 What left this device"** panel showing the literal shared payload — two drug
+names + the de-identified note, "Patient data shared: none" — making the privacy guarantee tangible.
+Verified live (amiodarone+simvastatin): grounded false→true.

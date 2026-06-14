@@ -781,6 +781,14 @@ devices votes → you approve → and right before your eyes, the question "woul
 drug combination?" flips from *no* to *yes*. That little before-and-after flip is the whole project in
 one gesture.
 
+A careful bug-hunt then caught three real problems before they could bite: two devices voting at the
+exact same instant could accidentally erase one of the votes (now they politely take turns); if the
+assistant added a sentence after its answer, the system could choke on reading it (now it reads just
+the answer cleanly); and one error could crash the demo screen (now it shows a tidy "try again"). And
+we made the demo even friendlier: a one-click "auto-run" plays the whole story by itself, a progress
+bar shows where you are, and a little box literally lists the only thing that left the device — the two
+drug names — next to the words "Patient data shared: none."
+
 ---
 
 ## The whole story in three sentences
