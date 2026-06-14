@@ -14,7 +14,7 @@ import { createFactStore, NodeFileAdapter, makeFactstoreTools } from "@qvac/fact
 import { HypercoreAdapter } from "@qvac/factstore/hypercore";
 import { exportOKF, importOKF } from "@qvac/factstore/okf";
 import { shareLog, joinLog } from "./kb-sync.js";
-import { makeConsultTool } from "./consult.js";
+import { makeConsultTool, consultVet } from "./consult.js";
 import { proposeEdge, vetEdge, recordVote, promoteEdge, rejectEdge, pendingEdges } from "./edge-learning.js";
 import { seedInteractions, makeInteractionTool } from "./medlens.js";
 import { encounterToOKF } from "./audit-okf.js";
@@ -586,10 +586,21 @@ http.createServer(async (req, res) => {
         const { edgeId } = await body();
         const e = (await pendingEdges(kbStore)).find((x) => x.id === edgeId);
         if (!e) { json(404, { error: "no such candidate edge" }); return; }
+        // This kiosk's own medpsy votes.
         const verdict = await vetEdge(provider, e);
-        await recordVote(kbStore, edgeId, { by: `vet:${provider.name}`, real: verdict.real, severity: verdict.severity, reason: verdict.reason });
-        audit.append("kb-learning", "learn.vet", { edgeId, real: verdict.real, severity: verdict.severity, by: provider.name }, "model").catch(() => {});
-        json(200, verdict); return;
+        await recordVote(kbStore, edgeId, { by: `local:${provider.name}`, real: verdict.real, severity: verdict.severity, reason: verdict.reason });
+        audit.append("kb-learning", "learn.vet", { edgeId, real: verdict.real, severity: verdict.severity, by: `local:${provider.name}` }, "model").catch(() => {});
+        // Peer-network vetting: a paired kiosk's medpsy casts an independent, SIGNED vote.
+        let peer = null;
+        if (CONSULT_CODE) {
+          try {
+            const pr = await consultVet(CONSULT_CODE, { a: e.a, b: e.b, severity: e.severity, note: e.note }, { timeoutMs: 30000 });
+            peer = { real: pr.verdict.real, severity: pr.verdict.severity, reason: pr.verdict.reason, by: pr.peer?.name || "peer", signatureOk: pr.signatureOk };
+            await recordVote(kbStore, edgeId, { by: `peer:${peer.by}`, real: peer.real, severity: peer.severity, reason: peer.reason, signatureOk: peer.signatureOk });
+            audit.append("kb-learning", "learn.vet", { edgeId, real: peer.real, severity: peer.severity, by: `peer:${peer.by}`, signatureOk: peer.signatureOk }, "model").catch(() => {});
+          } catch (err) { peer = { error: String(err?.message || err) }; }
+        }
+        json(200, { local: verdict, peer }); return;
       }
       if (req.method === "POST" && action === "promote") {
         const { edgeId, severity } = await body();

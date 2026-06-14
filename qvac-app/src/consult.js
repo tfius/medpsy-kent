@@ -41,27 +41,40 @@ function onJsonLine(conn, cb) {
 
 // Responder: serve second opinions for `code`. answerFn(question, context) -> answer string
 // (e.g. run the station's own medpsy with a senior-clinician prompt). Returns { swarm, … }.
-export async function serveConsult(code, answerFn, { bootstrap = BOOTSTRAP } = {}) {
+// The signed payload for a request/response — a free-text question/answer OR a structured
+// vet edge/verdict. Both sides hash the SAME payload so the signature commits to it.
+const reqPayload = (msg) => (msg.vet ? JSON.stringify(msg.vet) : (msg.question || ""));
+const resPayload = (msg) => (msg.verdict ? JSON.stringify(msg.verdict) : (msg.answer || ""));
+
+// Responder: serve second opinions (answerFn) and/or structured edge VETS (vetFn) for `code`.
+// answerFn(question, context) -> answer string; vetFn(edge) -> { real, severity, reason }.
+export async function serveConsult(code, answerFn, { vetFn = null, bootstrap = BOOTSTRAP } = {}) {
   const swarm = new Hyperswarm({ bootstrap });
   swarm.on("connection", (conn) => {
     conn.on("error", () => {});
     onJsonLine(conn, async (msg) => {
       if (msg.kind !== "consult-request" || !msg.id) return;
-      // Know who's asking (advisory): verify the requester's signature over their question.
-      const fromOk = !!(msg.from?.publicKey && verify(reqSignable(msg.id, msg.question || ""), msg.sig || "", msg.from.publicKey));
-      let answer = "";
-      try { answer = String(await answerFn(msg.question || "", msg.context || "", { from: msg.from, fromOk })); }
-      catch (e) { answer = `consult error: ${e?.message || e}`; }
-      sendJson(conn, { kind: "consult-response", id: msg.id, answer, from: getIdentity(), sig: sign(resSignable(msg.id, answer)) });
+      const fromOk = !!(msg.from?.publicKey && verify(reqSignable(msg.id, reqPayload(msg)), msg.sig || "", msg.from.publicKey));
+      let out;
+      if (msg.vet && vetFn) {
+        let verdict; try { verdict = await vetFn(msg.vet, { from: msg.from, fromOk }); }
+        catch (e) { verdict = { real: false, reason: `vet error: ${e?.message || e}` }; }
+        out = { kind: "consult-response", id: msg.id, verdict };
+      } else {
+        let answer = ""; try { answer = String(await answerFn(msg.question || "", msg.context || "", { from: msg.from, fromOk })); }
+        catch (e) { answer = `consult error: ${e?.message || e}`; }
+        out = { kind: "consult-response", id: msg.id, answer };
+      }
+      sendJson(conn, { ...out, from: getIdentity(), sig: sign(resSignable(msg.id, resPayload(out))) });
     });
   });
   await swarm.join(topicFor(code), { server: true, client: false }).flushed();
   return { swarm, code, device: getIdentity() };
 }
 
-// Requester: ask the peer one question, await a SIGNED answer. Resolves
-// { answer, peer:{publicKey,name}, signatureOk } or rejects on timeout.
-export function consult(code, question, { context = "", timeoutMs = RESPONSE_TIMEOUT_MS, bootstrap = BOOTSTRAP } = {}) {
+// One signed request/response round-trip. payload is { question } or { vet }. Resolves
+// { answer?, verdict?, peer, signatureOk } or rejects on timeout.
+function consultRaw(code, payload, { context = "", timeoutMs = RESPONSE_TIMEOUT_MS, bootstrap = BOOTSTRAP } = {}) {
   return new Promise((resolve, reject) => {
     const swarm = new Hyperswarm({ bootstrap });
     const id = crypto.randomBytes(8).toString("hex");
@@ -70,16 +83,25 @@ export function consult(code, question, { context = "", timeoutMs = RESPONSE_TIM
     const timer = setTimeout(() => finish(new Error("no peer answered the consult in time")), timeoutMs);
     swarm.on("connection", (conn) => {
       conn.on("error", () => {});
-      sendJson(conn, { kind: "consult-request", id, question, context, from: getIdentity(), sig: sign(reqSignable(id, question)) });
+      const req = { kind: "consult-request", id, ...payload, context };
+      sendJson(conn, { ...req, from: getIdentity(), sig: sign(reqSignable(id, reqPayload(req))) });
       onJsonLine(conn, (msg) => {
         if (msg.kind !== "consult-response" || msg.id !== id) return;
-        const signatureOk = !!(msg.from?.publicKey && verify(resSignable(id, msg.answer || ""), msg.sig || "", msg.from.publicKey));
-        finish(null, { answer: msg.answer || "", peer: msg.from || null, signatureOk });
+        const signatureOk = !!(msg.from?.publicKey && verify(resSignable(id, resPayload(msg)), msg.sig || "", msg.from.publicKey));
+        finish(null, { answer: msg.answer, verdict: msg.verdict, peer: msg.from || null, signatureOk });
       });
     });
     swarm.join(topicFor(code), { server: false, client: true });
   });
 }
+
+// Requester: ask a peer one question, await a SIGNED answer.
+export const consult = (code, question, opts = {}) =>
+  consultRaw(code, { question }, opts).then((r) => ({ answer: r.answer || "", peer: r.peer, signatureOk: r.signatureOk }));
+
+// Requester: ask a peer to VET a proposed interaction edge, await a SIGNED structured verdict.
+export const consultVet = (code, edge, opts = {}) =>
+  consultRaw(code, { vet: edge }, opts).then((r) => ({ verdict: r.verdict || { real: false, reason: "no verdict" }, peer: r.peer, signatureOk: r.signatureOk }));
 
 // Agent tool: consult the paired clinician device for a second opinion. Bound into the agent
 // toolset only when a consult code is configured (MEDPSY_CONSULT_CODE).
