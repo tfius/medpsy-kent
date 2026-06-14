@@ -1420,3 +1420,42 @@ Touched additively: `src/server.js` (OKF + agentic-triage endpoints, audit cover
 `src/audit-okf.js`, `scripts/agent_eval*.{mjs,json}`, `scripts/agentic_triage_smoke.mjs`,
 `web/src/pages/{AgenticTriage,Knowledge}.tsx`, `web/src/lib/{atriage,okf}.ts`. The scripted 9-step
 triage was not touched. `okf/` is gitignored (regenerated on demand).
+
+## 2026-06-14 — Make the agent run on the QVAC SDK (on-device parity, the hackathon target)
+
+The agent was great — but proven only on **LM Studio**. For a QVAC hackathon, "the agent runs
+fully on-device via `@qvac/sdk`" is THE claim, and it was a question mark: `src/backends/qvac.js`
+even flagged its own tool loop as "verify against the live SDK." It needed verifying. It was broken
+three ways — found and fixed entirely in the provider so `src/agent.js` stays backend-agnostic.
+
+A live tool-loop smoke (`scripts/qvac_agent_smoke.mjs`) and a dialect probe
+(`scripts/qvac_dialect_probe.mjs`) surfaced the real gaps:
+
+1. **Tool defs.** The SDK wants its FLAT native schema (`{type,name,description,parameters}`); our
+   OpenAI nested `{function:{…}}` crashed it (`zodSchema.shape` on undefined). `toQvacTools()`
+   flattens + sanitizes (every property gets a typed schema; "integer"/enum supported).
+2. **Tool-result history.** The SDK history is strictly `{role,content:string}` — no
+   `assistant.tool_calls`, no `role:"tool"`. `agent.js`'s OpenAI-style tool turns were silently
+   stripped. `toQvacHistory()` renders a prior call into the assistant's text and a tool RESULT into
+   a `user` message, coalescing consecutive same-role for gemma's alternation.
+3. **Tool emission.** The biggest one: `toolDialect` is only a **parser selector** — the SDK does
+   NOT prime the model's chat template the way LM Studio's server does. medpsy emitted **0** tool
+   calls across all five dialects (gemma4/hermes/qwen35/json/pythonic) — it just reasoned in
+   `<think>` and answered from memory. But told the format explicitly, it emits a perfect
+   `{"name":…,"arguments":{…}}`. Fix: inject a tool preamble into the system prompt **and** recover
+   the text-emitted JSON call ourselves (guarded — the parsed name must be a real tool). The SDK's
+   own parser still misses it (wrapped in `<think>` + newlines). Confined to the provider.
+4. **Context window.** `ctx_size` defaults to **1024** → `CONTEXT_OVERFLOW` on the first tool
+   result. Load medpsy with `modelConfig:{ctx_size:8192}` (env `MEDPSY_QVAC_CTX`).
+5. Plus: added `chatWithToolsStream` (token streaming for tool turns) and fixed a latent mapping bug
+   (`final.toolCalls` items ARE `{id,name,arguments}`, not `{call:{…}}`).
+
+**Verified on-device** (`MEDPSY_BACKEND=qvac`, medpsy-4b.gguf via QVAC's llama.cpp/Metal):
+`qvac_agent_smoke` PASS (lookup_icd10 round-trip → grounded J18.9, the model even overriding a wrong
+top ICD candidate); **`agent_eval` 10/12 single-run — tool-use 11/12 (92%), grounding 11/12 (92%)**,
+on par with LM Studio's 11/12 *majority* (the two fails are the known noise-prone `gtn-sildenafil`
+tool pick + `recall-meds` answer text that majority voting recovers); `agentic_triage_smoke` PASS
+(atypical MI → EMERGENCY/RED). The agent now demonstrably runs fully on-device on QVAC at LM-Studio
+quality. Touched: `src/backends/qvac.js`; new harnesses `scripts/qvac_agent_smoke.mjs`,
+`scripts/qvac_dialect_probe.mjs`. (Roadmap remaining: P2P "consult a peer" agent tool; live
+hypercore-replicated shared KB; an in-app trust/parity surface + QVAC-default toggle.)

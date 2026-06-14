@@ -658,6 +658,32 @@ visit's logbook **rendered in that same shareable format** — clearly stamped "
 record," because turning the sealed logbook into plain text would throw away the very seals that make
 it trustworthy. Knowing when *not* to use a format is half the job.
 
+## Session 30 — Getting the smart helper to run on the real on-device engine
+
+The whole point of this project is that it runs on YOUR device — no cloud. There's a special
+on-device engine for that (the "QVAC SDK"). But here's the thing we'd been quietly avoiding: the
+clever tool-using helper had only ever been tested on a *developer's* stand-in engine, not the real
+on-device one. So we actually tried it on the real engine — and it didn't work. Three reasons, all
+found and fixed:
+
+- The helper handed its list of tools to the engine in the wrong shape, and the engine choked.
+- When the helper looked something up and wanted to feed the result back, the engine's notebook had
+  no place to write "here's what the tool said" — so that information silently vanished.
+- Biggest one: the engine never actually *told the model* "you're allowed to use tools, here's how."
+  So the model, not knowing the secret handshake, just answered from memory and pretended it had
+  looked things up. Once we taught it the handshake (and learned to read its answer even when it
+  wrote the tool request as plain text), it started really using the tools.
+- And it kept running out of "desk space" — the engine only gave it a tiny scratchpad by default, so
+  it ran out of room the moment a lookup came back. We gave it a proper-sized desk.
+
+After the fixes we ran our scorecard **on the real on-device engine**: the helper picks the right
+tool and grounds its answer about as well as it did on the developer engine, and in the live
+practice run it correctly flagged a sneaky heart-attack case as an emergency. So the headline — "this
+clever assistant runs entirely on your own device" — went from a hope to a demonstrated fact. (Still
+on the wish-list: letting the helper phone a colleague's device for a second opinion, sharing the
+medicine-danger map between devices live, and a little dashboard that shows off the on-device
+scorecard.)
+
 ---
 
 ## The whole story in three sentences
