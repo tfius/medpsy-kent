@@ -9,6 +9,7 @@ import {
   listKnowledgeLogs, getFacts, exportKnowledgeOKF, importKnowledgeOKF,
   filesToOkfBundle, downloadOkfBundle, type Fact,
 } from "../lib/okf";
+import { getKbStatus, shareKb, joinKb, type KbStatus } from "../lib/kb";
 
 const objText = (o: unknown): string =>
   o && typeof o === "object"
@@ -22,6 +23,11 @@ export default function Knowledge() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const dirRef = useRef<HTMLInputElement>(null);
+  // P2P federation of the interaction graph (hyperswarm, no server).
+  const [kb, setKb] = useState<KbStatus | null>(null);
+  const [peerKey, setPeerKey] = useState("");
+  const [kbMsg, setKbMsg] = useState("");
+  const refreshKb = () => getKbStatus().then(setKb);
 
   // A directory <input> needs the non-standard webkitdirectory attribute (not in React's
   // types) — set it on the element so the picker selects an OKF folder, not a single file.
@@ -39,6 +45,22 @@ export default function Knowledge() {
 
   const loadFacts = (l: string) => { if (l) getFacts(l).then(setFacts); };
   useEffect(() => { loadFacts(log); }, [log]);
+  useEffect(() => { refreshKb(); }, []);
+
+  async function doShare() {
+    setKbMsg("starting…");
+    const r = await shareKb();
+    setKbMsg(r?.key ? "Sharing — give this key to a peer kiosk." : "share failed");
+    refreshKb();
+  }
+  async function doJoin() {
+    const key = peerKey.trim();
+    if (!/^[0-9a-f]{64}$/i.test(key)) { setKbMsg("Enter the 64-hex key from the sharing kiosk."); return; }
+    setKbMsg("joining over hyperswarm (discovery ~5–15 s)…");
+    const r = await joinKb(key);
+    setKbMsg(r?.joined ? `Joined — merged ${r.imported} edge(s); graph now ${r.total}.` : `join: ${r?.error || r?.reason || "failed"}`);
+    setPeerKey(""); refreshKb(); loadFacts(log);
+  }
 
   async function doExport() {
     if (!log) return;
@@ -93,6 +115,28 @@ export default function Knowledge() {
             onChange={(e) => { const fs = e.target.files; if (fs && fs.length) doImport(fs); e.currentTarget.value = ""; }} />
         </div>
         {msg && <p className="note" style={{ marginTop: 8 }}>{msg}</p>}
+      </div>
+
+      {/* Live P2P federation of the interaction graph — hyperswarm, no server. */}
+      <div className="card">
+        <h2 style={{ marginTop: 0 }}>🔗 Federate (P2P) <span className="badge">no server</span></h2>
+        <p className="note">Share this kiosk's interaction graph with another kiosk, or join a peer's, over an
+          encrypted device-to-device link (hyperswarm). The agent grounds on the merged graph — including a peer's
+          live updates. No cloud, no central database.</p>
+        <div className="row" style={{ alignItems: "center", flexWrap: "wrap" }}>
+          <button className="btn ghost" onClick={doShare}>📡 Share this graph</button>
+          {kb?.sharing && kb.key && (
+            <code className="mono" title="give this to a peer kiosk" style={{ wordBreak: "break-all", fontSize: 12 }}>{kb.key}</code>
+          )}
+        </div>
+        <div className="row" style={{ marginTop: 8 }}>
+          <input value={peerKey} placeholder="Paste a peer's 64-hex key…" onChange={(e) => setPeerKey(e.target.value)} style={{ flex: 1 }} />
+          <button className="btn" onClick={doJoin} disabled={!peerKey.trim()}>🔌 Join peer</button>
+        </div>
+        <p className="note" style={{ marginTop: 8 }}>
+          {kb ? `graph: ${kb.count} edges · ${kb.peers.length} peer(s) joined${kb.sharing ? " · sharing" : ""}` : "loading…"}
+          {kbMsg && ` — ${kbMsg}`}
+        </p>
       </div>
 
       <div className="card">

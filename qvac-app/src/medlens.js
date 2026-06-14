@@ -64,13 +64,16 @@ export async function seedInteractions(store, { log = "kb:medical" } = {}) {
   return { seeded: INTERACTIONS.length * 2 };
 }
 
-// Screen a candidate drug against the patient's current meds (drug refs or names).
-export async function screenInteractions(store, { patientLog, candidate, kbLog = "kb:medical" }) {
+// Screen a candidate drug against the patient's current meds (drug refs or names). The
+// interaction GRAPH can live in a different store than the patient meds — pass `kbStore` to
+// read the graph from a replicated, shared knowledge store (see src/kb-sync.js) while the
+// PHI meds stay in the local store.
+export async function screenInteractions(store, { patientLog, candidate, kbLog = "kb:medical", kbStore = store }) {
   const meds = (await store.fold(patientLog, { predicate: "takes" })).facts;
   const drugIds = meds.map((f) => (f.object && f.object.ref) || drugId(f.object?.name)).filter((d) => d && d !== "drug:");
   const candId = candidate ? drugId(candidate) : null;
   const set = [...new Set(candId ? [...drugIds, candId] : drugIds)];
-  const edges = await store.edgesAmong(kbLog, set, { predicate: "interacts_with" });
+  const edges = await kbStore.edgesAmong(kbLog, set, { predicate: "interacts_with" });
   // Dedup the bidirectional pair, and (if a candidate is given) keep only edges touching it.
   const seen = new Set(), out = [];
   for (const e of edges) {
@@ -85,7 +88,7 @@ export async function screenInteractions(store, { patientLog, candidate, kbLog =
 
 // A graph-grounded interaction-check tool for the agent (distinct from the keyword
 // check_interactions): traverses the authored graph against the patient's recorded meds.
-export function makeInteractionTool(store, { patientLog, kbLog = "kb:medical" }) {
+export function makeInteractionTool(store, { patientLog, kbLog = "kb:medical", kbStore = store }) {
   return {
     def: { type: "function", function: {
       name: "screen_interactions",
@@ -93,6 +96,6 @@ export function makeInteractionTool(store, { patientLog, kbLog = "kb:medical" })
       parameters: { type: "object", properties: {
         candidate: { type: "string", description: "the proposed drug name, e.g. 'ibuprofen' (omit to screen the patient's existing meds against each other)" },
       } } } },
-    run: async ({ candidate }) => ({ interactions: await screenInteractions(store, { patientLog, candidate, kbLog }) }),
+    run: async ({ candidate }) => ({ interactions: await screenInteractions(store, { patientLog, candidate, kbLog, kbStore }) }),
   };
 }

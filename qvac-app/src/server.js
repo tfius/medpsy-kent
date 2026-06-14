@@ -11,7 +11,9 @@ import { searchKnowledge } from "./knowledge.js";
 import * as audit from "./audit.js";
 import * as identity from "./identity.js";
 import { createFactStore, NodeFileAdapter, makeFactstoreTools } from "@qvac/factstore";
+import { HypercoreAdapter } from "@qvac/factstore/hypercore";
 import { exportOKF, importOKF } from "@qvac/factstore/okf";
+import { shareLog, joinLog } from "./kb-sync.js";
 import { seedInteractions, makeInteractionTool } from "./medlens.js";
 import { encounterToOKF } from "./audit-okf.js";
 import { BACKEND, QVAC_LLM_GGUF, LMSTUDIO_LLM, LMSTUDIO_URL } from "./config.js";
@@ -70,6 +72,24 @@ const facts = createFactStore({
 });
 // Seed the authored drug-interaction graph into kb:medical (idempotent).
 seedInteractions(facts).catch((e) => console.warn(`[facts] interaction seed skipped: ${e?.message || e}`));
+
+// Shared KNOWLEDGE graph on a hypercore — the interaction graph the agent grounds on, kept
+// SEPARATE from the PHI `facts` store so it can be replicated kiosk-to-kiosk over hyperswarm
+// (src/kb-sync.js) with no server. Reader kiosks fold in peers' edges; PHI never leaves.
+const kbAdapter = new HypercoreAdapter({ storage: process.env.MEDPSY_KB_DIR || path.join(import.meta.dirname, "..", "kb-cores") });
+const kbStore = createFactStore({ adapter: kbAdapter });
+seedInteractions(kbStore).catch((e) => console.warn(`[kb] interaction seed skipped: ${e?.message || e}`));
+let kbShare = null;        // { keyHex, swarm } once this device is sharing its graph
+const kbPeers = [];        // [{ key, log, swarm, importedAt }] joined peer graphs
+// Pull a joined peer's edges into the local kb:medical (deterministic statementIds → upsert,
+// so re-running merges live additions without duplicating). Returns how many edges merged.
+async function mergePeerGraph(peerLog) {
+  const edges = (await kbStore.fold(peerLog, { predicate: "interacts_with" })).facts;
+  for (const f of edges) {
+    await kbStore.assert("kb:medical", { statementId: f.statementId, subject: f.subject, predicate: "interacts_with", object: f.object, source: f.source || "peer", meta: f.meta }).catch(() => {});
+  }
+  return edges.length;
+}
 
 // Agentic-triage conversations, kept per encounter (in-memory; a kiosk session is short).
 const triageSessions = new Map(); // encounterId -> { messages: [] }
@@ -321,7 +341,7 @@ http.createServer(async (req, res) => {
       const factTools = encounterId
         ? [
             ...makeFactstoreTools(facts, { log: `patient:${encounterId}`, subject: `patient:${encounterId}`, allowWrite: "propose", recallStatus: "confirmed" }),
-            makeInteractionTool(facts, { patientLog: `patient:${encounterId}`, kbLog: "kb:medical" }), // graph-grounded
+            makeInteractionTool(facts, { patientLog: `patient:${encounterId}`, kbLog: "kb:medical", kbStore }), // graph-grounded (federated/replicable)
           ]
         : [];
       await runAgent({
@@ -382,7 +402,7 @@ http.createServer(async (req, res) => {
       const log = `patient:${encounterId}`;
       const extraTools = [
         ...makeFactstoreTools(facts, { log, subject: log, recallStatus: "confirmed" }), // read-only recall for grounding
-        makeInteractionTool(facts, { patientLog: log, kbLog: "kb:medical" }),
+        makeInteractionTool(facts, { patientLog: log, kbLog: "kb:medical", kbStore }),
       ];
       // Pre-inject the patient's confirmed facts so the interview is patient-aware even if
       // the model doesn't call recall itself.
@@ -469,6 +489,43 @@ http.createServer(async (req, res) => {
   // assert/end/correct/retract/import. Additive; the kiosk flow doesn't depend on it.
   // NB: unauthenticated like the rest of this server (CORS *) — a PHI read/write surface;
   // production needs auth + per-log access control before this is exposed beyond localhost.
+  // Shared knowledge graph (the interaction graph), federated kiosk-to-kiosk over hyperswarm
+  // — NO server. Share this device's graph (returns a key), join a peer's by key, read the
+  // merged graph. PHI never travels here; only the authored interaction edges.
+  if (req.url.split("?")[0].startsWith("/api/kb")) {
+    const action = req.url.split("?")[0].split("/").filter(Boolean)[2] || null;
+    const json = (c, o) => { res.writeHead(c, { "content-type": "application/json" }); res.end(JSON.stringify(o)); };
+    try {
+      if (req.method === "GET" && !action) {
+        const facts = (await kbStore.fold("kb:medical", { predicate: "interacts_with" })).facts;
+        json(200, {
+          count: facts.length, sharing: !!kbShare, key: kbShare?.keyHex || null,
+          peers: kbPeers.map((p) => ({ key: p.key, importedAt: p.importedAt })),
+          edges: facts.map((f) => ({ a: f.subject, b: f.object?.ref, severity: f.meta?.severity, note: f.meta?.note, source: f.source })),
+        }); return;
+      }
+      if (req.method === "POST" && action === "share") {
+        if (!kbShare) kbShare = await shareLog(kbAdapter, "kb:medical");
+        json(200, { key: kbShare.keyHex }); return;
+      }
+      if (req.method === "POST" && action === "join") {
+        const { key } = JSON.parse((await readBody(req)).toString() || "{}");
+        if (!key || !/^[0-9a-f]{64}$/i.test(key)) { json(400, { error: "a 64-hex core key is required" }); return; }
+        if (kbPeers.some((p) => p.key === key)) { json(200, { joined: false, reason: "already joined" }); return; }
+        const peerLog = `kb:peer:${key.slice(0, 12)}`;
+        const { swarm } = await joinLog(kbAdapter, peerLog, key);
+        const imported = await mergePeerGraph(peerLog);
+        const peer = { key, log: peerLog, swarm, importedAt: new Date().toISOString() };
+        kbPeers.push(peer);
+        // Keep folding in the peer's LIVE additions (the demo's point) on a light interval.
+        peer._timer = setInterval(() => mergePeerGraph(peerLog).catch(() => {}), 15000);
+        const total = (await kbStore.fold("kb:medical", { predicate: "interacts_with" })).facts.length;
+        json(200, { joined: peerLog, imported, total }); return;
+      }
+      json(404, { error: "unknown kb route" });
+    } catch (e) { json(400, { error: String(e?.message || e) }); }
+    return;
+  }
   if (req.url.split("?")[0].startsWith("/api/facts")) {
     const seg = req.url.split("?")[0].split("/").filter(Boolean); // [api, facts, log?, action?]
     const log = seg[2] ? decodeURIComponent(seg[2]) : null;
