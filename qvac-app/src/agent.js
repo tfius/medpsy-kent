@@ -34,6 +34,7 @@ export async function runAgent({ provider, icdIndex, messages, onEvent = () => {
   // Stream the final answer token-by-token when the backend supports it. A tool-call turn
   // emits no content (so no answer_delta); only the answer turn streams.
   const stream = typeof provider.chatWithToolsStream === "function";
+  let emptyRetries = 0;
   for (let step = 0; step < maxSteps; step++) {
     if (signal?.aborted) return { answer: "", history, aborted: true };
     const turn = stream
@@ -64,7 +65,9 @@ export async function runAgent({ provider, icdIndex, messages, onEvent = () => {
 
     const text = turn.content || "";
     if (!text) {
-      // No tool call and no answer — a failed/empty generation, not a real reply.
+      // No tool call and no answer — medpsy occasionally emits an empty generation (issue
+      // #4). It's almost always transient, so retry the turn once before giving up.
+      if (emptyRetries++ < 1) { step--; continue; }
       onEvent({ type: "error", error: "the model returned an empty response" });
       return { answer: "", history };
     }
