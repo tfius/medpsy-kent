@@ -2,7 +2,7 @@
 // (teach → jury vet → promote) and watch Kiosk B's agent flip from "does NOT flag" to "flags
 // it", with only two drug names crossing between the devices. Talks to both kiosks by absolute
 // URL (cross-origin; servers send CORS). Run `npm run demo:two-kiosk` to start A + B paired.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { kiosk } from "../lib/kiosk";
 import { drug } from "../lib/learn";
 
@@ -22,8 +22,17 @@ export default function TwoKiosk() {
   const [bLog, setBLog] = useState<Entry[]>([]);
   const [bFlags, setBFlags] = useState<"?" | "no" | "yes">("?");
   const [busy, setBusy] = useState(false);
+  const [jurors, setJurors] = useState<number | null>(null); // peer kiosks A can poll for votes
 
   const A = kiosk(aUrl), B = kiosk(bUrl);
+
+  // Live readiness: how many peer kiosks is A connected to (the jury)?
+  useEffect(() => {
+    let on = true;
+    const tick = () => A.backend().then((bi) => { if (on) setJurors((bi as { consultPeers?: number })?.consultPeers ?? null); });
+    tick(); const t = setInterval(tick, 4000);
+    return () => { on = false; clearInterval(t); };
+  }, [aUrl]);
   const a = (t: string, tone: Entry["tone"] = "info") => setALog((l) => [...l, { t, tone }]);
   const b = (t: string, tone: Entry["tone"] = "info") => setBLog((l) => [...l, { t, tone }]);
   function reset(i = sc) { setSc(i); setEdit(SCENARIOS[i]); setALog([]); setBLog([]); setBFlags("?"); }
@@ -65,14 +74,21 @@ export default function TwoKiosk() {
 
       // 3 — promote on A
       await A.promote(id);
-      a(`promoted into the shared graph — now replicating to peers (no server)`, "ok");
+      a(`promoted into the shared graph — replicating to peers now (no server)`, "ok");
 
-      // 4 — B syncs + re-checks (this is the federation: B learned from A)
-      const sy = await B.sync();
-      b(`pulled ${sy?.merged ?? 0} change(s) from A`, "info");
-      const after = await B.check(edit.a, edit.b);
-      setBFlags(after?.grounded ? "yes" : "no");
-      b(after?.grounded ? `✓ agent NOW flags ${edit.a} + ${edit.b} (${after.severity}) — learned from Kiosk A, no patient data` : "not grounded yet — try Sync again", after?.grounded ? "ok" : "warn");
+      // 4 — watch B learn it LIVE. The promotion replicates to B in ~1 s and B merges on the
+      // core's append event — so we just poll B until its agent grounds (a sync() kick + poll
+      // belt-and-suspenders for the backstop interval).
+      b(`replicating from A… (live, no server)`, "info");
+      await B.sync();
+      let grounded = false, sev: string | null = null;
+      for (let i = 0; i < 16 && !grounded; i++) {
+        const c = await B.check(edit.a, edit.b);
+        grounded = !!c?.grounded; sev = c?.severity || null;
+        if (!grounded) await new Promise((r) => setTimeout(r, 700));
+      }
+      setBFlags(grounded ? "yes" : "no");
+      b(grounded ? `✓ agent NOW flags ${edit.a} + ${edit.b} (${sev}) — learned from Kiosk A, no patient data crossed` : "not grounded yet — give it a moment, then Pair/Sync", grounded ? "ok" : "warn");
     } finally { setBusy(false); }
   }
 
@@ -100,6 +116,9 @@ export default function TwoKiosk() {
           <label>A <input value={aUrl} onChange={(e) => setAUrl(e.target.value)} style={{ width: 170 }} /></label>
           <label>B <input value={bUrl} onChange={(e) => setBUrl(e.target.value)} style={{ width: 170 }} /></label>
           <button className="btn ghost" onClick={pair} disabled={busy}>🔗 Pair (B replicates A)</button>
+          <span className={`pill ${jurors ? "GREEN" : "AMBER"}`} title="peer kiosks connected to A's consult jury">
+            {jurors === null ? "jury: ?" : jurors > 0 ? `jury: ${jurors} peer${jurors > 1 ? "s" : ""} ✓` : "jury: connecting…"}
+          </span>
           <span style={{ flex: 1 }} />
           {SCENARIOS.map((s, i) => <button key={i} className={`btn ghost${i === sc ? " active" : ""}`} onClick={() => reset(i)} disabled={busy}>{s.a}+{s.b}</button>)}
         </div>

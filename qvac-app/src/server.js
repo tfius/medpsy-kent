@@ -547,12 +547,17 @@ http.createServer(async (req, res) => {
         if (!key || !/^[0-9a-f]{64}$/i.test(key)) { json(400, { error: "a 64-hex core key is required" }); return; }
         if (kbPeers.some((p) => p.key === key)) { json(200, { joined: false, reason: "already joined" }); return; }
         const peerLog = `kb:peer:${key.slice(0, 12)}`;
-        const { swarm } = await joinLog(kbAdapter, peerLog, key);
+        const { swarm, core } = await joinLog(kbAdapter, peerLog, key);
         const imported = await mergePeerGraph(peerLog);
         const peer = { key, log: peerLog, swarm, importedAt: new Date().toISOString() };
         kbPeers.push(peer);
-        // Keep folding in the peer's LIVE additions (the demo's point) on a light interval.
-        peer._timer = setInterval(() => mergePeerGraph(peerLog).catch(() => {}), 15000);
+        // LIVE federation: merge the instant the peer's core gets new blocks (a promotion
+        // replicates in ~1 s), not on a poll. A slow interval stays as a catch-up backstop
+        // (e.g. blocks that arrived while we were busy, or a missed event).
+        let merging = false;
+        const syncNow = () => { if (merging) return; merging = true; mergePeerGraph(peerLog).catch(() => {}).finally(() => { merging = false; }); };
+        core.on("append", syncNow);
+        peer._timer = setInterval(syncNow, Number(process.env.MEDPSY_KB_SYNC_MS) || 30000);
         const total = (await kbStore.fold("kb:medical", { predicate: "interacts_with" })).facts.length;
         json(200, { joined: peerLog, imported, total }); return;
       }
