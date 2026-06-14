@@ -8,7 +8,9 @@
 //   "full"    — + end_fact / correct_fact (changing existing facts)
 // `subject` (optional) is a default subject id applied when a tool call omits one — so an
 // agent bound to one patient's log can `recall()` / `remember(...)` without knowing the id.
-export function makeFactstoreTools(store, { log, subject: defaultSubject, allowWrite = "none" } = {}) {
+// `recallStatus` (e.g. "confirmed") filters what recall returns — so an agent grounds on
+// confirmed clinical facts, not its own unconfirmed proposals.
+export function makeFactstoreTools(store, { log, subject: defaultSubject, allowWrite = "none", recallStatus } = {}) {
   if (!log) throw new Error("makeFactstoreTools requires { log }");
   // A bound subject is AUTHORITATIVE: it overrides whatever the model passes (so the agent
   // can't query a hallucinated id), and it's omitted from the tool schema so the model
@@ -23,13 +25,13 @@ export function makeFactstoreTools(store, { log, subject: defaultSubject, allowW
     {
       def: { type: "function", function: {
         name: "recall",
-        description: `Get the currently-known facts${here} (optionally filtered by predicate, optionally as of a past date). Returns the facts plus a receipt of the exact statements used.`,
+        description: `Get the currently-known facts${here}${recallStatus === "confirmed" ? " (confirmed clinical facts only)" : ""} (optionally filtered by predicate, optionally as of a past date). Returns the facts plus a receipt of the exact statements used.`,
         parameters: { type: "object", properties: {
           ...subjectParam,
           predicate: { type: "string", description: "relation to filter by, e.g. 'takes' (optional)" },
           asOf: { type: "string", description: "ISO date/datetime to evaluate validity at (default: now)" },
         } } } },
-      run: ({ subject, predicate, asOf }) => store.fold(log, { subject: subj(subject), predicate, validAt: asOf }),
+      run: ({ subject, predicate, asOf }) => store.fold(log, { subject: subj(subject), predicate, validAt: asOf, status: recallStatus }),
     },
     {
       def: { type: "function", function: {
