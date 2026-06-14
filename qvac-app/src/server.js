@@ -82,14 +82,23 @@ const kbStore = createFactStore({ adapter: kbAdapter });
 seedInteractions(kbStore).catch((e) => console.warn(`[kb] interaction seed skipped: ${e?.message || e}`));
 let kbShare = null;        // { keyHex, swarm } once this device is sharing its graph
 const kbPeers = [];        // [{ key, log, swarm, importedAt }] joined peer graphs
-// Pull a joined peer's edges into the local kb:medical (deterministic statementIds → upsert,
-// so re-running merges live additions without duplicating). Returns how many edges merged.
+// Pull a joined peer's edges into the local kb:medical. Only NEW or CHANGED edges are
+// asserted — assert() always appends to the chain (statementId dedupes at fold, not append),
+// so blindly re-asserting on every re-sync would grow the core unbounded for a static graph.
+// Returns how many edges were actually merged this pass.
 async function mergePeerGraph(peerLog) {
-  const edges = (await kbStore.fold(peerLog, { predicate: "interacts_with" })).facts;
-  for (const f of edges) {
+  const [peerEdges, localEdges] = await Promise.all([
+    kbStore.fold(peerLog, { predicate: "interacts_with" }).then((r) => r.facts),
+    kbStore.fold("kb:medical", { predicate: "interacts_with" }).then((r) => r.facts),
+  ]);
+  const localById = new Map(localEdges.map((f) => [f.statementId, JSON.stringify(f.object)]));
+  let merged = 0;
+  for (const f of peerEdges) {
+    if (localById.get(f.statementId) === JSON.stringify(f.object)) continue; // already present, unchanged
     await kbStore.assert("kb:medical", { statementId: f.statementId, subject: f.subject, predicate: "interacts_with", object: f.object, source: f.source || "peer", meta: f.meta }).catch(() => {});
+    merged++;
   }
-  return edges.length;
+  return merged;
 }
 
 // P2P "consult a colleague" — when a consult code is configured, the agent gets a tool to
@@ -532,6 +541,15 @@ http.createServer(async (req, res) => {
         peer._timer = setInterval(() => mergePeerGraph(peerLog).catch(() => {}), 15000);
         const total = (await kbStore.fold("kb:medical", { predicate: "interacts_with" })).facts.length;
         json(200, { joined: peerLog, imported, total }); return;
+      }
+      if (req.method === "POST" && action === "leave") {
+        const { key } = JSON.parse((await readBody(req)).toString() || "{}");
+        const i = kbPeers.findIndex((p) => p.key === key);
+        if (i === -1) { json(404, { error: "not a joined peer" }); return; }
+        const [peer] = kbPeers.splice(i, 1);
+        clearInterval(peer._timer);
+        await peer.swarm?.destroy().catch(() => {});
+        json(200, { left: peer.log }); return;
       }
       json(404, { error: "unknown kb route" });
     } catch (e) { json(400, { error: String(e?.message || e) }); }
