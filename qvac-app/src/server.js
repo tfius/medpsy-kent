@@ -14,6 +14,7 @@ import { createFactStore, NodeFileAdapter, makeFactstoreTools } from "@qvac/fact
 import { HypercoreAdapter } from "@qvac/factstore/hypercore";
 import { exportOKF, importOKF } from "@qvac/factstore/okf";
 import { shareLog, joinLog } from "./kb-sync.js";
+import { makeConsultTool } from "./consult.js";
 import { seedInteractions, makeInteractionTool } from "./medlens.js";
 import { encounterToOKF } from "./audit-okf.js";
 import { BACKEND, QVAC_LLM_GGUF, LMSTUDIO_LLM, LMSTUDIO_URL } from "./config.js";
@@ -91,6 +92,12 @@ async function mergePeerGraph(peerLog) {
   return edges.length;
 }
 
+// P2P "consult a colleague" — when a consult code is configured, the agent gets a tool to
+// reach a paired senior-clinician device for a second opinion (src/consult.js). No cloud.
+const CONSULT_CODE = process.env.MEDPSY_CONSULT_CODE || null;
+const consultTools = CONSULT_CODE ? [makeConsultTool(CONSULT_CODE)] : [];
+if (CONSULT_CODE) console.log(`[consult] peer-consult enabled (code "${CONSULT_CODE}") — agent can ask a paired clinician device`);
+
 // Agentic-triage conversations, kept per encounter (in-memory; a kiosk session is short).
 const triageSessions = new Map(); // encounterId -> { messages: [] }
 
@@ -118,6 +125,7 @@ http.createServer(async (req, res) => {
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify({
       backend: provider.name, mode: BACKEND, onDevice, cloud: false,
+      peerConsult: !!CONSULT_CODE, // agent can reach a paired clinician device (P2P)
       model: onDevice ? QVAC_LLM_GGUF : `${LMSTUDIO_LLM} @ ${LMSTUDIO_URL}`,
       note: onDevice
         ? "All inference runs on this device via @qvac/sdk (local .gguf) — no cloud, no outbound model calls."
@@ -345,7 +353,7 @@ http.createServer(async (req, res) => {
           ]
         : [];
       await runAgent({
-        provider, icdIndex: index, messages, signal: ac.signal, extraTools: factTools,
+        provider, icdIndex: index, messages, signal: ac.signal, extraTools: [...factTools, ...consultTools],
         onEvent: (e) => {
           send(e);
           if (!encounterId) return;
@@ -357,6 +365,7 @@ http.createServer(async (req, res) => {
             const r = e.result || {};
             if (r.receipt) audit.append(encounterId, "facts.read", { tool: e.name, query: r.receipt.query, validAt: r.receipt.validAt, knownAt: r.receipt.knownAt, statements: r.receipt.statements }, "model").catch(() => {});
             if (r.recorded) audit.append(encounterId, "facts.assert", { tool: e.name, ...r.recorded }, "model").catch(() => {});
+            if (e.name === "consult_peer") audit.append(encounterId, "consult.response", { answer: r.answer, peer: r.peer, signatureOk: r.signatureOk, error: r.error }, "model").catch(() => {});
           }
         },
       });
@@ -403,6 +412,7 @@ http.createServer(async (req, res) => {
       const extraTools = [
         ...makeFactstoreTools(facts, { log, subject: log, recallStatus: "confirmed" }), // read-only recall for grounding
         makeInteractionTool(facts, { patientLog: log, kbLog: "kb:medical", kbStore }),
+        ...consultTools, // P2P second opinion from a paired clinician device, if configured
       ];
       // Pre-inject the patient's confirmed facts so the interview is patient-aware even if
       // the model doesn't call recall itself.
@@ -426,6 +436,7 @@ http.createServer(async (req, res) => {
             // (-> facts.read, as in /api/agent); other tools log their raw result.
             const r = e.result || {};
             if (r.receipt) audit.append(encounterId, "facts.read", { tool: e.name, query: r.receipt.query, validAt: r.receipt.validAt, knownAt: r.receipt.knownAt, statements: r.receipt.statements }, "model").catch(() => {});
+            else if (e.name === "consult_peer") audit.append(encounterId, "consult.response", { answer: r.answer, peer: r.peer, signatureOk: r.signatureOk, error: r.error }, "model").catch(() => {});
             else audit.append(encounterId, "atriage.tool_result", { name: e.name, result: r }, "model").catch(() => {});
           }
           else if (e.type === "question") audit.append(encounterId, "message.assistant", { text: e.text, kind: "triage.question" }, "model").catch(() => {});

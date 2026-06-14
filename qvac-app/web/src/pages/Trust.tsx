@@ -40,7 +40,9 @@ export default function Trust() {
               <span className={`pill ${be.onDevice ? "GREEN" : "AMBER"}`}>{be.onDevice ? "ON-DEVICE (QVAC)" : "DEV (LM Studio)"}</span>
               {" "}<span className="pill GREEN">NO CLOUD</span>
             </p>
-            <p>Backend: <code>{be.backend}</code></p>
+            <p>Backend: <code>{be.backend}</code>
+              {be.peerConsult && <> {" "}<span className="pill GREEN" title="The agent can reach a paired clinician device for a second opinion, peer-to-peer">👥 PEER CONSULT</span></>}
+            </p>
             <p className="note">Model: <code>{be.model}</code></p>
             <p className="note">{be.note}</p>
           </>

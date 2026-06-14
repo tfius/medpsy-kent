@@ -2,7 +2,7 @@
 // measured tool-use / grounding / escalation scores.
 
 export interface BackendInfo {
-  backend: string; mode: string; onDevice: boolean; cloud: boolean; model: string; note: string;
+  backend: string; mode: string; onDevice: boolean; cloud: boolean; peerConsult?: boolean; model: string; note: string;
 }
 export interface EvalRow {
   id: string; q: string; pass: boolean; tools: string[]; expectTools: string[];

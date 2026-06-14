@@ -16,6 +16,7 @@ const TYPE_ICON: Record<string, string> = {
   "agent.user": "💬", "agent.tool": "🔧", "agent.answer": "🤖",
   "atriage.reasoning": "🧠", "atriage.tool": "🔧", "atriage.tool_result": "📊",
   "atriage.question": "❓", "atriage.error": "⚠️",
+  "consult.request": "👤", "consult.response": "👥",
   "facts.read": "📂", "facts.assert": "🧾",
   signoff: "✍️", note: "📝", "encounter.end": "🔴",
 };
@@ -43,6 +44,7 @@ function summarize(ev: AuditEvent): string {
     case "atriage.tool_result": return `${d.name} → ${JSON.stringify(d.result).slice(0, 60)}`;
     case "atriage.question": return String(d.text || "").slice(0, 80);
     case "atriage.error": return String(d.error || "").slice(0, 80);
+    case "consult.response": return `${(d.peer as { name?: string })?.name ?? "peer"} ${d.signatureOk ? "✓" : "✗sig"}: ${String(d.answer || d.error || "").slice(0, 60)}`;
     case "facts.read": return `${d.tool} → ${((d.statements as { statementId: string }[] | undefined) || []).length} fact(s)`;
     case "facts.assert": return `${d.tool} · ${String(d.statementId || "").slice(0, 16)}`;
     case "outcome": return `${d.decision ?? ""} ${d.band ?? ""}`;
