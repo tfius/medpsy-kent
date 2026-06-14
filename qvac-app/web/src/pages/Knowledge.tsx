@@ -207,6 +207,7 @@ export default function Knowledge() {
                     <span className="mono">{drug(c.a)} + {drug(c.b)}</span>{" "}
                     <span className={`pill ${c.severity === "major" ? "RED" : "AMBER"}`}>{c.severity}</span>
                     {c.note && <span className="note"> · {c.note}</span>}
+                    {c.notePersonal && <span className="pill RED" title="The note may still reference a patient — review/redact before promoting">⚠ check note</span>}
                     <span style={{ flex: 1 }} />
                     <button className="btn ghost" onClick={() => doVet(c.id)} disabled={v === "vetting"}>{v === "vetting" ? "vetting…" : "🔬 Vet"}</button>
                     <button className="btn ghost" onClick={() => doPromote(c.id, typeof v === "object" ? v.local.severity : undefined)}>✓ Promote</button>

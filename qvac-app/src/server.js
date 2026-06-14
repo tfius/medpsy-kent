@@ -16,7 +16,7 @@ import { exportOKF, importOKF } from "@qvac/factstore/okf";
 import { shareLog, joinLog } from "./kb-sync.js";
 import { makeConsultTool, createConsultClient } from "./consult.js";
 import { proposeEdge, vetEdge, recordVote, promoteEdge, rejectEdge, pendingEdges, distillEdges } from "./edge-learning.js";
-import { seedInteractions, makeInteractionTool } from "./medlens.js";
+import { seedInteractions, makeInteractionTool, drugId } from "./medlens.js";
 import { encounterToOKF } from "./audit-okf.js";
 import { BACKEND, QVAC_LLM_GGUF, LMSTUDIO_LLM, LMSTUDIO_URL } from "./config.js";
 
@@ -566,10 +566,19 @@ http.createServer(async (req, res) => {
   // kb-learning audit chain. PHI never enters: an edge is two drugs + a generalized note.
   if (req.url.split("?")[0].startsWith("/api/learn")) {
     const action = req.url.split("?")[0].split("/").filter(Boolean)[2] || null;
+    const q = new URL(req.url, "http://localhost").searchParams;
     const json = (c, o) => { res.writeHead(c, { "content-type": "application/json" }); res.end(JSON.stringify(o)); };
     const me = identity.getIdentity().publicKey.slice(0, 12);
     const body = async () => JSON.parse((await readBody(req)).toString() || "{}");
     try {
+      // Would the agent flag this pair? (grounded = promoted; proposed candidates don't ground)
+      if (req.method === "GET" && action === "check") {
+        const a = drugId(q.get("a") || ""), b = drugId(q.get("b") || "");
+        const e = (await kbStore.fold("kb:medical", { predicate: "interacts_with" })).facts
+          .find((f) => (f.subject === a && f.object?.ref === b) || (f.subject === b && f.object?.ref === a));
+        json(200, { a, b, exists: !!e, grounded: !!(e && !e.meta?.proposed), proposed: !!(e && e.meta?.proposed), severity: e?.meta?.severity || null, note: e?.meta?.note || null });
+        return;
+      }
       if (req.method === "GET" && !action) {
         const pending = await pendingEdges(kbStore);
         const all = (await kbStore.fold("kb:medical", { predicate: "interacts_with" })).facts;

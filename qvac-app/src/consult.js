@@ -140,11 +140,13 @@ export function createConsultClient(code, { bootstrap = BOOTSTRAP } = {}) {
   const swarm = new Hyperswarm({ bootstrap });
   const conns = new Set();
   const pending = new Map(); // request id -> (msg) => void
+  const active = new Map();  // request id -> wire (in-flight, replayed to peers that join late)
   swarm.on("connection", (conn) => {
     conn.on("error", () => {});
     conn.on("close", () => conns.delete(conn));
     conns.add(conn);
     onJsonLine(conn, (msg) => { if (msg.kind === "consult-response" && pending.has(msg.id)) pending.get(msg.id)(msg); });
+    for (const wire of active.values()) { try { sendJson(conn, wire); } catch { /* dead conn */ } } // catch late jurors
   });
   swarm.join(topicFor(code), { server: false, client: true });
 
@@ -155,8 +157,10 @@ export function createConsultClient(code, { bootstrap = BOOTSTRAP } = {}) {
   });
   const broadcast = (req) => {
     const wire = { ...req, from: getIdentity(), sig: sign(reqSignable(req.id, reqPayload(req))) };
+    active.set(req.id, wire);
     for (const c of conns) { try { sendJson(c, wire); } catch { /* dead conn */ } }
   };
+  const settle = (id) => { pending.delete(id); active.delete(id); };
 
   return {
     async ask(question, { context = "", timeoutMs = RESPONSE_TIMEOUT_MS } = {}) {
@@ -165,7 +169,7 @@ export function createConsultClient(code, { bootstrap = BOOTSTRAP } = {}) {
       return new Promise((resolve, reject) => {
         const id = crypto.randomBytes(8).toString("hex");
         let done = false;
-        const fin = (err, val) => { if (done) return; done = true; clearTimeout(t); pending.delete(id); err ? reject(err) : resolve(val); };
+        const fin = (err, val) => { if (done) return; done = true; clearTimeout(t); settle(id); err ? reject(err) : resolve(val); };
         const t = setTimeout(() => fin(new Error("no peer answered the consult in time")), timeoutMs);
         pending.set(id, (msg) => fin(null, { answer: msg.answer || "", peer: msg.from || null, signatureOk: !!(msg.from?.publicKey && verify(resSignable(id, resPayload(msg)), msg.sig || "", msg.from.publicKey)) }));
         broadcast({ kind: "consult-request", id, question, context });
@@ -176,8 +180,8 @@ export function createConsultClient(code, { bootstrap = BOOTSTRAP } = {}) {
       return new Promise((resolve) => {
         const id = crypto.randomBytes(8).toString("hex");
         const votes = [], seen = new Set();
-        let done = false, settle = null;
-        const fin = () => { if (done) return; done = true; clearTimeout(overall); clearTimeout(settle); pending.delete(id); resolve(votes); };
+        let done = false, settleTimer = null;
+        const fin = () => { if (done) return; done = true; clearTimeout(overall); clearTimeout(settleTimer); settle(id); resolve(votes); };
         const overall = setTimeout(fin, timeoutMs);
         if (!conns.size) return fin();
         pending.set(id, (msg) => {
@@ -186,11 +190,12 @@ export function createConsultClient(code, { bootstrap = BOOTSTRAP } = {}) {
           if (pub && seen.has(pub)) return; if (pub) seen.add(pub);
           votes.push({ verdict: msg.verdict, peer: msg.from || null, signatureOk: !!(pub && verify(resSignable(id, resPayload(msg)), msg.sig || "", pub)) });
           if (votes.length >= maxPeers) return fin();
-          clearTimeout(settle); settle = setTimeout(fin, collectMs);
+          clearTimeout(settleTimer); settleTimer = setTimeout(fin, collectMs);
         });
         broadcast({ kind: "consult-request", id, vet: edge });
       });
     },
+    peerCount: () => conns.size,
     close() { return swarm.destroy().catch(() => {}); },
   };
 }

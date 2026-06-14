@@ -13,14 +13,24 @@ import { drugId } from "./medlens.js";
 const KB = "kb:medical";
 const drugName = (id) => String(id).replace(/^drug:/, "");
 
-// Best-effort de-identification of a free-text note before it's stored/shared. Strips long
-// digit runs (MRN/phone) and dates — patterns that are NEVER clinical (CYP2C9, J18.9, "5mg"
-// have only short digit groups, so they're untouched). The human review at promotion is the
-// real backstop; this is defence in depth for the one free-text field that leaves the device.
+// Best-effort de-identification of the ONE free-text field that leaves the device (a
+// learned-edge note). Strips the patient identifiers that could appear if the model/clinician
+// slips — emails, titled names, ages, dates, and long digit runs (MRN/phone) — while leaving
+// clinical content intact (CYP2C9, J18.9, "5mg", "in patients with…" all survive, because
+// their digit groups are short and they carry no title/age/date pattern). Defence in depth;
+// the human review at promotion is the real backstop.
 export const sanitizeNote = (s) => String(s || "")
-  .replace(/\b\d{7,}\b/g, "[id]")
-  .replace(/\b\d{1,2}[/.\-]\d{1,2}[/.\-]\d{2,4}\b/g, "[date]")
+  .replace(/\S+@\S+\.\S+/g, "[email]")                                                          // emails
+  .replace(/\b(?:Mr|Mrs|Ms|Miss|Mx|Dr)\.?\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?/g, "[name]")        // titled names
+  .replace(/\b\d{1,3}\s*(?:yo|y\/o|y\.o\.|years?[\s-]?old|yrs?[\s-]?old)\b/gi, "[age]")          // ages
+  .replace(/\baged?\s+\d{1,3}\b/gi, "[age]")
+  .replace(/\b\d{1,2}[/.\-]\d{1,2}[/.\-]\d{2,4}\b/g, "[date]")                                   // dates
+  .replace(/\b\d{7,}\b/g, "[id]")                                                                // MRN / phone
   .replace(/\s+/g, " ").trim().slice(0, 200);
+
+// Heuristic flag: does a note still look like it carries a patient reference after sanitizing?
+// Surfaced to the clinician as a ⚠ before promotion (the note shouldn't mention "the patient").
+export const noteLooksPersonal = (s) => /\b(?:the |this )patient\b|\bMRN\b|\bDOB\b|\[name\]|\[age\]|\[date\]|\[id\]/i.test(String(s || ""));
 const learnedId = (a, b) => `lx:${a}>${b}`;            // learned edge (distinct from seeded ix:)
 const reverseId = (id) => { const [a, b] = id.replace(/^lx:/, "").split(">"); return `lx:${b}>${a}`; };
 
@@ -121,7 +131,7 @@ export async function pendingEdges(kbStore, { log = KB } = {}) {
     if (seen.has(key)) continue;
     seen.add(key);
     out.push({ id: f.statementId, a: f.subject, b: f.object?.ref, severity: f.meta?.severity, note: f.meta?.note,
-      contributedBy: f.meta?.contributedBy, votes: f.meta?.votes || [] });
+      contributedBy: f.meta?.contributedBy, votes: f.meta?.votes || [], notePersonal: noteLooksPersonal(f.meta?.note) });
   }
   return out;
 }

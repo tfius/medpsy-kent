@@ -3,8 +3,10 @@
 
 export interface Candidate {
   id: string; a: string; b: string; severity?: string; note?: string;
-  contributedBy?: string; votes: { by: string; real?: boolean; severity?: string; reason?: string }[];
+  contributedBy?: string; notePersonal?: boolean;
+  votes: { by: string; real?: boolean; severity?: string; reason?: string }[];
 }
+export interface PairCheck { a: string; b: string; exists: boolean; grounded: boolean; proposed: boolean; severity: string | null; note: string | null }
 export interface PromotedEdge { a: string; b: string; severity?: string; note?: string; by?: string }
 export interface Learning { pending: Candidate[]; promoted: PromotedEdge[] }
 export interface Verdict { real: boolean; severity?: string; reason?: string }
@@ -27,6 +29,9 @@ export const vetEdge = (edgeId: string) => post<VetResult>("/api/learn/vet", { e
 export const promoteEdge = (edgeId: string, severity?: string) => post<{ promoted: boolean }>("/api/learn/promote", { edgeId, severity });
 export const rejectEdge = (edgeId: string) => post<{ rejected: boolean }>("/api/learn/reject", { edgeId });
 export const distill = (correction: string, meds?: string[]) =>
-  post<{ distilled: number; proposed: { a: string; b: string }[]; error?: string }>("/api/learn/distill", { correction, meds });
+  post<{ distilled: number; proposed: { id: string; a: string; b: string }[]; error?: string }>("/api/learn/distill", { correction, meds });
+export const checkPair = async (a: string, b: string): Promise<PairCheck | null> => {
+  try { const r = await fetch(`/api/learn/check?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`); return r.ok ? await r.json() : null; } catch { return null; }
+};
 
 export const drug = (id: string) => String(id).replace(/^drug:/, "");
