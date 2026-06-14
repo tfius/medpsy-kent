@@ -1550,6 +1550,19 @@ then a peer vote; both land on the edge and in the `kb-learning` chain. The Lear
 verdicts + the running tally. Verified over the real DHT (`consult_vet_smoke`) and live through the
 server: clopidogrel+omeprazole drew 2 votes — local medpsy REAL/moderate (correct CYP2C19 rationale) +
 a peer's signed REAL/major (signatureOk) — integrity-ok provenance. Also a review fix: `proposeEdge`
-now guards against duplicating a seeded/promoted pair (idempotent for pending). *(Remaining next layer:
-auto-distillation — medpsy reads a rejected triage and proposes the candidate with no human in the
-propose step.)*
+now guards against duplicating a seeded/promoted pair (idempotent for pending).
+
+**Follow-up 2 — a real jury + auto-distillation (the loop, made honest & autonomous).** Review of the
+vetting found it was really "local + the *first* peer." Fixed: `consultVetAll` collects SIGNED verdicts
+from EVERY available peer (deduped by device pubkey, settle window, empty-on-no-peer), and `recordVote`
+keeps one vote per voter (re-vetting updates, not inflates). `/api/learn/vet` now returns the local
+vote + the full `peers[]` jury; the panel shows every juror. Verified with `consult_jury_smoke` (two
+distinct-identity responder processes → 2 distinct signed votes over the DHT). Then the final layer:
+**auto-distillation** — `distillEdges(provider, {meds, transcript, correction})` has medpsy read a
+clinician correction/encounter and propose the missed edge ITSELF (conservative; drug names +
+generalized mechanism only — PHI-free). `/api/learn/distill` takes `{encounterId}` (reads its meds +
+transcript) or a direct `{correction}`, distils → auto-proposes (the guard drops known pairs) → audits
+`learn.distill`. Verified on-device (`edge_distill_smoke`: medpsy auto-proposes warfarin+miconazole
+from a correction) and live (simvastatin+itraconazole auto-proposed into the pending queue, chain
+integrity ok). **The loop is now closed with no human in the propose step:** correction → distil →
+propose → jury-vet → human-promote → federate.

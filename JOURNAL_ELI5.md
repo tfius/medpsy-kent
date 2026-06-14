@@ -751,6 +751,18 @@ device. A jury of AIs, each on its own device, voting on whether a piece of medi
 with every vote on the record. (Plus a small tidy-up so you can't accidentally propose something the
 system already knows.)
 
+Then we made the jury *real* (it had been asking only the first device that answered — now it asks
+*everyone* and tallies one vote per device), and we added the last piece: **the assistant can now
+write the lesson itself.** Instead of a human typing "drug A + drug B is dangerous," a clinician just
+pastes their correction in plain English — "I overrode the triage, the patient was on simvastatin and
+got prescribed an antifungal, that's a major interaction you missed" — and the assistant reads it,
+figures out the actual drug pair and the reason, and proposes the lesson on its own. We tested it both
+ways: it correctly pulled "warfarin + miconazole" out of one correction and "simvastatin +
+itraconazole" out of another. A human still has to approve before it's trusted — but the *noticing* and
+*writing-down* now happen by themselves. So the full circle is: someone corrects a mistake → the
+assistant turns that into a candidate lesson → a jury of AIs on different devices vote on it → a human
+approves → and it spreads to every kiosk. All on people's own devices, nobody's records ever leaving.
+
 ---
 
 ## The whole story in three sentences
