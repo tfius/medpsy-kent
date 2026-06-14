@@ -1579,3 +1579,16 @@ DHT discovery the one-shot helpers pay each call. Verified: `consult_client_smok
 1030 ms, second **1 ms** (warm), jury vet over the reused connection; clinical terms preserved /
 MRN+DOB stripped; one-shot smokes still pass; the live server's warm client returned a signed peer
 vote. New: `scripts/consult_client_smoke.mjs`.
+
+**Follow-up 4 — sharper de-id, a robust jury, and a guided demo.** Two review problems, then the
+showcase. (1) **Stronger de-id:** `sanitizeNote` now also strips emails, titled names, ages, and dates
+(not just MRN/phone) — verified to leave clinical content untouched (`CYP2C9`, `J18.9`, `5mg`, "in
+patients with…") — and `noteLooksPersonal` flags a candidate whose note still smells personal, shown as
+a ⚠ in the Learn panel before promotion. (2) **Late-joiner jury:** the persistent `createConsultClient`
+now replays in-flight requests to peers that connect mid-window (it only broadcast to peers present at
+request time), and exposes `peerCount()`; verified with `consult_client_jury_smoke` — a warm client
+collects 2 distinct signed votes from subprocess identities. (3) **Guided demo (`/demo`):** a one-screen
+stepper that walks the whole loop — correction → `distil` → jury `vet` → `promote` → and the
+**before/after agent check** (`GET /api/learn/check?a=&b=` → grounded vs proposed) as the punchline.
+Verified live end-to-end: warfarin+miconazole flipped `grounded` false→true across the steps. The story
+now lands in ~60 s. New: `web/src/pages/Demo.tsx`, `scripts/consult_client_jury_smoke.mjs`.

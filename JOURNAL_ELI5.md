@@ -772,6 +772,15 @@ another device used to take 5–15 seconds each time because it had to *find* th
 network from scratch; now the kiosk keeps a warm line open, so the second question and every one after
 comes back almost instantly — we measured one second down to one millisecond.
 
+And to finish: we made the privacy scrubber smarter (it now also catches names, ages and dates, not
+just ID numbers — while leaving real medical words alone — and warns the clinician if a note still
+looks like it mentions a person), made the "jury" robust so a device that joins the conversation a
+moment late still gets to vote, and built a **one-screen guided demo** so anyone can watch the whole
+thing happen in about a minute: type a correction → the assistant writes the lesson → a jury of
+devices votes → you approve → and right before your eyes, the question "would the assistant catch this
+drug combination?" flips from *no* to *yes*. That little before-and-after flip is the whole project in
+one gesture.
+
 ---
 
 ## The whole story in three sentences
