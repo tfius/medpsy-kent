@@ -742,6 +742,15 @@ So the network of kiosks gets collectively smarter from real-world corrections, 
 challenged and approved and traceable, and no one's private health data ever leaves the room. That's
 the part that's hard to do anywhere but on a device-to-device, on-device stack like this one.
 
+**And then we made the challenge a panel, not a solo act.** Instead of just *one* assistant playing
+devil's advocate, a proposed lesson now gets sent to *other* kiosks too — each one's AI judges it
+independently and sends back a signed verdict (signed so you know exactly which device voted). We
+tested it: a proposed interaction (clopidogrel + a common heartburn drug) got a "yes, real" from the
+local assistant — with the correct biochemistry — and an independent signed "yes, real" from a second
+device. A jury of AIs, each on its own device, voting on whether a piece of medical knowledge is true,
+with every vote on the record. (Plus a small tidy-up so you can't accidentally propose something the
+system already knows.)
+
 ---
 
 ## The whole story in three sentences

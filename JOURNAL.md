@@ -1540,3 +1540,16 @@ This is federated learning **without the gradients, the cloud, or the data leak*
 whose collective judgment compounds, every learned fact auditable and refutable, PHI provably local.
 New: `src/edge-learning.js`, `web/src/lib/learn.ts`, `scripts/edge_{learning,federation}_smoke.mjs`.
 Touched: `src/{server,medlens}.js`, `web/src/pages/{Knowledge,Audit}.tsx`.
+
+**Follow-up — peer-network vetting (the adversarial AI network).** A candidate is now judged not only
+by the local kiosk's medpsy but by PEER kiosks' medpsy over the consult channel — independent, SIGNED
+votes. The consult protocol gained a structured VET request (alongside the free-text question):
+`serveConsult` takes a `vetFn(edge)`, `consultVet(code, edge)` returns a signed `{real,severity,reason}`
+(plain `consult()` unchanged, verified backward-compatible). `/api/learn/vet` now casts the local vote
+then a peer vote; both land on the edge and in the `kb-learning` chain. The Learn panel shows both
+verdicts + the running tally. Verified over the real DHT (`consult_vet_smoke`) and live through the
+server: clopidogrel+omeprazole drew 2 votes — local medpsy REAL/moderate (correct CYP2C19 rationale) +
+a peer's signed REAL/major (signatureOk) — integrity-ok provenance. Also a review fix: `proposeEdge`
+now guards against duplicating a seeded/promoted pair (idempotent for pending). *(Remaining next layer:
+auto-distillation — medpsy reads a rejected triage and proposes the candidate with no human in the
+propose step.)*
