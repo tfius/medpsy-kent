@@ -15,6 +15,7 @@ import { HypercoreAdapter } from "@qvac/factstore/hypercore";
 import { exportOKF, importOKF } from "@qvac/factstore/okf";
 import { shareLog, joinLog } from "./kb-sync.js";
 import { makeConsultTool } from "./consult.js";
+import { proposeEdge, vetEdge, recordVote, promoteEdge, rejectEdge, pendingEdges } from "./edge-learning.js";
 import { seedInteractions, makeInteractionTool } from "./medlens.js";
 import { encounterToOKF } from "./audit-okf.js";
 import { BACKEND, QVAC_LLM_GGUF, LMSTUDIO_LLM, LMSTUDIO_URL } from "./config.js";
@@ -91,11 +92,14 @@ async function mergePeerGraph(peerLog) {
     kbStore.fold(peerLog, { predicate: "interacts_with" }).then((r) => r.facts),
     kbStore.fold("kb:medical", { predicate: "interacts_with" }).then((r) => r.facts),
   ]);
-  const localById = new Map(localEdges.map((f) => [f.statementId, JSON.stringify(f.object)]));
+  // Compare object AND trust state — so a peer PROMOTING a candidate (a meta change, same
+  // object) propagates, while a truly-unchanged edge is skipped (no unbounded append).
+  const sig = (f) => JSON.stringify([f.object, f.meta?.proposed, f.meta?.severity, f.confidence]);
+  const localById = new Map(localEdges.map((f) => [f.statementId, sig(f)]));
   let merged = 0;
   for (const f of peerEdges) {
-    if (localById.get(f.statementId) === JSON.stringify(f.object)) continue; // already present, unchanged
-    await kbStore.assert("kb:medical", { statementId: f.statementId, subject: f.subject, predicate: "interacts_with", object: f.object, source: f.source || "peer", meta: f.meta }).catch(() => {});
+    if (localById.get(f.statementId) === sig(f)) continue; // already present, unchanged
+    await kbStore.assert("kb:medical", { statementId: f.statementId, subject: f.subject, predicate: "interacts_with", object: f.object, source: f.source || "peer", confidence: f.confidence, meta: f.meta }).catch(() => {});
     merged++;
   }
   return merged;
@@ -552,6 +556,54 @@ http.createServer(async (req, res) => {
         json(200, { left: peer.log }); return;
       }
       json(404, { error: "unknown kb route" });
+    } catch (e) { json(400, { error: String(e?.message || e) }); }
+    return;
+  }
+  // Edge learning — the privacy-preserving knowledge loop. Clinicians/agents PROPOSE candidate
+  // interaction edges; medpsy adversarially VETS them; a clinician PROMOTES survivors into the
+  // grounded, federated graph (or REJECTS). Every step is recorded in a tamper-evident
+  // kb-learning audit chain. PHI never enters: an edge is two drugs + a generalized note.
+  if (req.url.split("?")[0].startsWith("/api/learn")) {
+    const action = req.url.split("?")[0].split("/").filter(Boolean)[2] || null;
+    const json = (c, o) => { res.writeHead(c, { "content-type": "application/json" }); res.end(JSON.stringify(o)); };
+    const me = identity.getIdentity().publicKey.slice(0, 12);
+    const body = async () => JSON.parse((await readBody(req)).toString() || "{}");
+    try {
+      if (req.method === "GET" && !action) {
+        const pending = await pendingEdges(kbStore);
+        const all = (await kbStore.fold("kb:medical", { predicate: "interacts_with" })).facts;
+        const promoted = all.filter((f) => f.meta?.learned && !f.meta?.proposed && String(f.subject) < String(f.object?.ref))
+          .map((f) => ({ a: f.subject, b: f.object?.ref, severity: f.meta?.severity, note: f.meta?.note, by: f.meta?.promotedBy }));
+        json(200, { pending, promoted }); return;
+      }
+      if (req.method === "POST" && action === "propose") {
+        const { a, b, severity, note, evidence } = await body();
+        const r = await proposeEdge(kbStore, { a, b, severity, note, contributedBy: me, evidence: evidence || "manual" });
+        audit.append("kb-learning", "learn.propose", { id: r.id, a: r.a, b: r.b, severity: r.severity, by: me }, "clinician").catch(() => {});
+        json(200, r); return;
+      }
+      if (req.method === "POST" && action === "vet") {
+        const { edgeId } = await body();
+        const e = (await pendingEdges(kbStore)).find((x) => x.id === edgeId);
+        if (!e) { json(404, { error: "no such candidate edge" }); return; }
+        const verdict = await vetEdge(provider, e);
+        await recordVote(kbStore, edgeId, { by: `vet:${provider.name}`, real: verdict.real, severity: verdict.severity, reason: verdict.reason });
+        audit.append("kb-learning", "learn.vet", { edgeId, real: verdict.real, severity: verdict.severity, by: provider.name }, "model").catch(() => {});
+        json(200, verdict); return;
+      }
+      if (req.method === "POST" && action === "promote") {
+        const { edgeId, severity } = await body();
+        const r = await promoteEdge(kbStore, edgeId, { by: `clinician:${me}`, severity });
+        audit.append("kb-learning", "learn.promote", { edgeId, by: me }, "clinician").catch(() => {});
+        json(200, r); return;
+      }
+      if (req.method === "POST" && action === "reject") {
+        const { edgeId } = await body();
+        const r = await rejectEdge(kbStore, edgeId);
+        audit.append("kb-learning", "learn.reject", { edgeId, by: me }, "clinician").catch(() => {});
+        json(200, r); return;
+      }
+      json(404, { error: "unknown learn route" });
     } catch (e) { json(400, { error: String(e?.message || e) }); }
     return;
   }

@@ -68,7 +68,7 @@ export async function seedInteractions(store, { log = "kb:medical" } = {}) {
 // interaction GRAPH can live in a different store than the patient meds — pass `kbStore` to
 // read the graph from a replicated, shared knowledge store (see src/kb-sync.js) while the
 // PHI meds stay in the local store.
-export async function screenInteractions(store, { patientLog, candidate, kbLog = "kb:medical", kbStore = store }) {
+export async function screenInteractions(store, { patientLog, candidate, kbLog = "kb:medical", kbStore = store, includeProposed = false }) {
   const meds = (await store.fold(patientLog, { predicate: "takes" })).facts;
   const drugIds = meds.map((f) => (f.object && f.object.ref) || drugId(f.object?.name)).filter((d) => d && d !== "drug:");
   const candId = candidate ? drugId(candidate) : null;
@@ -77,6 +77,8 @@ export async function screenInteractions(store, { patientLog, candidate, kbLog =
   // Dedup the bidirectional pair, and (if a candidate is given) keep only edges touching it.
   const seen = new Set(), out = [];
   for (const e of edges) {
+    // NEVER ground on an un-vetted CANDIDATE edge (edge-learning proposals) — only promoted ones.
+    if (!includeProposed && e.meta?.proposed) continue;
     if (candId && e.from !== candId && e.to !== candId) continue;
     const key = [e.from, e.to].sort().join("|");
     if (seen.has(key)) continue;
