@@ -269,7 +269,34 @@ all settle; a returning kiosk catches up what it missed.
 demo. For production, an **allowlist** of authorized device pubkeys (config `members`, or
 `MEDPSY_CONSULT_MEMBERS`) gates everything: only allowlisted, signature-verified devices may auto-join
 and only their votes count — which matters because a member's *promoted* edge federates without
-re-vetting. The roster travels with the shared config file.
+re-vetting. The roster travels with the shared config file. Hardened two ways: a **signed roster**
+(`src/roster.js`, `npm run roster`) makes the allowlist tamper-evident — the clinic admin signs it with
+their device key and each kiosk accepts it only if it verifies against the configured issuer, failing
+**closed** (trust nobody) if a configured roster fails to verify; and a **serve-side gate** — kiosks
+exchange a signed `kb-hello` on connect and hand over their `kb:medical` key (the thing that lets a peer
+replicate the graph) **only** to verified members, so a non-member can't even obtain the data to merge.
+
+## Federated safety intelligence — PHI-free pharmacovigilance
+
+The edge-learning loop federates an *explicit* correction; this federates an **implicit signal** —
+the network detects an emerging interaction **no single kiosk has enough data to see**, still with no
+PHI on the wire (`src/signals.js`, `/signals`).
+
+**The idea.** Each kiosk privately tallies, per drug **pair** seen together during triage, how often a
+concern was flagged — **integers only, never patient data**. It publishes *only its own* tallies on the
+shared `kb:medical` graph (predicate `cooccurs_with`, keyed by its device pubkey) so they replicate like
+any KB fact. Every kiosk **sums the tallies across contributors**; when a pair crosses a threshold
+(≥2 kiosks, enough flagged events, a high enough flagged/seen rate) it **auto-proposes a candidate**
+into the *existing* vet/promote loop — where a human pharmacist still vets and promotes before it ever
+grounds. The agentic triage feeds this automatically at conclusion (the patient's med pairs, flagged
+when the disposition is concerning); the `/signals` view also drives it manually.
+
+**Why it stays clean.** Aggregation folds each replicated **peer log directly** (self's `kb:medical` +
+each `kb:peer:*`) rather than re-mirroring peers' numbers into the local core — so there's no transitive
+double-counting and no unbounded growth from re-asserting others' tallies. Signals use a distinct
+predicate, so grounding/screening (which folds only `interacts_with`) never grounds on a raw signal —
+it can influence triage *only* by surviving the human-gated promotion. What crosses the wire is a drug
+pair + two integers; everything else is the same loop, store, mesh, and audit chain.
 
 ## Security, safety, governance
 - **Network:** device ↔ hospital systems over LAN only; no outbound internet; TLS + mutual auth.
@@ -290,3 +317,6 @@ re-vetting. The roster travels with the shared config file.
 7. **+ Vision, P2P escalation, monitoring:** camera red-flags; delegate hard cases; drift/bias dashboards.
 8. **+ Federated edge-learning mesh:** corrections → distilled, jury-vetted, signed knowledge that federates
    kiosk-to-kiosk (opt-in membership), no PHI on the wire. *(Built — see the section above + `/mesh`.)*
+9. **+ Federated safety intelligence:** PHI-free pharmacovigilance — per-kiosk de-identified co-occurrence
+   tallies summed across the mesh; a crossed threshold auto-proposes into the human-gated learning loop.
+   Hardened mesh (signed roster, serve-side gating). *(Built — see the section above + `/signals`.)*

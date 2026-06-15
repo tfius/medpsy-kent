@@ -1736,3 +1736,39 @@ re-prompts the gated exchange so a newly-added member picks up the key on the ne
 (2 members + 1 outsider, fully-synthetic drug pair so base knowledge can't confound): the two members
 mesh and ground the federated edge; the outsider gets `peers=0` and never grounds it. Open mesh (no
 allowlist) still auto-meshes in ~4s and federates normally.
+
+### Federated safety intelligence — PHI-free pharmacovigilance (phase 9, the "big thing")
+The edge-learning loop federates an *explicit* clinician correction. This federates an *implicit*
+signal: the mesh now detects an emerging drug-drug interaction that **no single kiosk has enough data to
+see** — still with zero PHI on the wire (`src/signals.js`, `/api/signals`, `/signals`).
+
+**Mechanism.** Each kiosk privately tallies, per drug **pair** seen together during triage, a `seen`
+count and a `flagged` count (a concern was raised while both were present) — *integers only, never
+patient data*. It publishes *only its own* tally on the shared `kb:medical` graph as a fact with
+predicate `cooccurs_with`, statementId `sig:<pub12>:<pairKey>`, `meta:{seen,flagged,contributor}`. Those
+replicate to peers like any KB fact. Every kiosk then **sums tallies across contributors**:
+`aggregateSignals` folds self's `kb:medical` PLUS each replicated `kb:peer:*` log **directly**, dedups by
+statementId keeping the freshest `updatedAt`, groups by pair, sums `seen`/`flagged` over *distinct*
+contributors. `detectSignals` keeps pairs crossing a threshold — **`minContributors:2`** (the federation
+requirement — one kiosk can't trigger), `minFlagged:3`, `minRate:0.3` — and not already an edge.
+`autoProposeSignals` turns a crosser into a candidate via the *existing* `proposeEdge`, so it lands in
+the same human-gated vet → promote loop; severity is heuristic from the rate, the note is a generalized
+PHI-free summary ("federated co-occurrence signal: N concerns in M co-prescriptions across K kiosks").
+
+**Design choices.** (1) Signals ride the *existing* `kb:medical` core — no second swarm/announce. (2)
+Aggregation folds peer logs *directly* rather than re-mirroring peers' numbers into the local core, which
+avoids transitive double-counting and unbounded growth (only own observes append to own core). (3) A
+*distinct predicate* — grounding/screening folds only `interacts_with`, so a raw signal **never grounds
+on its own**; it can influence triage only by surviving the human promotion. (4) `observeCooccurrence`
+uses a per-store lock (read-modify-write of the counter), mirroring edge-learning's `withStoreLock`.
+
+**Wiring.** `/api/signals` GET (network status: aggregate + crossing + threshold), POST `observe`
+(`{drugs[]}` or `{a,b}` + `adverse`), POST `scan` (detect + auto-propose, audited as `signal.propose`).
+The **agentic triage conclusion** auto-observes the patient's med pairs (`adverse` = a concerning
+disposition by regex on band/disposition/recommendation) — so *real* triages feed the signal, not just
+the demo; this is additive and never touches the scripted 9-step flow. Web: 📡 **Signals** (`/signals`)
+— log encounters across kiosks, watch each kiosk's *network total* (it sums the mesh) cross the
+threshold, scan → propose. `scripts/federated_signals_smoke.mjs` proves solo-doesn't-cross,
+federated-crosses, known-excluded, auto-proposed (PASS). Verified live (2 kiosks, synthetic pair): A's
+aggregate summed both (seen=5 flagged=4 contributors=2 rate=0.8), crossed, scan auto-proposed a PHI-free
+candidate into the pending learn list.

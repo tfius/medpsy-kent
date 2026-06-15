@@ -162,6 +162,7 @@ learning** network — all on-device, no cloud. Web pages (top bar):
 | 📊 Trust | on-device / no-cloud proof + the agent eval (`npm run agent-eval`) scores + grounding receipts |
 | ✨ Demo (`/demo`) | one-screen walkthrough of the edge-learning loop (before/after "does the agent flag it?") |
 | 🕸 Mesh (`/mesh`) | N kiosks side by side — teach on any, watch the others learn live; 🔒/🔓 membership toggle |
+| 📡 Signals (`/signals`) | **federated safety intelligence** — log encounters across kiosks; the network total crosses a threshold and auto-proposes a candidate (PHI-free pharmacovigilance) |
 | 🛡 Audit | per-encounter tamper-evident hash-chained log (export / P2P send / lossy OKF view) |
 
 ### Edge-learning loop (federated, PHI-free)
@@ -171,6 +172,23 @@ kiosk and their agents ground on it (~1 s, live). Candidates never ground until 
 names + a de-identified note ever cross the wire; every step lands in a tamper-evident `kb-learning`
 chain. Federated learning **without gradients, a cloud, or a data leak.** Verified end-to-end across 2–3
 real kiosks (`scripts/federated_learning_smoke.mjs`, the live `/mesh` demo).
+
+### Federated safety intelligence (PHI-free pharmacovigilance)
+The same mesh also surfaces an **emerging interaction no single kiosk has enough data to see**. Each
+kiosk privately tallies, per drug **pair** seen together in triage, how often a concern was flagged
+(**integers only, never PHI**); the network **sums the tallies across kiosks**, and when a pair crosses
+a threshold (≥2 kiosks, enough flagged, high enough rate) it **auto-proposes a candidate** into the same
+human-gated vet → promote loop. Raw signals never ground on their own. Agentic triage feeds it
+automatically; the **📡 Signals** view drives it by hand. Verified by `scripts/federated_signals_smoke.mjs`
+(solo-doesn't-cross, federated-crosses, auto-proposed) + a live 2-kiosk run.
+
+### Hardened mesh (production trust)
+Membership is tamper-evident and gated at the source. The clinic admin signs a **roster** with their
+device key — `npm run roster -- --profile admin --code CLINIC --members <pubA>,<pubB>` — and each kiosk
+(`MEDPSY_ROSTER_ISSUER=<admin-pub>`, roster via config or `--roster <file>`) accepts it only if it
+verifies against that issuer, **failing closed** (trust nobody) on a bad roster. And a signed `kb-hello`
+handshake means a kiosk hands its `kb:medical` key (what lets a peer replicate the graph) **only** to
+verified members — a non-member can't even obtain the data.
 
 ### Running a mesh
 Each kiosk is **one command** — a `--profile` derives all its storage + device identity:
@@ -214,6 +232,8 @@ a config file (above) over setting these by hand. Copy `.env.example` → `.env`
 | `MEDPSY_PROFILE` | — | namespace a kiosk's state under `data/profiles/<name>/` (or use `--profile`) |
 | `MEDPSY_CONSULT_CODE` | — | the mesh / jury network code (set ⇒ this kiosk asks + answers peers + shares its graph) |
 | `MEDPSY_CONSULT_MEMBERS` | — | comma-sep device pubkeys; set ⇒ membership enforced (else open). Usually set via the config `members` |
+| `MEDPSY_ROSTER_ISSUER` | — | admin device pubkey that signs the membership roster; set ⇒ allowlist comes from a signed roster (fails closed on a bad one) |
+| `MEDPSY_ROSTER_FILE` | — | path to a signed roster JSON (or pass the object as config `roster`); built with `npm run roster` |
 | `MEDPSY_KB_DIR` / `MEDPSY_FACTS_DIR` / `MEDPSY_AUDIT_DIR` | `kb-cores/` / `facts/` / `audit/` | on-device stores (derived from `--profile`) |
 | `MEDPSY_DEVICE_KEY_FILE` / `MEDPSY_DEVICE_NAME` | `data/device-key.json` / hostname | ed25519 identity (derived from `--profile`) |
 | `MEDPSY_KB_SYNC_MS` | `30000` | mesh catch-up backstop interval (live merge is event-driven) |

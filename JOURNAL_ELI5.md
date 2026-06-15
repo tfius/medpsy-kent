@@ -863,6 +863,19 @@ kiosk that isn't on the list never even gets a copy of the notebook, so it has n
 tested it with two approved kiosks and one gate-crasher — the two friends shared a made-up drug warning
 between them, and the gate-crasher saw nothing at all.
 
+Then we built the big one. So far the kiosks learn when a pharmacist *tells* them something. Now they
+can also notice a problem *nobody told them about yet*. Each kiosk quietly keeps a tally: "how many
+times did I see these two medicines together, and how many of those times did something look worrying?"
+— just numbers, never anything about the actual person. On its own, one kiosk's handful of cases is just
+noise. But the kiosks add their tallies together across the whole network, and when a particular pair of
+medicines racks up enough worrying cases across *enough different kiosks*, the network raises its hand:
+"this pairing keeps causing concern — should it be a known interaction?" That suggestion goes into the
+exact same review queue a pharmacist already approves before anything is trusted. So the network can spot
+an emerging drug interaction that no single pharmacy had enough cases to notice — and the only things
+that ever leave a device are two medicine names and two counts. We proved it both in a quick test and
+live across two kiosks: neither had enough alone, together they crossed the line, and the suggestion
+popped up for a human to approve.
+
 ---
 
 ## The whole story in three sentences
