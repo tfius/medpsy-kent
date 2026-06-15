@@ -820,6 +820,20 @@ enough never to loop or double-count. It's the difference between "device A can 
 whole clinic network that quietly keeps each other up to date" — still with nothing but drug names ever
 leaving any device.
 
+## Session 35 — A wall of kiosks, and a bouncer at the door
+
+Two improvements. First, a real fix: when two kiosks switched on at the exact same second, they
+sometimes couldn't find each other (each waited for the other to speak first). We made them announce
+themselves firmly and then look again — now they pair up in about five seconds. Second, and important
+for the real world: by default any kiosk that knows the shared code can join the network and have its
+lessons trusted — fine for a demo, not for a hospital. So we added an opt-in **guest list**: each
+kiosk signs its introduction (so nobody can impersonate another), and you can switch on a mode where
+only kiosks on the approved list may join the network or vote on lessons. We proved it: with two
+kiosks on the list, a third uninvited kiosk was politely turned away. And we built a **wall-of-kiosks
+view** — three (or more) side by side: teach a lesson on any one, and watch the others flip from "no"
+to "yes" in about a second, with on-screen buttons to lock the network down to approved members or
+open it back up. The clinic network is now both watchable and, when you need it, gated.
+
 ---
 
 ## The whole story in three sentences

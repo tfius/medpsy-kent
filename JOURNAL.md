@@ -1652,3 +1652,23 @@ spreads everything with no loops. Verified live: 2 kiosks auto-mesh with no pair
 learns (~500 ms) **and** teach on B → A learns; 3 kiosks → full mesh (2 peers each), teach on C → A and
 B both learn, and A's jury collects **signed votes from both B and C**. The base idea is now a real
 N-node network, not a pair.
+
+## 2026-06-15 — Mesh membership (opt-in trust) + a 3-column demo, and an auto-mesh reliability fix
+
+**Reliability (review fix).** Two kiosks started at the same instant reliably *failed* to auto-mesh —
+a hyperswarm star formed around whoever joined last, because their simultaneous announce/lookup raced
+(verified: A↔B still 0 peers at 100 s). `createConsultClient` now `flushed()`s the join and re-runs
+discovery after 2 s; simultaneous A↔B now auto-mesh in **~5 s**.
+
+**Opt-in production membership.** The real trust gap: a member's *promoted* edge federates WITHOUT
+re-vetting, so an open mesh trusts anyone who knows the code. Now the `kb-announce` is **signed** (the
+receiver verifies the announcer owns its pubkey), and an **allowlist** — `MEDPSY_CONSULT_MEMBERS` or a
+runtime `POST /api/consult/members {keys}` — gates the auto-mesh: only allowlisted, signature-verified
+devices may join, and only their votes count in the jury. Unset = OPEN (demo). `/api/backend` reports
+`devicePublicKey` + membership. Verified: with `{A,B}` allowlisted, kiosk C is rejected ("rejected
+non-member"), A/B unaffected. (Manual `/api/kb/join` stays an operator override.)
+
+**3-column mesh demo (`/mesh`, 🕸).** N kiosks side by side — teach on ANY, watch the OTHERS flip "flags
+it NO→YES" live (~1 s) with the jury shown; a per-kiosk peers/membership status row; and 🔒 Enforce /
+🔓 Open buttons that allowlist (or reopen) the running kiosks at runtime. Bidirectional learning ~500 ms
+each way. New: `web/src/pages/MeshDemo.tsx`.
