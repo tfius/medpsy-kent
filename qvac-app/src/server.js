@@ -179,6 +179,7 @@ if (CONSULT_CODE) {
     answerFn: async (q, ctx) => (await provider.complete([{ role: "system", content: CONSULT_SYS }, { role: "user", content: ctx ? `${q}\n\nContext: ${ctx}` : q }], { temperature: 0.3 })).trim(),
     vetFn: async (edge) => (await import("./edge-learning.js")).vetEdge(provider, edge),
     announce: myKbKey,
+    isMember: (pub) => isMember(pub), // serve our KB key only to verified members
     onAnnounce: (key, from, fromOk) => {
       if (!fromOk) return; // unsigned/forged announce — ignore
       if (!isMember(from?.publicKey)) { console.log(`[kb-mesh] rejected non-member ${String(from?.publicKey).slice(0, 12)}…`); return; }

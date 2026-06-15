@@ -140,7 +140,11 @@ export function consultVetAll(code, edge, { timeoutMs = 15000, collectMs = 6000,
 // `announce` (a string, e.g. this kiosk's KB core key) is gossiped to every peer on connect;
 // `onAnnounce(value, from)` fires for each peer's announce — used to auto-discover the mesh
 // (a kiosk learns peers' KB keys over the same swarm and joins their graphs).
-export function createConsultClient(code, { vetFn = null, answerFn = null, announce = null, onAnnounce = null, bootstrap = BOOTSTRAP } = {}) {
+// `isMember(pubkey)` (default: everyone) gates SERVING: we hand our `announce` (KB key) only to
+// peers we've verified as members — so a non-member never learns the key and can't replicate our
+// graph (serve-side gating). The handshake: each side sends a signed `kb-hello` (identity) on
+// connect; on a member's hello we reply with our `kb-announce` (key).
+export function createConsultClient(code, { vetFn = null, answerFn = null, announce = null, onAnnounce = null, isMember = () => true, bootstrap = BOOTSTRAP } = {}) {
   const serves = !!(vetFn || answerFn);
   const swarm = new Hyperswarm({ bootstrap });
   const conns = new Set();
@@ -160,6 +164,11 @@ export function createConsultClient(code, { vetFn = null, answerFn = null, annou
     onJsonLine(conn, (msg) => {
       if (msg.kind === "consult-response" && pending.has(msg.id)) pending.get(msg.id)(msg);
       else if (msg.kind === "consult-request" && msg.id && serves) serve(conn, msg);
+      else if (msg.kind === "kb-hello" && msg.from?.publicKey) {
+        // Verify identity, then hand our KB key only if the peer is a member (serve-side gate).
+        const ok = verify(`kb-hello:${msg.from.publicKey}`, msg.sig || "", msg.from.publicKey);
+        if (ok && isMember(msg.from.publicKey)) announceTo(conn);
+      }
       else if (msg.kind === "kb-announce" && onAnnounce && msg.key) {
         // The signature proves the announcer owns `from.publicKey` AND committed to this key —
         // so membership (allowlist) decisions can trust `from`. Pass fromOk to the policy.
@@ -167,21 +176,23 @@ export function createConsultClient(code, { vetFn = null, answerFn = null, annou
         onAnnounce(msg.key, msg.from, fromOk);
       }
     });
-    announceTo(conn);
+    helloTo(conn);
     for (const wire of active.values()) { try { sendJson(conn, wire); } catch { /* dead conn */ } } // catch late jurors
   });
+  const helloTo = (conn) => { try { sendJson(conn, { kind: "kb-hello", from: getIdentity(), sig: sign(`kb-hello:${getIdentity().publicKey}`) }); } catch { /* dead conn */ } };
   const announceTo = (conn) => { if (announce) { try { sendJson(conn, { kind: "kb-announce", key: announce, from: getIdentity(), sig: sign(`kb-announce:${announce}`) }); } catch { /* dead conn */ } } };
 
   // SELF-HEALING discovery: two peers that join at the same instant can miss each other's first
-  // lookup (a star forms around whoever joined last), and a connection can drop a kb-announce.
-  // So we (a) re-run discovery on an escalating-then-steady cadence to keep finding peers, and
-  // (b) re-announce our key to all current conns each tick (heals a missed announce). Cheap.
+  // lookup (a star forms around whoever joined last), and a connection can drop a message. So we
+  // (a) re-run discovery on an escalating-then-steady cadence to keep finding peers, and (b)
+  // re-send our hello to all conns each tick — which re-prompts the gated key exchange (a member
+  // replies with its key; a newly-added member now gets ours). Cheap.
   const disc = swarm.join(topicFor(code), { server: serves, client: true });
   disc.flushed().catch(() => {});
   let healTimer = null, tries = 0;
   const heal = () => {
     try { disc.refresh?.({ client: true, server: serves }); } catch { /* ignore */ }
-    for (const c of conns) announceTo(c);
+    for (const c of conns) helloTo(c);
     tries++;
     healTimer = setTimeout(heal, tries < 5 ? 4000 + tries * 2000 : 30000); // 6,8,10,12s → then every 30s
   };
