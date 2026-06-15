@@ -846,6 +846,14 @@ its own storage and identity from that one name. Shared settings can live in a s
 instead of being repeated everywhere. Same power, far less fiddly — the kind of thing that makes the
 difference between a demo only the author can run and one anyone can.
 
+To round it off: starting a kiosk is now literally `npm run kiosk -- --profile clinic-b --port 8788`,
+and the "guest list" of approved kiosks now lives right inside that one shared settings file — so you
+hand every kiosk the same little file and they all know both the network's name and exactly who's
+allowed in. (There's a one-liner, `npm run identity`, to print a kiosk's ID so you can add it to the
+list.) We also stress-tested the network: a kiosk that joins late catches up on everything it missed,
+and a kiosk that's switched off and back on rejoins, remembers what it knew, and picks up whatever it
+missed while it was away.
+
 ---
 
 ## The whole story in three sentences

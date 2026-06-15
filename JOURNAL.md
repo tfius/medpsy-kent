@@ -1691,3 +1691,16 @@ flag instead of five path vars; plus `--port` / `--consult-code` / `--members` /
 Precedence: CLI flag > env > config file > profile default, so existing env still overrides. The
 two-kiosk script now starts each kiosk with `--profile demo-A --port 8787 --consult-code … --no-speech`
 instead of 8 env vars. Verified end-to-end.
+
+**Finishers.** `npm run kiosk -- --profile <name> --port <n>` (flags forwarded to the bootstrap) is now
+the one-liner to run a kiosk. And **membership travels with the config**: a shared `medpsy.config.json`
+`{ "consultCode": …, "members": ["devpubA","devpubB"] }` enforces the allowlist directly from the file
+(the bootstrap maps `members` → `MEDPSY_CONSULT_MEMBERS`) — distribute one file to every kiosk and the
+network code + roster come together. `npm run identity -- --profile <name>` prints that kiosk's device
+pubkey (clean stdout; config logs moved to stderr) so you can build the roster without starting the
+server. Verified: A,B in the roster mesh; a kiosk C on the same code but absent from the roster is
+rejected. Also: I tested connect/disconnect thoroughly — a late-joining kiosk meshes and catches up all
+existing + new knowledge bidirectionally; a killed kiosk doesn't hang its peers, auto-reconnects on
+restart, remembers its own knowledge, and catches up what it missed while down (the only rough edges
+are a ~tens-of-seconds stale peer count after a hard kill, and no auto-prune of a permanently-gone peer
+— both deliberate-resilience trade-offs, not correctness bugs).
