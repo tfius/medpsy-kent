@@ -1,7 +1,14 @@
 {
-  "_comment": "Optional. Copy to medpsy.config.json (auto-loaded from cwd) or pass --config <path>. CLI flags and env vars override these. Per-kiosk paths/identity come from --profile <name>.",
+  "_comment": "Optional shared config. Copy to medpsy.config.json (auto-loaded from cwd) or pass --config <path>. CLI flags and env vars override these. Per-kiosk paths/identity come from --profile <name>.",
+  "_run": "npm run kiosk -- --profile clinic-a --port 8787   (this config supplies backend / consultCode / members)",
+
   "backend": "lmstudio",
   "consultCode": "CLINIC-NET",
   "noSpeech": false,
-  "members": []
+
+  "_members": "OMIT 'members' for an OPEN mesh (anyone with the code joins — fine for a demo). Set it to the authorized kiosks' DEVICE public keys to ENFORCE membership: only these may auto-join the mesh and only their votes count. Get each kiosk's key with `npm run identity -- --profile <name>`. Distribute this one file to every kiosk — membership travels with the config.",
+  "members": [
+    "PASTE_KIOSK_A_DEVICE_PUBKEY_HERE",
+    "PASTE_KIOSK_B_DEVICE_PUBKEY_HERE"
+  ]
 }

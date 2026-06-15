@@ -21,8 +21,8 @@ const cfgArg = flag("config");
 const cfgPath = (cfgArg && cfgArg !== "true") ? cfgArg : path.join(process.cwd(), "medpsy.config.json");
 let file = {};
 try {
-  if (fs.existsSync(cfgPath)) { file = JSON.parse(fs.readFileSync(cfgPath, "utf8")); console.log(`[config] loaded ${cfgPath}`); }
-} catch (e) { console.warn(`[config] ignoring ${cfgPath}: ${e?.message || e}`); }
+  if (fs.existsSync(cfgPath)) { file = JSON.parse(fs.readFileSync(cfgPath, "utf8")); console.error(`[config] loaded ${cfgPath}`); }
+} catch (e) { console.error(`[config] ignoring ${cfgPath}: ${e?.message || e}`); }
 
 // CLI flag > existing env > config-file value
 const set = (env, flagVal, fileVal) => {
@@ -45,5 +45,5 @@ if (profile) {
   process.env.MEDPSY_AUDIT_DIR ??= path.join(dir, "audit");
   process.env.MEDPSY_DEVICE_KEY_FILE ??= path.join(dir, "device-key.json");
   process.env.MEDPSY_DEVICE_NAME ??= profile;
-  console.log(`[config] profile "${profile}" → ${dir}`);
+  console.error(`[config] profile "${profile}" → ${dir}`);
 }
