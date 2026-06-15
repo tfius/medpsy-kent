@@ -130,3 +130,23 @@ archives — SenseVoice STT + Cantonese VITS TTS). The parakeet.cpp engine must 
 | `MEDPSY_PARAKEET_BIN` / `_LIB` / `MEDPSY_STT_GGUF` | `models/…` | path | parakeet-cli, libparakeet, Nemotron GGUF |
 | `MEDPSY_SHERPA_PY` | kokoro venv python | path | Python with `sherpa-onnx` (Cantonese STT/TTS) |
 | `MEDPSY_SENSEVOICE_DIR` / `MEDPSY_CANTO_TTS_DIR` | `models/…` | path | Cantonese SenseVoice / VITS model dirs |
+
+## 6. CLI (`medpsy`) — signing, config, bundles
+
+One entrypoint (`src/cli.js`, `bin: medpsy` / `medpsy-triage`) with subcommands. Bare args
+run a triage (back-compat). `--profile <name>` / `--config <path>` work on every command.
+
+| Command | What it does |
+|---|---|
+| `node src/cli.js init` (`npm run init`) | **interactive** config scaffolder → `medpsy.config.json` (backend, port, device name, profile, mesh code, members, speech). `--yes` non-interactive, `-o <file>`, `--force` |
+| `node src/cli.js keygen` (`npm run keygen`) | create/print this device's **ed25519** signing key (`--force` regenerates) |
+| `node src/cli.js identity [--json]` | print this device's public key |
+| `node src/cli.js roster --code C --members a,b [--out f]` | sign a membership **roster** (admin) |
+| `node src/cli.js export <encounterId> [out.json]` | write a **signed, tamper-evident** audit bundle |
+| `node src/cli.js verify <bundle.json>` | check a bundle's hash-chain **+ device signature** (exit 0/1) |
+| `node src/cli.js import <bundle.json>` | verify **+ store** a received bundle (**fails closed**) |
+
+Signing keys live at `data/device-key.json` (or `data/profiles/<name>/…` with `--profile`),
+mode 0600, auto-created on first use. Bundles are signed over `medpsy-audit:<encounterId>:<head>`
+so renaming/tampering invalidates the signature. `verify`/`import` reuse the same `audit.js` +
+`identity.js` the server uses, so the CLI and the `/api/audit` endpoints agree.

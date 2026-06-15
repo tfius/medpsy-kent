@@ -5,6 +5,7 @@
   "description": "Local-first community-pharmacy triage with ICD-10 RAG grounding, built on the QVAC SDK. Loads medpsy locally, triages a patient, and verifies the ICD-10 code against an on-device index.",
   "license": "MIT",
   "bin": {
+    "medpsy": "src/cli.js",
     "medpsy-triage": "src/cli.js"
   },
   "scripts": {
@@ -13,8 +14,10 @@
     "serve": "node src/server.js",
     "serve:qvac": "MEDPSY_BACKEND=qvac node src/server.js",
     "kiosk": "node src/server.js",
-    "identity": "node scripts/print_identity.mjs",
-    "roster": "node scripts/roster.mjs",
+    "init": "node src/cli.js init",
+    "keygen": "node src/cli.js keygen",
+    "identity": "node src/cli.js identity",
+    "roster": "node src/cli.js roster",
     "agent-eval": "node scripts/agent_eval.mjs",
     "check": "node scripts/preflight.mjs",
     "download-models": "node scripts/preflight.mjs --download",

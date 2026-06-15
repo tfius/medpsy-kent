@@ -42,6 +42,10 @@ export function getIdentity() {
   return { publicKey: k.publicKey, name: k.name || DEVICE_NAME };
 }
 
+// Where this device's keypair lives (honors MEDPSY_DEVICE_KEY_FILE / --profile). For the CLI.
+export function keyFilePath() { return KEY_FILE; }
+export function keyExists() { try { return fs.existsSync(KEY_FILE); } catch { return false; } }
+
 // Sign a UTF-8 string with this device's key -> hex signature.
 export function sign(message) {
   const k = loadOrCreate();
