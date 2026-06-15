@@ -72,8 +72,45 @@ function download(d) {
   execFileSync("curl", ["-L", "--fail", "--progress-bar", "-o", d.dest, d.url], { stdio: "inherit" });
 }
 
+// Local `file:` sub-packages (e.g. @qvac/factstore) are symlinked into node_modules by
+// `npm install`. A `git pull` updates the source but NOT the link → the app crashes with
+// ERR_MODULE_NOT_FOUND. Auto-heal so a pull "just works": recreate any missing link
+// (idempotent, no network, no full install). Generic — covers any current/future file: dep.
+function ensureLocalPackageLinks() {
+  let pkg; try { pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8")); } catch { return []; }
+  const symType = process.platform === "win32" ? "junction" : "dir";
+  const out = [];
+  for (const [name, spec] of Object.entries(pkg.dependencies || {})) {
+    if (typeof spec !== "string" || !spec.startsWith("file:")) continue;
+    const target = path.resolve(ROOT, spec.slice(5));                  // e.g. packages/factstore
+    const link = path.join(ROOT, "node_modules", ...name.split("/"));  // e.g. node_modules/@qvac/factstore
+    if (ex(path.join(link, "package.json"))) { out.push({ name, status: "ok" }); continue; }
+    if (!ex(path.join(target, "package.json"))) { out.push({ name, status: "no-source", target }); continue; }
+    try {
+      fs.mkdirSync(path.dirname(link), { recursive: true });
+      try { fs.rmSync(link, { recursive: true, force: true }); } catch { /* stale link/dir */ }
+      const rel = path.relative(path.dirname(link), target);          // ../../packages/factstore
+      fs.symlinkSync(rel, link, symType);
+      out.push({ name, status: "healed", rel });
+    } catch (e) { out.push({ name, status: "fail", error: e?.message || String(e) }); }
+  }
+  return out;
+}
+
 async function main() {
   console.log(`\n${c.b}medpsy kiosk — preflight${c.x}\n`);
+
+  const links = ensureLocalPackageLinks();
+  if (links.length) {
+    console.log(`${c.b}Local packages${c.x} ${c.d}(file: deps linked into node_modules)${c.x}`);
+    for (const l of links) {
+      if (l.status === "ok") row(true, l.name, "linked");
+      else if (l.status === "healed") console.log(`  ${c.g}✓${c.x} ${l.name}  ${c.d}auto-linked → ${l.rel} (was missing after a pull)${c.x}`);
+      else if (l.status === "no-source") row(false, l.name, undefined, `source missing at ${path.relative(ROOT, l.target)} — did the pull complete?`);
+      else row(false, l.name, undefined, `could not link (${l.error}) — run: npm install`);
+    }
+    console.log("");
+  }
 
   if (DL) {
     for (const d of DOWNLOADS) {
@@ -86,6 +123,7 @@ async function main() {
   }
 
   let ok = true;
+  for (const l of links) if (l.status !== "ok" && l.status !== "healed") ok = false; // a missing local pkg fails preflight
   console.log(`${c.b}LLM${c.x} — medpsy via LM Studio (or QVAC SDK)`);
   const lm = await lmStudioOk();
   ok &= row(lm.ok, "LM Studio", lm.detail, "start LM Studio, load medpsy-4b + nomic-embed, enable server on :1234");
