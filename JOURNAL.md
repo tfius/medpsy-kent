@@ -1827,3 +1827,46 @@ supervisor's `escalated` flag. Web: 🩺 AI Triage shows a peer second-opinion c
 deterministic scenarios** — escalate, keep, no-de-escalate, **follow-up question**, **budget-exhausted →
 escalate**, **uncertain → peer raises to URGENT**. PASS. (Committed separately from an unrelated `medpsy`
 CLI change that was sitting in the tree.)
+
+### Hardening the gate — a second review pass (all in the safety direction)
+A focused adversarial review of the gate (an independent reviewer agent over the diff) confirmed the core
+invariant holds — no path silently de-escalates, every path finalizes — but surfaced real edge cases.
+Fixed the substantive ones:
+- **Off-enum supervisor label was silently dropped.** `escalate` used `ACUITY[v.decision] ?? -1`, so a
+  disagreeing verdict whose label wasn't a known enum ("A&E", "999", "refer to ED") scored acuity −1 and
+  *kept the ROUTINE band*. Added `normDecision()` (a synonym map → canonical enum) and treat an
+  unrecognizable **disagreement** as a CONSERVATIVE escalation to URGENT rather than dropping it.
+  Escalations now also floor severity at ≥6.
+- **A reviewer outage disabled BOTH safety layers.** When `superviseConclusion` fails open (`agree:true`
+  on error), the peer-consult gate — keyed off `escalate` — also skipped. Now a reviewer failure marks the
+  case *uncertain* (`reviewerFailed`) so the peer fallback still fires.
+- **Peer heuristic brittle + capped at URGENT.** Now parses the AGREE/ESCALATE prefix the prompt requests
+  (not a whole-body substring), and a peer that clearly signals an emergency (999/anaphylaxis/A&E/…) can
+  raise to **EMERGENCY**, not just URGENT. Still only ever raises.
+- **Concurrency.** Added a per-encounter in-flight guard (`triageInFlight`) so a double-tap / retried POST
+  for the same encounter is rejected (409) instead of racing on the shared session + re-ask budget.
+The smoke is now **9 deterministic scenarios** (added off-enum→EMERGENCY, garbled→conservative-URGENT,
+peer→EMERGENCY). PASS. (Kept the re-ask budget *per-encounter* by design — resetting per-conclusion would
+reintroduce the non-termination the budget prevents.)
+
+### Live frontend verification (Chrome, against the running kiosk)
+Brought up the API (`:8787`, LM Studio / medpsy-4b) + web (`:5174`) and drove the whole UI in a browser —
+not just type-checks. Every surface works; **zero console errors** across the session:
+- **AI Triage:** a chest-pain presentation concluded **EMERGENCY 10/10 RED** with a verified on-device ICD
+  (**I21.9**); the supervisor correctly *agreed* (didn't over-escalate a real emergency) and the new
+  "🔍 Independent safety review agreed" note rendered. The **audit timeline** shows `atriage.critique` (#8)
+  sitting between the reasoning (#7) and the EMERGENCY outcome (#9), each event hash-chained — the gate is
+  fully in the tamper-evident chain.
+- **Agent:** the warfarin+ibuprofen question showed reasoning + a visible `screen_interactions` tool call +
+  a grounded streamed answer, and the page surfaced the triage's proposed `diagnosed` fact for pharmacist
+  confirmation (cross-flow integration).
+- **Knowledge:** 24 facts, OKF export/import, P2P federate; a live **Vet** returned "REAL (major) —
+  itraconazole CYP3A4…" and recorded the vote ("vetted locally only" — single kiosk).
+- **Trust:** on-device proof (NO CLOUD) + agent eval (67% pass / 92% grounded).
+- **Signals:** logging a "+concern" flipped Kiosk A to *watching* and updated the live network aggregate
+  (1/1, 100%, 1 kiosk) — correctly *not* crossing the ≥2-kiosk threshold solo.
+- **Audit:** every encounter verifies **✓ intact**; the timeline renders each event with actor + "raw+hash".
+- **Scripted 9-step triage** (the core product, untouched by all the agentic work): advances Welcome →
+  Consent & Capacity correctly. **Demo / Mesh** render (mesh shows B/C offline — only one kiosk up).
+Caveat: the screenshot tool stalls on `document_idle` while the kiosk is polling (the known localhost-vite
+quirk) — it captures once the page settles; the console-message tool is unaffected.

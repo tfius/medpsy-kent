@@ -899,6 +899,22 @@ colleague can only make the call *more* cautious, never less. None of this sends
 just the medical question. We checked all of it with six scripted situations, including the new
 "ask one more question" and "the colleague says escalate" cases, and it behaved exactly as intended.
 
+Then we tried hard to break our own safety check, and tightened the bolts. We found a few ways it could
+have quietly let something slip: if the reviewer phrased "send to A&E" in words our code didn't recognise,
+the warning could be ignored — so now any disagreement it can't parse is treated as "play it safe and bump
+it up." If the reviewer itself had a glitch, we used to skip the "phone a colleague" step too — now a
+glitch makes the kiosk *more* likely to call for a second opinion, not less. And we made sure a colleague
+who shouts "this is an emergency" can push the case all the way to emergency, not just part-way. None of
+these changes can ever make a case *less* urgent — only the same or more. We re-ran our test set (now nine
+scenarios) and it passed.
+
+Finally, we actually used the app in a real browser, like a person would, and clicked through everything.
+The AI interview correctly called a fake heart-attack an emergency and the safety reviewer agreed; the
+"ask MedPsy a question" page looked up a real drug-interaction; the knowledge page let us double-check a
+proposed new warning; the tamper-proof logbook showed every step — including the safety review — sealed in
+order. The plain step-by-step version (the main app) still walks through sign-in and consent just fine.
+Everything worked, with no errors.
+
 ---
 
 ## The whole story in three sentences
