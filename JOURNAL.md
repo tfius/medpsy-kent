@@ -1704,3 +1704,11 @@ existing + new knowledge bidirectionally; a killed kiosk doesn't hang its peers,
 restart, remembers its own knowledge, and catches up what it missed while down (the only rough edges
 are a ~tens-of-seconds stale peer count after a hard kill, and no auto-prune of a permanently-gone peer
 — both deliberate-resilience trade-offs, not correctness bugs).
+
+**Docs.** Brought the reference docs up to date with the agent/federation work: `README.md` gained an
+"agent, the learning loop & the mesh" section (web-pages table, the edge-learning loop, running a mesh
+with `npm run kiosk -- --profile X --port N`, the shared `medpsy.config.json` with `consultCode` +
+`members`, `npm run identity`), an extended env-vars table, and an updated roadmap; `ARCHITECTURE.md`
+gained a "Federated learning — the edge-learning mesh" section (the loop, PHI-free-by-construction,
+hyperswarm topology/discovery, transitive+convergent gossip, event-driven merge + self-heal, opt-in
+signed membership) and a phase 8.
