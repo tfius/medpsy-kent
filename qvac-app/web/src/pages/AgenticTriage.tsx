@@ -44,6 +44,7 @@ export default function AgenticTriage() {
       else if (e.type === "tool_call") patchAgent((a) => { a.tools = [...a.tools, { id: e.id, name: e.name, args: e.args }]; });
       else if (e.type === "tool_result") patchAgent((a) => { a.tools = a.tools.map((t) => t.id === e.id ? { ...t, result: e.result } : t); });
       else if (e.type === "question") { patchAgent((a) => { a.text = e.text; }); if (autoSpeak) speak(e.text); }
+      else if (e.type === "critique") { const v = e.verdict; if (v && v.agree === false) patchAgent((a) => { a.reasoning = `${a.reasoning}\n🔍 safety review: escalate → ${v.decision || "?"} (${v.rationale || ""})`.trim(); }); }
       else if (e.type === "conclusion") { setOutcome(e.outcome); patchAgent((a) => { a.text = "✓ Assessment ready."; }); }
       else if (e.type === "error") patchAgent((a) => { a.text = `⚠ ${e.error}`; });
     }, { reset, signal: ac.signal });
@@ -121,8 +122,20 @@ export default function AgenticTriage() {
 
       {outcome && (
         <>
+          {outcome.supervised?.escalated && (
+            <div className="card" style={{ borderLeft: "3px solid var(--red)", marginBottom: 8 }}>
+              <strong>🔍 Independent safety review escalated this assessment</strong>
+              <p className="note" style={{ margin: "4px 0 0" }}>A second on-device clinician pass overruled the
+                first conclusion (was <strong>{outcome.supervised.from}</strong>) in the safer direction
+                {outcome.supervised.missedRedFlags && !/^\s*none/i.test(outcome.supervised.missedRedFlags) ? <> — missed red flag: <em>{outcome.supervised.missedRedFlags}</em></> : null}.
+                {outcome.supervised.rationale ? ` ${outcome.supervised.rationale}` : ""}</p>
+            </div>
+          )}
           <TriageResult t={outcomeToTriage(outcome)} view="clinician"
             onEmergency={outcome.band === "RED" ? () => openHelp(true) : undefined} />
+          {outcome.supervised && !outcome.supervised.escalated && (
+            <p className="note">🔍 Independent safety review agreed with this assessment.</p>
+          )}
           <div className="row"><button className="btn ghost" onClick={restart}>↻ New triage</button></div>
         </>
       )}

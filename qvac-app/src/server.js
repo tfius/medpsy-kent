@@ -550,6 +550,7 @@ http.createServer(async (req, res) => {
         onEvent: (e) => {
           send(e);
           if (e.type === "reasoning") audit.append(encounterId, "atriage.reasoning", { text: e.text }, "model").catch(() => {});
+          else if (e.type === "critique") audit.append(encounterId, "atriage.critique", e.verdict, "model").catch(() => {});
           else if (e.type === "tool_call") audit.append(encounterId, "atriage.tool", { name: e.name, args: e.args }, "model").catch(() => {});
           else if (e.type === "tool_result") {
             // Pin grounding to the exact facts used: a factstore recall carries a receipt

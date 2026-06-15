@@ -3,16 +3,19 @@
 import { getAuditEncounter } from "./audit";
 import { readSSE } from "./sse";
 
+export type Supervision = { agreed: boolean; escalated: boolean; from: string; missedRedFlags: string; rationale: string; error?: unknown };
+export type Critique = { agree: boolean; decision?: string; severity?: number; missedRedFlags?: string; rationale?: string };
 export type TriageOutcome = {
   decision: string; severity: number; band: "RED" | "AMBER" | "GREEN" | "";
   condition: string; icd: string; icdGuess?: string; icdDescription?: string;
-  redFlags: string; routing: string; safetyNet: string;
+  redFlags: string; routing: string; safetyNet: string; supervised?: Supervision;
 };
 export type ATriageEvent =
   | { type: "reasoning"; text: string }
   | { type: "tool_call"; id: string; name: string; args: Record<string, unknown> }
   | { type: "tool_result"; id: string; name: string; result: unknown }
   | { type: "question"; text: string }
+  | { type: "critique"; verdict: Critique }
   | { type: "conclusion"; outcome: TriageOutcome }
   | { type: "done" }
   | { type: "error"; error: string };

@@ -59,6 +59,60 @@ function parseTextConclude(text) {
   return null;
 }
 
+// First balanced JSON object in a reply — robust to a leading <think> block and trailing prose
+// (a greedy /\{[\s\S]*\}/ over-matches and fails to parse). Ignores braces inside strings.
+function extractJsonObj(text) {
+  const s = String(text || "").replace(/<think>[\s\S]*?<\/think>/g, "");
+  const start = s.indexOf("{");
+  if (start === -1) return null;
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < s.length; i++) {
+    const c = s[i];
+    if (inStr) { if (esc) esc = false; else if (c === "\\") esc = true; else if (c === '"') inStr = false; }
+    else if (c === '"') inStr = true;
+    else if (c === "{") depth++;
+    else if (c === "}" && --depth === 0) { try { return JSON.parse(s.slice(start, i + 1)); } catch { return null; } }
+  }
+  return null;
+}
+
+// Acuity ordering for the safety gate. The supervisor may only RAISE acuity (escalate), never
+// silently lower it — so the gate can make a conclusion safer but never less safe.
+const ACUITY = { ROUTINE: 0, "PHARMACIST-LED": 1, "INSUFFICIENT-DATA": 1, URGENT: 2, EMERGENCY: 3 };
+
+// Compact, PHI-light recap of what the interview gathered (patient answers + the on-device tool
+// results that grounded the reasoning) — the evidence the safety reviewer re-reads.
+function summarizeEvidence(history) {
+  const lines = [];
+  for (const m of history) {
+    if (m.role === "user") lines.push(`patient: ${String(m.content).slice(0, 200)}`);
+    else if (m.role === "assistant" && m.content && !(m.tool_calls?.length)) lines.push(`assistant asked: ${String(m.content).slice(0, 160)}`);
+    else if (m.role === "tool") {
+      let r; try { r = JSON.parse(m.content); } catch { r = m.content; }
+      lines.push(`tool ${m.name || ""}: ${String(typeof r === "string" ? r : JSON.stringify(r)).slice(0, 280)}`);
+    }
+  }
+  return lines.join("\n").slice(0, 2500);
+}
+
+// SELF-CORRECTION + ESCALATION: a SECOND, independent medpsy pass acting as a supervising
+// clinician that re-reads the gathered evidence and the proposed conclusion and may overrule it
+// — but only to make it SAFER (catch under-triage / missed red flags). Returns
+// { agree, decision, severity, missedRedFlags, rationale }. Fails OPEN (agree) on error/parse
+// failure: a reviewer glitch must not block the pharmacist from seeing the agent's own outcome.
+export async function superviseConclusion(provider, { args, evidence }) {
+  if (typeof provider.complete !== "function") return { agree: true, skipped: "no complete()" };
+  const sys = "You are a SENIOR supervising clinician performing an INDEPENDENT SAFETY REVIEW of a triage assistant's proposed conclusion before it reaches the pharmacist. Be skeptical and conservative: your single job is to catch UNDER-triage and missed red flags. You may only make the outcome SAFER (higher acuity), never less. If the proposed conclusion is already appropriately safe, AGREE.";
+  const proposed = { decision: args.decision, severity: args.severity, condition: args.condition, redFlags: args.redFlags, routing: args.routing };
+  const user = `Evidence gathered during the interview:\n${evidence || "(none captured)"}\n\nProposed conclusion:\n${JSON.stringify(proposed)}\n\nReview it for patient safety. Reply with ONLY a JSON object and nothing else:\n{"agree": true|false, "decision": "EMERGENCY|URGENT|PHARMACIST-LED|ROUTINE|INSUFFICIENT-DATA", "severity": 0-10, "missedRedFlags": "<text or 'none'>", "rationale": "<one sentence>"}`;
+  let text = "";
+  try { text = await provider.complete([{ role: "system", content: sys }, { role: "user", content: user }], { temperature: 0.2 }); }
+  catch (e) { return { agree: true, error: String(e?.message || e) }; }
+  const v = extractJsonObj(text);
+  if (!v) return { agree: true, unparsed: true };
+  return { agree: v.agree !== false, decision: String(v.decision || "").toUpperCase(), severity: v.severity, missedRedFlags: String(v.missedRedFlags || ""), rationale: String(v.rationale || "").slice(0, 240) };
+}
+
 // medpsy often puts its reasoning before the actual question. The PATIENT should see only
 // the question, but the reasoning is valuable — we SPLIT it (not discard it) so it can be
 // shown collapsed and written to the audit trail.
@@ -105,7 +159,7 @@ async function finalizeConclusion(args, { provider, icdIndex }) {
 // Run the interview from the conversation so far until the agent asks a QUESTION or
 // CONCLUDES. Returns { question?, outcome?, messages } (messages = updated conversation
 // WITHOUT the system prompt, for the session to store), or { aborted } / { error }.
-export async function runTriageAgent({ provider, icdIndex, extraTools = [], messages, onEvent = () => {}, maxSteps = 12, signal, retries = 6, context = "" }) {
+export async function runTriageAgent({ provider, icdIndex, extraTools = [], messages, onEvent = () => {}, maxSteps = 12, signal, retries = 6, context = "", supervise = true }) {
   const ground = [...makeTools(provider, icdIndex), ...extraTools];
   const toolDefs = [...ground.map((t) => t.def), CONCLUDE_DEF];
   const byName = Object.fromEntries(ground.map((t) => [t.def.function.name, t]));
@@ -115,8 +169,26 @@ export async function runTriageAgent({ provider, icdIndex, extraTools = [], mess
   const history = [{ role: "system", content: sys }, ...messages];
   const strip = () => history.slice(1);
 
-  const conclude = async (args) => {
+  // Conclude THROUGH a safety gate: an independent supervisor re-reads the evidence and may
+  // escalate (only) the outcome before it's finalized. The gate is auditable (a `critique`
+  // event) and the merge is safety-biased — the supervisor can raise acuity, never lower it.
+  const conclude = async (rawArgs) => {
+    let args = rawArgs, supervised = null;
+    if (supervise) {
+      const v = await superviseConclusion(provider, { args, evidence: summarizeEvidence(history) });
+      onEvent({ type: "critique", verdict: v });
+      const orig = String(args.decision || "INSUFFICIENT-DATA").toUpperCase();
+      const escalate = !v.agree && (ACUITY[v.decision] ?? -1) > (ACUITY[orig] ?? 1);
+      if (escalate) {
+        args = { ...args, decision: v.decision,
+          severity: Math.max(Number(args.severity) || 0, Number(v.severity) || 0),
+          redFlags: v.missedRedFlags && !/^\s*none/i.test(v.missedRedFlags) ? v.missedRedFlags : args.redFlags,
+          routing: `${String(args.routing || "").trim()} [Safety review escalated: ${v.rationale || "missed red flag"}]`.trim() };
+      }
+      supervised = { agreed: !!v.agree, escalated: escalate, from: orig, missedRedFlags: v.missedRedFlags || "", rationale: v.rationale || "", error: v.error || v.unparsed || null };
+    }
     const outcome = await finalizeConclusion(args, { provider, icdIndex });
+    if (supervised) outcome.supervised = supervised;
     onEvent({ type: "conclusion", outcome });
     return { outcome, messages: strip() };
   };
