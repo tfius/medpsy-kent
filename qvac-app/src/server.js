@@ -1,6 +1,8 @@
 // Tiny ICD-10 grounding API for the web UI. Reuses our verified lookup (icd-index.js)
 // + provider embeddings. No external deps on the LM Studio path (built-in http/fetch).
 //   node src/server.js          # serves POST /api/icd {condition} -> verified code(s)
+//   node src/server.js --profile clinic-b --port 8788 --consult-code CLINIC   # one flag, not 8 env vars
+import "./bootstrap-config.js"; // MUST be first — turns CLI flags / config file / --profile into env
 import http from "node:http";
 import fs from "node:fs";
 import os from "node:os";

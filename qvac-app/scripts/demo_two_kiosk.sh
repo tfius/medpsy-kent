@@ -11,6 +11,7 @@ cd "$(dirname "$0")/.."
 TMP="${TMPDIR:-/tmp}/medpsy-2kiosk-$$"; mkdir -p "$TMP"
 CODE="DEMO-FED"
 echo "→ two-kiosk federated-learning demo — Kiosk A :8787, Kiosk B :8788, consult code $CODE"
+rm -rf data/profiles/demo-A data/profiles/demo-B  # fresh kiosks each run (so 'B doesn't know X yet' holds)
 
 [ -d node_modules ] || npm install
 [ -d web/node_modules ] || (cd web && npm install)
@@ -20,12 +21,10 @@ pids=()
 cleanup(){ echo; echo "stopping…"; for p in "${pids[@]:-}"; do kill "$p" 2>/dev/null || true; done; rm -rf "$TMP"; }
 trap cleanup EXIT INT TERM
 
-start_kiosk(){ # name port
+start_kiosk(){ # name port — one --profile flag derives kb/facts/audit/identity; --port + shared code.
   local name=$1 port=$2
-  API_PORT=$port MEDPSY_NO_SPEECH=1 MEDPSY_CONSULT_CODE="$CODE" \
-  MEDPSY_KB_DIR="$TMP/$name/kb" MEDPSY_FACTS_DIR="$TMP/$name/facts" MEDPSY_AUDIT_DIR="$TMP/$name/audit" \
-  MEDPSY_DEVICE_KEY_FILE="$TMP/$name/device-key.json" MEDPSY_DEVICE_NAME="Kiosk-$name" \
-  node src/server.js > "$TMP/$name.log" 2>&1 &
+  node src/server.js --profile "demo-$name" --port "$port" --consult-code "$CODE" --no-speech \
+    > "$TMP/$name.log" 2>&1 &
   pids+=($!)
 }
 echo "→ starting Kiosk A + Kiosk B"; start_kiosk A 8787; start_kiosk B 8788

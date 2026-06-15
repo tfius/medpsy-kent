@@ -1,0 +1,7 @@
+{
+  "_comment": "Optional. Copy to medpsy.config.json (auto-loaded from cwd) or pass --config <path>. CLI flags and env vars override these. Per-kiosk paths/identity come from --profile <name>.",
+  "backend": "lmstudio",
+  "consultCode": "CLINIC-NET",
+  "noSpeech": false,
+  "members": []
+}

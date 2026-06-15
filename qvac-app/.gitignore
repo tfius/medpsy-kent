@@ -34,3 +34,6 @@ data/agent_eval_results.json
 
 # Shared-KB hypercores (replicable interaction graph; regenerated/seeded on start)
 kb-cores/
+
+# Per-kiosk profile state (--profile / config bootstrap)
+data/profiles/
