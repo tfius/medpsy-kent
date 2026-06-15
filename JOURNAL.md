@@ -1637,3 +1637,18 @@ stays only as a 30 s catch-up backstop. **Verified live: B grounded A's promoted
 sync call.** The TwoKiosk page now polls B until its agent grounds (a live "B is learning…"), and shows
 a "jury: N peers ✓" readiness pill (A's `consultPeers`) so you know the jury is connected before you
 run. Federation now feels instant.
+
+## 2026-06-15 — Full auto-mesh: N kiosks, bidirectional, no pairing
+
+Federation was one-way and manually paired. Now kiosks on the same consult code **auto-mesh**. The
+consult swarm gained a tiny discovery channel (`createConsultClient` `announce`/`onAnnounce`): on
+connect each kiosk announces its `kb:medical` core key; on a peer's announce it joins that peer's
+graph. The **same swarm is the jury and the mesh discovery** — no new topic. The server shares its KB
+core at startup, announces its key, and auto-joins peers; the join logic is one `joinPeer()` (dedup by
+key, race-guarded, live append-merge + backstop interval) shared by the announce path and the manual
+`/api/kb/join`. Knowledge propagates **transitively** (each kiosk re-asserts merged edges into its own
+core, which others replicate) and **converges** (per-statementId, trust-state dedup) — a connected mesh
+spreads everything with no loops. Verified live: 2 kiosks auto-mesh with no pairing — teach on A → B
+learns (~500 ms) **and** teach on B → A learns; 3 kiosks → full mesh (2 peers each), teach on C → A and
+B both learn, and A's jury collects **signed votes from both B and C**. The base idea is now a real
+N-node network, not a pair.

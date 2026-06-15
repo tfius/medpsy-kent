@@ -807,6 +807,19 @@ vote on each other's lessons. One command (`npm run demo:two-kiosk`) starts both
 and opens the page. It's the base idea — a clinic network that learns from every correction while no
 patient's data ever leaves the room — finally something you can point at and watch happen.
 
+## Session 34 — A real network: every kiosk teaches every other, automatically
+
+Until now one kiosk taught another in a single direction, and you had to manually introduce them. Now
+any number of kiosks that share the same code **find each other automatically and form a mesh** — every
+kiosk learns from every other, in both directions, with no setup. We proved it: with two kiosks, a
+lesson taught on either one shows up on the other in about half a second; with three, a lesson taught
+on the third instantly reached the other two, and when one kiosk asked its "jury" whether a new lesson
+was real, it got signed votes back from *both* of the others. Lessons even hop across the network
+indirectly — if A teaches B and B is connected to C, C picks it up through B — and the system is smart
+enough never to loop or double-count. It's the difference between "device A can teach device B" and "a
+whole clinic network that quietly keeps each other up to date" — still with nothing but drug names ever
+leaving any device.
+
 ---
 
 ## The whole story in three sentences
