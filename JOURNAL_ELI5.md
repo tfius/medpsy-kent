@@ -876,6 +876,18 @@ that ever leave a device are two medicine names and two counts. We proved it bot
 live across two kiosks: neither had enough alone, together they crossed the line, and the suggestion
 popped up for a human to approve.
 
+We also gave the AI-led interview a second set of eyes. Before, when the assistant finished its
+interview and reached a verdict, that single verdict went straight to the pharmacist. Now, the moment it
+decides, a *second* copy of the model — playing a cautious senior clinician — re-reads everything that
+was said and double-checks the call, looking only for the dangerous mistake: calling something routine
+when it might be serious. Crucially, this reviewer is allowed to make the verdict *more* cautious but
+never *less* — so it can catch an under-played emergency, but it can't talk a real emergency down. If it
+disagrees, the assessment is bumped up and the pharmacist sees a clear "safety review escalated this —
+here's the red flag we nearly missed" note. And if the reviewer itself ever hiccups, we simply keep the
+original verdict rather than block anything. We proved it three ways: it caught a "routine" chest pain
+that was actually heart-attack-shaped and raised it to emergency, it left a genuinely minor sore throat
+alone, and when we *told* it to downgrade a real anaphylaxis, it refused.
+
 ---
 
 ## The whole story in three sentences

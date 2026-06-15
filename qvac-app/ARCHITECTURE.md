@@ -320,3 +320,7 @@ pair + two integers; everything else is the same loop, store, mesh, and audit ch
 9. **+ Federated safety intelligence:** PHI-free pharmacovigilance — per-kiosk de-identified co-occurrence
    tallies summed across the mesh; a crossed threshold auto-proposes into the human-gated learning loop.
    Hardened mesh (signed roster, serve-side gating). *(Built — see the section above + `/signals`.)*
+10. **+ Autonomous safety-review gate (agentic triage):** the AI-led interview no longer concludes in one
+    pass — a second, independent on-device clinician pass re-reads the evidence and may **only escalate**
+    the disposition (catch under-triage / missed red flags), never de-escalate. Auditable; fails open.
+    *(Built — `superviseConclusion` in `src/triage-agent.js`, surfaced on `/atriage`.)*

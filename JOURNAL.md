@@ -1772,3 +1772,28 @@ threshold, scan → propose. `scripts/federated_signals_smoke.mjs` proves solo-d
 federated-crosses, known-excluded, auto-proposed (PASS). Verified live (2 kiosks, synthetic pair): A's
 aggregate summed both (seen=5 flagged=4 contributors=2 rate=0.8), crossed, scan auto-proposed a PHI-free
 candidate into the pending learn list.
+
+### Autonomous triage — an independent safety-review gate (self-correction + escalation)
+The agentic triage used to conclude in a single pass: the model called `conclude()`, we verified the
+ICD, done. That trusts one generation's judgement on the disposition — the highest-stakes field. Added a
+**supervised conclusion**: when the agent concludes, a **second, independent medpsy pass** acts as a
+*supervising clinician* and re-reads the gathered evidence (the patient's answers + the on-device tool
+results that grounded the interview, via `summarizeEvidence(history)`) against the proposed outcome.
+
+`superviseConclusion` prompts a skeptical reviewer ("your single job is to catch UNDER-triage and missed
+red flags; you may only make it SAFER") for a strict JSON verdict `{agree, decision, severity,
+missedRedFlags, rationale}`. The merge is **safety-biased** via an `ACUITY` order
+(`ROUTINE<PHARMACIST-LED≈INSUFFICIENT-DATA<URGENT<EMERGENCY`): the supervisor can only **raise** acuity,
+never silently lower it — so the gate can make a conclusion safer but never less safe. On escalation it
+takes the higher severity, swaps in the missed red flag, and appends `[Safety review escalated: …]` to
+the routing. It **fails open** (keeps the agent's own conclusion) on a reviewer error or unparseable
+verdict — a reviewer glitch must never block the pharmacist from seeing an outcome.
+
+Auditable as required: a `critique` event lands as `atriage.critique`, and the final outcome carries
+`supervised:{agreed,escalated,from,missedRedFlags,rationale}` inside the `outcome` the chain already
+records — so you can trace whether (and why) the network's own check moved a disposition. Web: 🩺 AI
+Triage shows a red "safety review escalated" banner (or an "agreed" note) and appends the live critique
+to the collapsed reasoning. `scripts/autonomous_triage_smoke.mjs` (deterministic stub, no model) proves
+all three behaviours: under-triage → escalated to EMERGENCY; an appropriate PHARMACIST-LED → untouched;
+and a supervisor trying to **de-escalate a real anaphylaxis is refused** (stays EMERGENCY). PASS.
+Additive to the agentic flow — the scripted 9-step triage is untouched.
