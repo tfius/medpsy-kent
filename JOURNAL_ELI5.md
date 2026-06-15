@@ -834,6 +834,18 @@ view** — three (or more) side by side: teach a lesson on any one, and watch th
 to "yes" in about a second, with on-screen buttons to lock the network down to approved members or
 open it back up. The clinic network is now both watchable and, when you need it, gated.
 
+## Session 36 — Kiosks that reliably find each other, and a much simpler setup
+
+Two practical fixes. First, the "finding each other" problem from last time wasn't fully solved — it
+worked once but not every time. Now each kiosk keeps gently re-introducing itself until it has
+connected, and re-sends its details in case the first hello got lost — so two kiosks switched on
+together now pair up in about four seconds, every time we tried. Second, setup used to mean typing out
+a long list of cryptic settings for each kiosk (where to store its data, its name, its port, …) — easy
+to get wrong. Now you just give a kiosk a **name**: "run kiosk B on port 8788" and it figures out all
+its own storage and identity from that one name. Shared settings can live in a small config file
+instead of being repeated everywhere. Same power, far less fiddly — the kind of thing that makes the
+difference between a demo only the author can run and one anyone can.
+
 ---
 
 ## The whole story in three sentences

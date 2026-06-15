@@ -1672,3 +1672,22 @@ non-member"), A/B unaffected. (Manual `/api/kb/join` stays an operator override.
 it NO→YES" live (~1 s) with the jury shown; a per-kiosk peers/membership status row; and 🔒 Enforce /
 🔓 Open buttons that allowlist (or reopen) the running kiosks at runtime. Bidirectional learning ~500 ms
 each way. New: `web/src/pages/MeshDemo.tsx`.
+
+## 2026-06-15 — Self-healing auto-mesh + config without a dozen env vars
+
+**Reliability.** The earlier one-shot 2 s re-refresh fixed a single run but wasn't robust — nothing
+retried if peers still hadn't connected, and a dropped `kb-announce` was never re-sent. The consult
+swarm now **self-heals**: an escalating-then-steady cadence (6,8,10,12 s → every 30 s) re-runs DHT
+discovery (so peers that joined the same instant find each other) and re-announces the KB key to all
+conns (heals a missed announce). **3/3 simultaneous-start runs auto-meshed in ~4 s** (was: never, even
+at 100 s).
+
+**Config ergonomics.** Setup leaned on ~a dozen env vars (the mesh demo set 8 *per kiosk*) — painful.
+New `src/bootstrap-config.js` (imported first by `server.js`) turns CLI flags + an optional config
+file + a `--profile` into `process.env` before anything reads it. **`--profile <name>` namespaces ALL
+per-kiosk state** under `data/profiles/<name>/` (kb, facts, audit, device key) + the device name — one
+flag instead of five path vars; plus `--port` / `--consult-code` / `--members` / `--backend` /
+`--no-speech`. A `medpsy.config.json` (auto-loaded) or `--config <path>` holds shared settings.
+Precedence: CLI flag > env > config file > profile default, so existing env still overrides. The
+two-kiosk script now starts each kiosk with `--profile demo-A --port 8787 --consult-code … --no-speech`
+instead of 8 env vars. Verified end-to-end.
