@@ -167,14 +167,25 @@ export function createConsultClient(code, { vetFn = null, answerFn = null, annou
         onAnnounce(msg.key, msg.from, fromOk);
       }
     });
-    if (announce) { try { sendJson(conn, { kind: "kb-announce", key: announce, from: getIdentity(), sig: sign(`kb-announce:${announce}`) }); } catch { /* dead conn */ } }
+    announceTo(conn);
     for (const wire of active.values()) { try { sendJson(conn, wire); } catch { /* dead conn */ } } // catch late jurors
   });
-  // Flush the announce onto the DHT, then re-run discovery shortly after — two peers that join
-  // at the same instant can otherwise miss each other's initial lookup (a star around whoever
-  // joined last). flushed() + a re-flush makes simultaneous-start peers find each other.
+  const announceTo = (conn) => { if (announce) { try { sendJson(conn, { kind: "kb-announce", key: announce, from: getIdentity(), sig: sign(`kb-announce:${announce}`) }); } catch { /* dead conn */ } } };
+
+  // SELF-HEALING discovery: two peers that join at the same instant can miss each other's first
+  // lookup (a star forms around whoever joined last), and a connection can drop a kb-announce.
+  // So we (a) re-run discovery on an escalating-then-steady cadence to keep finding peers, and
+  // (b) re-announce our key to all current conns each tick (heals a missed announce). Cheap.
   const disc = swarm.join(topicFor(code), { server: serves, client: true });
-  disc.flushed().then(() => setTimeout(() => disc.refresh?.({ client: true, server: serves }), 2000)).catch(() => {});
+  disc.flushed().catch(() => {});
+  let healTimer = null, tries = 0;
+  const heal = () => {
+    try { disc.refresh?.({ client: true, server: serves }); } catch { /* ignore */ }
+    for (const c of conns) announceTo(c);
+    tries++;
+    healTimer = setTimeout(heal, tries < 5 ? 4000 + tries * 2000 : 30000); // 6,8,10,12s → then every 30s
+  };
+  healTimer = setTimeout(heal, 3000);
 
   const waitForConn = (ms) => conns.size ? Promise.resolve(true) : new Promise((res) => {
     const t = setTimeout(() => { swarm.off("connection", h); res(false); }, ms);
@@ -227,7 +238,7 @@ export function createConsultClient(code, { vetFn = null, answerFn = null, annou
       });
     },
     peerCount: () => conns.size,
-    close() { return swarm.destroy().catch(() => {}); },
+    close() { clearTimeout(healTimer); return swarm.destroy().catch(() => {}); },
   };
 }
 
