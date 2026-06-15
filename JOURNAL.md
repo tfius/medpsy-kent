@@ -1712,3 +1712,27 @@ with `npm run kiosk -- --profile X --port N`, the shared `medpsy.config.json` wi
 gained a "Federated learning — the edge-learning mesh" section (the loop, PHI-free-by-construction,
 hyperswarm topology/discovery, transitive+convergent gossip, event-driven merge + self-heal, opt-in
 signed membership) and a phase 8.
+
+### Federated hardening — signed roster + serve-side gating
+Membership was opt-in but soft: the allowlist was a local env/config Set, and every connected peer was
+handed our KB core key on connect (the gate was only on the *merge* side — we'd refuse to merge a
+non-member's graph, but they could already replicate ours). Closed both gaps.
+
+**Signed roster (`src/roster.js`, `scripts/roster.mjs`).** The clinic admin signs a roster
+`{v,code,members[],issuedAt,issuer,sig}` with their device key (`npm run roster -- --profile admin
+--code CLINIC --members pubA,pubB,…`). Each kiosk sets `MEDPSY_ROSTER_ISSUER` to the admin's pubkey and
+loads the roster (config object or `--roster <path>`); `verifyRoster` checks the issuer matches and the
+ed25519 sig covers the canonical `medpsy-roster:v1:code:issuedAt:sorted-members` payload, then replaces
+the allowlist. Tamper → rejected; and when an issuer is configured but the roster fails to verify we
+**fail closed** (`meshMembers = ∅`, nobody trusted) rather than fall back to open. So the allowlist is
+now tamper-evident and travels as a signed artifact instead of a plaintext list.
+
+**Serve-side gating (`src/consult.js`).** Replaced the unconditional `kb-announce`-on-connect with a
+signed `kb-hello` handshake: on connection each peer sends a hello signed with its device key; the
+receiver verifies the sig *and* checks `isMember(pub)` before replying with its `kb-announce` (the KB
+key). A non-member never receives the key, so it cannot replicate the graph at all — defence in depth
+over the existing merge-side membership check. Self-heal re-sends *hello* (not the key), which
+re-prompts the gated exchange so a newly-added member picks up the key on the next tick. Verified live
+(2 members + 1 outsider, fully-synthetic drug pair so base knowledge can't confound): the two members
+mesh and ground the federated edge; the outsider gets `peers=0` and never grounds it. Open mesh (no
+allowlist) still auto-meshes in ~4s and federates normally.

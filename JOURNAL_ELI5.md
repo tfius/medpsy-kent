@@ -854,6 +854,15 @@ list.) We also stress-tested the network: a kiosk that joins late catches up on 
 and a kiosk that's switched off and back on rejoins, remembers what it knew, and picks up whatever it
 missed while it was away.
 
+We also locked the door properly. Before, the "guest list" was just a note each kiosk kept to itself,
+and any kiosk that found the network was handed a copy of the shared notebook before we even checked
+who it was. Now the clinic manager signs the guest list with their own tamper-proof signature (like a
+wax seal) — if anyone fiddles with it, the kiosks notice and, to be safe, trust *nobody* rather than
+risk letting a stranger in. And when two kiosks first meet, they show ID before anything is shared: a
+kiosk that isn't on the list never even gets a copy of the notebook, so it has nothing to read. We
+tested it with two approved kiosks and one gate-crasher — the two friends shared a made-up drug warning
+between them, and the gate-crasher saw nothing at all.
+
 ---
 
 ## The whole story in three sentences
