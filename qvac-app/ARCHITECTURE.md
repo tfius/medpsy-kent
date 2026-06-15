@@ -235,6 +235,42 @@ Caveat: KV-cache quantization can slightly affect quality on very long contexts 
 adversarial safety bank** against the quantized on-device setup to confirm the 0-dangerous-failures
 result still holds (eval-as-gate).
 
+## Federated learning — the edge-learning mesh
+
+A clinic network of kiosks that **gets smarter from every correction while no patient data leaves the
+device** — federated learning *without gradients, a cloud, or a data leak*. It reuses the on-device
+agent, the `@qvac/factstore`, P2P consult, and the audit chain.
+
+**The loop.** A clinician correction (or an encounter) → medpsy **distils** a candidate interaction
+edge (`distillEdges`; drug names + a *generalized* mechanism only) → it lands `proposed` and is **never
+grounded** (the agent's `screen_interactions` ignores un-promoted edges) → a **jury** of on-device AIs
+(this kiosk + peers, each its own medpsy) cast **ed25519-signed** verdicts → a clinician **promotes** a
+survivor → it enters the shared graph, **federates** to every kiosk, and their agents ground on it.
+Every step is recorded in a tamper-evident `kb-learning` audit chain — you can trace *why* the network
+believes any learned fact.
+
+**Why it's PHI-free by construction.** The only thing on the wire is a knowledge edge: `{drugA, drugB,
+severity, note}` + provenance. The generalization *is* the de-identification; a `sanitizeNote` strips
+stray identifiers (names/ages/dates/MRNs) as defence-in-depth, and the distiller is fed only the
+structured outcome, not the patient's words. The lifecycle mirrors the patient-fact one
+(`proposed → vetted → promoted | rejected`) on the same bi-temporal store.
+
+**Transport & topology.** One hyperswarm swarm per kiosk on a topic derived from a shared *consult
+code* (`sha256("medpsy-consult:v1:"+code)`), joined as both server and client — it is **both the jury
+and the mesh discovery**. On connect, kiosks exchange a *signed* announce of their `kb:medical`
+hypercore key; receiving one replicates that core (hypercore) and merges new/changed edges into the
+local graph. Knowledge propagates **transitively** (each kiosk re-asserts merged edges into its own
+core, which others replicate) and **converges** (dedup by statementId + trust state — no loops). Merge
+is **event-driven** (the peer core's `append` event, ~1 s) with a slow interval backstop. The swarm
+**self-heals** (escalating re-discovery + re-announce) so simultaneous starts, late joins, and restarts
+all settle; a returning kiosk catches up what it missed.
+
+**Trust model (opt-in).** Default is an **open mesh** (the shared code is the membership) — fine for a
+demo. For production, an **allowlist** of authorized device pubkeys (config `members`, or
+`MEDPSY_CONSULT_MEMBERS`) gates everything: only allowlisted, signature-verified devices may auto-join
+and only their votes count — which matters because a member's *promoted* edge federates without
+re-vetting. The roster travels with the shared config file.
+
 ## Security, safety, governance
 - **Network:** device ↔ hospital systems over LAN only; no outbound internet; TLS + mutual auth.
 - **Data:** PHI encrypted at rest on-device; ephemeral encounter context cleared after sign-off; minimal retention.
@@ -252,3 +288,5 @@ result still holds (eval-as-gate).
 5. **+ Routing & notifications:** severity-driven dispatch to EHR inbox/pager; practitioner validation UI.
 6. **+ Billing:** eligibility/claim drafts from validated codes.
 7. **+ Vision, P2P escalation, monitoring:** camera red-flags; delegate hard cases; drift/bias dashboards.
+8. **+ Federated edge-learning mesh:** corrections → distilled, jury-vetted, signed knowledge that federates
+   kiosk-to-kiosk (opt-in membership), no PHI on the wire. *(Built — see the section above + `/mesh`.)*

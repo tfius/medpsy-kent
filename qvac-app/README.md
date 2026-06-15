@@ -10,9 +10,13 @@ Built for the **[QVAC SDK](https://docs.qvac.tether.io)** (Tether's local-first 
 During development everything runs against **LM Studio** + on-device speech engines — same
 code, flip one env var for the QVAC backend.
 
+It also runs a **tool-calling agent**, a per-encounter **tamper-evident audit chain**, and a
+**federated edge-learning mesh** — a clinic network of kiosks that learns from every correction while
+no patient data leaves the device (see [The agent, the learning loop & the mesh](#the-agent-the-learning-loop--the-mesh)).
+
 ## What's in here
-- **Web kiosk** (`web/`) — the 9-step patient/clinician flow (React + Vite). The main app.
-- **API server** (`src/server.js`) — ICD-10 grounding (`/api/icd`), TTS (`/api/tts`), STT (`/api/stt`).
+- **Web kiosk** (`web/`) — the 9-step patient/clinician flow (React + Vite) + Agent / AI-Triage / Knowledge / Trust / Demo / Mesh / Audit pages.
+- **API server** (`src/server.js`) — ICD-10 grounding (`/api/icd`), TTS/STT, the agent, audit, `@qvac/factstore` memory, and the P2P mesh.
 - **CLI** (`src/cli.js`) — headless triage for one complaint.
 - **Speech** (`src/speech.js` + `scripts/*_worker.py`) — on-device STT & multilingual TTS.
 
@@ -146,8 +150,53 @@ node src/speech.js tts "Do you have chest pain?" out.wav
 node src/speech.js stt clip.wav
 ```
 
+## The agent, the learning loop & the mesh
+Beyond the scripted 9-step triage, the kiosk runs a **tool-calling agent** and a **federated
+learning** network — all on-device, no cloud. Web pages (top bar):
+
+| Page | What |
+|---|---|
+| 🤖 Agent | medpsy as a tool-calling agent — verified ICD lookup, knowledge search, interaction graph, confirmed-fact recall, P2P `consult_peer`; streamed + voiced; proposes facts a clinician confirms |
+| 🩺 AI Triage (`/atriage`) | medpsy *conducts* the interview itself and concludes with a schema-enforced structured outcome (separate from, doesn't touch, the scripted flow) |
+| 📚 Knowledge | the interaction graph + OKF export/import; a **Learn** panel (propose → vet → promote an edge); P2P federation |
+| 📊 Trust | on-device / no-cloud proof + the agent eval (`npm run agent-eval`) scores + grounding receipts |
+| ✨ Demo (`/demo`) | one-screen walkthrough of the edge-learning loop (before/after "does the agent flag it?") |
+| 🕸 Mesh (`/mesh`) | N kiosks side by side — teach on any, watch the others learn live; 🔒/🔓 membership toggle |
+| 🛡 Audit | per-encounter tamper-evident hash-chained log (export / P2P send / lossy OKF view) |
+
+### Edge-learning loop (federated, PHI-free)
+A clinician correction → medpsy **distils** a candidate interaction edge → a **jury** of on-device AIs
+(this kiosk + peers) cast **signed** votes → a clinician **promotes** it → it **federates** to every
+kiosk and their agents ground on it (~1 s, live). Candidates never ground until promoted; only drug
+names + a de-identified note ever cross the wire; every step lands in a tamper-evident `kb-learning`
+chain. Federated learning **without gradients, a cloud, or a data leak.** Verified end-to-end across 2–3
+real kiosks (`scripts/federated_learning_smoke.mjs`, the live `/mesh` demo).
+
+### Running a mesh
+Each kiosk is **one command** — a `--profile` derives all its storage + device identity:
+```bash
+npm run kiosk -- --profile clinic-a --port 8787 --consult-code CLINIC
+npm run kiosk -- --profile clinic-b --port 8788 --consult-code CLINIC   # auto-meshes with A in ~4 s
+```
+Or the scripted two-kiosk demo: `npm run demo:two-kiosk` → open **🕸 Mesh**. Add more kiosks any time
+with the same `--consult-code` and they auto-join.
+
+**Shared config** (instead of flags/env) — `medpsy.config.json` (auto-loaded from cwd, or `--config`):
+```json
+{ "consultCode": "CLINIC", "noSpeech": true, "members": ["<devpubA>", "<devpubB>"] }
+```
+- `consultCode` — kiosks on the same code **auto-mesh** (hyperswarm DHT; no server). The mesh self-heals
+  and is resilient to late joins / restarts (a returning kiosk catches up what it missed).
+- `members` — **opt-in allowlist**: only these device pubkeys may join the mesh + have votes counted
+  (announces are signed). **Omit for an open mesh** (fine for a demo). Get a kiosk's key with
+  `npm run identity -- --profile clinic-a`. Hand the one file to every kiosk — membership travels with it.
+
+Precedence everywhere: **CLI flag > env var > config file > profile default**, so any setting can still
+be overridden ad-hoc.
+
 ## Environment variables
-All optional; defaults target a local LM Studio + the sibling harness. Copy `.env.example` → `.env`.
+All optional; for a single kiosk the defaults just work. For **multiple** kiosks prefer `--profile` +
+a config file (above) over setting these by hand. Copy `.env.example` → `.env`.
 
 | Var | Default | Purpose |
 |---|---|---|
@@ -162,6 +211,14 @@ All optional; defaults target a local LM Studio + the sibling harness. Copy `.en
 | `MEDPSY_KOKORO_PY` | harness `.venv` python | Python with `kokoro-onnx` |
 | `MEDPSY_KOKORO_ONNX` / `_VOICES` | `models/…` | Kokoro v1.0 ONNX + voices |
 | `MEDPSY_SPEECH_LANG` | `auto` | Nemotron `--lang` |
+| `MEDPSY_PROFILE` | — | namespace a kiosk's state under `data/profiles/<name>/` (or use `--profile`) |
+| `MEDPSY_CONSULT_CODE` | — | the mesh / jury network code (set ⇒ this kiosk asks + answers peers + shares its graph) |
+| `MEDPSY_CONSULT_MEMBERS` | — | comma-sep device pubkeys; set ⇒ membership enforced (else open). Usually set via the config `members` |
+| `MEDPSY_KB_DIR` / `MEDPSY_FACTS_DIR` / `MEDPSY_AUDIT_DIR` | `kb-cores/` / `facts/` / `audit/` | on-device stores (derived from `--profile`) |
+| `MEDPSY_DEVICE_KEY_FILE` / `MEDPSY_DEVICE_NAME` | `data/device-key.json` / hostname | ed25519 identity (derived from `--profile`) |
+| `MEDPSY_KB_SYNC_MS` | `30000` | mesh catch-up backstop interval (live merge is event-driven) |
+| `MEDPSY_NO_SPEECH` | — | `1` ⇒ skip STT/TTS warmup (lean multi-kiosk runs) |
+| `MEDPSY_QVAC_CTX` | `8192` | QVAC backend context window |
 
 ## Architecture
 ```
@@ -180,5 +237,9 @@ Productizes `../EVALUATION.md` / `../JOURNAL.md`: triage prompt ← `prompts/sys
 ICD grounding ← `icd_lookup.py`; `data/icd10.json` ← `scripts/export_icd.py` (12,246 codes).
 
 ## Roadmap (QVAC-native)
-Swap flat cosine for `@qvac/rag`; P2P delegated inference for hard cases; bundle the speech
-models so the kiosk no longer borrows from the harness; LoRA fine-tune to a clinic's formulary.
+**Done since the original plan:** the agent runs fully on-device on the QVAC SDK (`MEDPSY_BACKEND=qvac`);
+the P2P "consult a peer" tool + a federated **edge-learning mesh** (propose → jury-vet → promote →
+federate) with opt-in signed membership; OKF interop; a `@qvac/factstore` bi-temporal store. **Next:**
+bundle the speech models so the kiosk no longer borrows from the harness; sign/verify the membership
+roster itself; LoRA fine-tune to a clinic's formulary; serve-side gating so non-members can't even
+read a peer's graph.
