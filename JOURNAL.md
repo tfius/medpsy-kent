@@ -1797,3 +1797,33 @@ to the collapsed reasoning. `scripts/autonomous_triage_smoke.mjs` (deterministic
 all three behaviours: under-triage → escalated to EMERGENCY; an appropriate PHARMACIST-LED → untouched;
 and a supervisor trying to **de-escalate a real anaphylaxis is refused** (stays EMERGENCY). PASS.
 Additive to the agentic flow — the scripted 9-step triage is untouched.
+
+### Autonomous triage, continued — self-directed follow-up + autonomous peer consult
+Two autonomy steps on top of the gate, both safety-biased and auditable, so the agent doesn't just
+*judge* its conclusion but can *act* to resolve uncertainty.
+
+**(1) Self-directed follow-up question.** The supervisor verdict gained an `askInstead` field. When it
+sees a **plausible but unconfirmed** red flag, instead of guessing it returns ONE targeted patient
+question; `conclude()` bounces the interview back for that answer (emits a `question` event, returns
+`{supervisorAsk:true}`) rather than finalizing. This is bounded so it can't interrogate forever:
+`MAX_SUPERVISOR_ASKS=2` per encounter, tracked on the server session (`session.supervisorAsks`,
+reset with the triage); `runTriageAgent` receives `supervisorAsksLeft` and the **forced/fallback**
+conclusions pass `reaskLeft:0` so they always terminate. When the budget is spent the gate falls back to
+escalation (the safe default). So the order in `conclude()` is **re-ask → escalate → consult**.
+
+**(2) Autonomous peer consult.** When the case is *uncertain* — the supervisor escalated, or the
+disposition is `INSUFFICIENT-DATA` — and a consult peer is reachable, the gate autonomously fetches a
+**signed second opinion** over the existing mesh (`consultClient.ask`, the same channel the `consult_peer`
+tool and the jury use). It's **advisory**: attached to the outcome (`outcome.consult`) and audited
+(`consult.response`, `trigger:"safety-gate"`), and it can only **raise** the band (to URGENT, the peer
+answer parsed for AGREE/ESCALATE), never lower it. The PHI posture is unchanged — the question carries the
+disposition + condition + red flags, never patient identifiers (same as the existing consult tool).
+
+**Review/improvement pass** (before shipping): the reviewer's `skipped`/`unparsed` states now flow into
+`supervised.error`, and the web shows "safety review unavailable — kept original" instead of a misleading
+"agreed"; a peer-driven raise is attributed to the *peer* (the consult card + a routing note), not the
+supervisor's `escalated` flag. Web: 🩺 AI Triage shows a peer second-opinion card and streams the live
+`critique`/`consult` into the collapsed reasoning. `scripts/autonomous_triage_smoke.mjs` now runs **6
+deterministic scenarios** — escalate, keep, no-de-escalate, **follow-up question**, **budget-exhausted →
+escalate**, **uncertain → peer raises to URGENT**. PASS. (Committed separately from an unrelated `medpsy`
+CLI change that was sitting in the tree.)

@@ -888,6 +888,17 @@ original verdict rather than block anything. We proved it three ways: it caught 
 that was actually heart-attack-shaped and raised it to emergency, it left a genuinely minor sore throat
 alone, and when we *told* it to downgrade a real anaphylaxis, it refused.
 
+Then we let that second reviewer do more than just veto. Two things. First, if it spots something that
+*might* be serious but the interview never actually asked, it now sends the patient **one more pointed
+question** to settle it — "did this headache come on suddenly, in seconds?" — instead of guessing. We
+cap that at two extra questions per visit so it can never trap someone in an endless interview; if it's
+still unsure after that, it just plays it safe and escalates. Second, when a case is genuinely
+borderline, the kiosk can **quietly phone a colleague** — it sends a real, signed second-opinion request
+to another clinician's device on the network and attaches their reply for the pharmacist to read. That
+colleague can only make the call *more* cautious, never less. None of this sends any patient details —
+just the medical question. We checked all of it with six scripted situations, including the new
+"ask one more question" and "the colleague says escalate" cases, and it behaved exactly as intended.
+
 ---
 
 ## The whole story in three sentences

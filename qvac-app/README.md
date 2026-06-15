@@ -157,7 +157,7 @@ learning** network — all on-device, no cloud. Web pages (top bar):
 | Page | What |
 |---|---|
 | 🤖 Agent | medpsy as a tool-calling agent — verified ICD lookup, knowledge search, interaction graph, confirmed-fact recall, P2P `consult_peer`; streamed + voiced; proposes facts a clinician confirms |
-| 🩺 AI Triage (`/atriage`) | medpsy *conducts* the interview itself and concludes with a schema-enforced structured outcome, behind an **independent safety-review gate** (a 2nd on-device pass that can only escalate, never de-escalate). Separate from, doesn't touch, the scripted flow |
+| 🩺 AI Triage (`/atriage`) | medpsy *conducts* the interview itself and concludes with a schema-enforced structured outcome, behind an **independent safety-review gate** — a 2nd on-device pass that can only escalate (never de-escalate), ask one more targeted question, or fetch a signed peer second opinion over the mesh. Separate from, doesn't touch, the scripted flow |
 | 📚 Knowledge | the interaction graph + OKF export/import; a **Learn** panel (propose → vet → promote an edge); P2P federation |
 | 📊 Trust | on-device / no-cloud proof + the agent eval (`npm run agent-eval`) scores + grounding receipts |
 | ✨ Demo (`/demo`) | one-screen walkthrough of the edge-learning loop (before/after "does the agent flag it?") |
