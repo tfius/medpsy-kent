@@ -958,6 +958,40 @@ the code.
 
 ---
 
+## Session 39 — Designing a "web of facts" the helper can safely reason over
+
+We already have a time-aware memory (Session 28) and a little map of dangerous drug pairs. The
+obvious next step: grow that into a proper **web of medical facts** — drugs, conditions, symptoms,
+codes, allergies, all linked — so the helper can follow the links to reach an answer. We wrote the
+**design** for it (a reusable building block we're calling the knowledge graph) — and deliberately
+*didn't* build it yet. We even tried hard to poke holes in our own plan first, because for
+something that touches medical decisions, the design has to be right before a line is written.
+
+Three rules came out of that, and they're the whole point:
+- **Only follow facts, never hunches.** Some links are hard facts ("drug A clashes with drug B,"
+  "this code means this condition") — safe to *rely on*. Others are just hunches ("chest pain
+  *might* mean a heart problem… or five other things"). We tag every link as one or the other, and
+  the helper is only allowed to *conclude* from the hard facts; hunches can be *suggested* to the
+  clinician but never decide anything. (So the flashy "guess the diagnosis from symptoms" feature
+  is deliberately shelved — it's exactly the unsafe, hunch-chaining kind.)
+- **Never trust a neighbour's word as gospel.** When kiosks share what they've learned, a fact from
+  another kiosk arrives as a *suggestion with its signature attached* — each kiosk still decides for
+  itself whether to actually rely on it (a local clinician signs off, or several trusted kiosks
+  agree). That way one mistaken or bad kiosk can't quietly poison everyone.
+- **Use the world's standard medical dictionaries, not our own made-up names.** We pin every drug
+  and diagnosis to its official code, and reuse the code-matcher we already built — so "Coumadin,"
+  "warfarin," and "warfarin 5mg" all land on the same thing (a mismatch there is exactly how a
+  danger gets missed).
+
+It's built to be **general** — medicine is just the first "pack"; the same engine could map, say, a
+network of computer services just as well. And we keep it modest on purpose: a sharp safety net for
+the facts that really matter, fed from trusted medical databases, not a know-it-all.
+
+Bottom line: we designed a safe, fact-only, self-verifying web of knowledge — and stress-tested the
+design before building, because here, getting it right matters more than getting it fast.
+
+---
+
 ## The whole story in three sentences
 
 We built a tiny medical AI helper, tried our hardest to break it, and found its

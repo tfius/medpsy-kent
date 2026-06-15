@@ -1938,3 +1938,50 @@ three things, not a bolt-on:
   → Hyperswarm → peers` — narrate the live demo against it.
 - Keep `SLIDE_QVAC.md` as the source of truth; if the `@qvac/sdk` API or our usage changes,
   edit it (and re-grep the import counts) so the slide never drifts from the code.
+
+---
+
+## 2026-06-15 — Knowledge-graph design (`@qvac/kgraph`) — grounded, factual, locally-trusted
+
+We have `@qvac/factstore` (bi-temporal triples, `{ref}` typed edges, CRDT merge, signed bundles)
+and `medlens.js` already runs a one-predicate graph (`drug —interacts_with→ drug`). The natural
+next step is a general **bi-temporal multi-subject knowledge graph** — so we wrote a design doc
+(`qvac-app/KGRAPH_DESIGN.md`) for a **domain-neutral KG layer over factstore**, where *medical is
+just pack #1*. Design only — nothing built yet, pending ratification.
+
+The first cut was structurally sound but too optimistic, so we **red-teamed it** and folded the
+findings in as the actual design (it's a first design, so it has to be right, not "v2-able"). The
+through-line: **sound · grounded · factual · locally-trusted.** Load-bearing decisions:
+
+- **Edge epistemics (the safety crux).** Predicates are declared `factual` (deterministic,
+  curated: `interacts_with`, `contraindicated_in`, `codes_as`, `allergic_to`) or `associative`
+  (probabilistic: `indicates`/`presents_with`). **Recipes ground ONLY on factual edges**;
+  associative edges may *suggest*, never conclude. Consequence: the obvious showcase
+  `differential(symptoms → condition → ICD)` is **deferred** — it compounds non-specific,
+  multi-hop *associative* edges into false confidence. v1 leads with crisp factual recipes
+  (interactions, contraindications, allergy conflicts).
+- **Promotion is local; evidence travels.** A peer's *promoted* edge must never auto-ground here —
+  that makes trust transitive and lets one bad kiosk poison the mesh. Edges federate as **signed
+  proposals + provenance + vet votes**; each kiosk decides grounding-eligibility by its own policy
+  (local clinician confirm / N independent vets / a designated authority key). No inherited trust.
+- **Entity resolution via standard vocabularies, reusing what we have.** Node ids are RxNorm/ICD
+  where they exist; text→code resolution **reuses the embedding ICD lookup we already built** (ER
+  is a safety surface — the medlens "Coumadin"/"Nurofen 400mg" bug was an ER miss).
+- **Schema-as-data + forward-compatible validation** — ontology stored as facts (`kg:schema@<pack>`,
+  bi-temporal/federatable); an unknown predicate from a newer peer is flagged `unschema'd`, never
+  dropped (so a mesh upgrade can't silently lose edges); recipes traverse only declared predicates.
+- **Substrate truths:** graph invariants (symmetry/inverse/cardinality) are **derived at read time**
+  (CRDT merges statements, not invariants); identity + predicate semantics are **immutable/frozen**
+  (reclassify = new node + `maps_to`; redefine = `indicates_v2`); a **materialized adjacency index**
+  in factstore (no fold-per-hop); `paths` = bounded BFS → confidence-rank → top-k; **no generic
+  `match`** in v1 (recipes + expand/paths are the only sanctioned, reviewed query surfaces).
+- **Boundary + migration:** pure traversal primitives live **in factstore**; `@qvac/kgraph` is only
+  the opinion (schema, epistemics, recipes, packs, federation policy). `kb:medical` kept **by
+  alias** (no chain-forking copy-forward). Content = **targeted safety net** seeded from authored +
+  **imported authoritative datasets**, not a hand-built comprehensive graph.
+- **Holism stays cheap:** a toy pack in the test-suite proves domain-neutrality from day one; the
+  non-medical **incident-ops** pack (`blast_radius` transitive closure + `owners`) is a Phase-5
+  *demo* that shouldn't inflate v1.
+
+Plan is 5 phases (core+primitives → recipe runner → medical pack → federation+UI → holism demo),
+each shippable + eval-gated. New: `qvac-app/KGRAPH_DESIGN.md`.
