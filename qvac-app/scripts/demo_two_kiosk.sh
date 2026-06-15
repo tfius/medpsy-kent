@@ -31,9 +31,11 @@ start_kiosk(){ # name port
 echo "→ starting Kiosk A + Kiosk B"; start_kiosk A 8787; start_kiosk B 8788
 for u in 8787 8788; do for i in $(seq 1 60); do curl -s "http://localhost:$u/api/health" >/dev/null 2>&1 && break; sleep 1; done; done
 
-echo "→ pairing B → A (B replicates A's interaction graph, device-to-device)…"
+echo "→ kiosks on the same consult code AUTO-MESH (bidirectional, no pairing) — ~20 s to connect."
+echo "  (add more kiosks any time: API_PORT=8789 MEDPSY_CONSULT_CODE=$CODE … node src/server.js — they auto-join.)"
+# A quick manual kick so the demo doesn't wait for discovery (idempotent with the auto-mesh).
 KEY=$(curl -s -X POST http://localhost:8787/api/kb/share | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{console.log(JSON.parse(d).key)}catch{console.log("")}})')
-[ -n "$KEY" ] && curl -s -X POST http://localhost:8788/api/kb/join -H 'content-type: application/json' -d "{\"key\":\"$KEY\"}" >/dev/null && echo "  paired (A key ${KEY:0:12}…)" || echo "  (pairing will also be available from the web page)"
+[ -n "$KEY" ] && curl -s -X POST http://localhost:8788/api/kb/join -H 'content-type: application/json' -d "{\"key\":\"$KEY\"}" >/dev/null && echo "  kicked B→A (auto-mesh will also link A→B)"
 
 echo "→ starting web…"
 (cd web && VITE_API_URL=http://localhost:8787 npm run dev) & pids+=($!)

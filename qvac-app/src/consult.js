@@ -137,7 +137,10 @@ export function consultVetAll(code, edge, { timeoutMs = 15000, collectMs = 6000,
 // answerFn are given) and keeps connections warm. One swarm per kiosk: it ANSWERS peers'
 // requests (so every kiosk is a juror) AND asks its own — no self-connection, no per-call DHT
 // discovery. `ask` returns the first signed answer; `askVetAll` collects the jury.
-export function createConsultClient(code, { vetFn = null, answerFn = null, bootstrap = BOOTSTRAP } = {}) {
+// `announce` (a string, e.g. this kiosk's KB core key) is gossiped to every peer on connect;
+// `onAnnounce(value, from)` fires for each peer's announce — used to auto-discover the mesh
+// (a kiosk learns peers' KB keys over the same swarm and joins their graphs).
+export function createConsultClient(code, { vetFn = null, answerFn = null, announce = null, onAnnounce = null, bootstrap = BOOTSTRAP } = {}) {
   const serves = !!(vetFn || answerFn);
   const swarm = new Hyperswarm({ bootstrap });
   const conns = new Set();
@@ -157,7 +160,9 @@ export function createConsultClient(code, { vetFn = null, answerFn = null, boots
     onJsonLine(conn, (msg) => {
       if (msg.kind === "consult-response" && pending.has(msg.id)) pending.get(msg.id)(msg);
       else if (msg.kind === "consult-request" && msg.id && serves) serve(conn, msg);
+      else if (msg.kind === "kb-announce" && onAnnounce && msg.key) onAnnounce(msg.key, msg.from);
     });
+    if (announce) { try { sendJson(conn, { kind: "kb-announce", key: announce, from: getIdentity() }); } catch { /* dead conn */ } }
     for (const wire of active.values()) { try { sendJson(conn, wire); } catch { /* dead conn */ } } // catch late jurors
   });
   swarm.join(topicFor(code), { server: serves, client: true });

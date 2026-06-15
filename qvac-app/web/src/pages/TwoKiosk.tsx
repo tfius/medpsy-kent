@@ -108,14 +108,15 @@ export default function TwoKiosk() {
       <div className="eyebrow">Demo <span className="badge">federated learning · 2 kiosks</span></div>
       <h1>Watch one kiosk teach another — no PHI, no server</h1>
       <p className="lead">Teach a missed interaction on <strong>Kiosk A</strong>; its jury of on-device AIs votes; you
-        promote it — and <strong>Kiosk B</strong>'s agent starts catching it. Only two drug names ever cross between
-        the devices.</p>
+        promote it — and <strong>Kiosk B</strong>'s agent starts catching it (live, ~1 s). Only two drug names ever
+        cross between the devices. Kiosks on the same code <strong>auto-mesh</strong> — bidirectional, N kiosks, no
+        pairing — so teaching on B would teach A too.</p>
 
       <div className="card">
         <div className="row" style={{ flexWrap: "wrap", alignItems: "center" }}>
           <label>A <input value={aUrl} onChange={(e) => setAUrl(e.target.value)} style={{ width: 170 }} /></label>
           <label>B <input value={bUrl} onChange={(e) => setBUrl(e.target.value)} style={{ width: 170 }} /></label>
-          <button className="btn ghost" onClick={pair} disabled={busy}>🔗 Pair (B replicates A)</button>
+          <button className="btn ghost" onClick={pair} disabled={busy} title="Optional — kiosks on the same code auto-mesh; this just kicks it instantly">🔗 Pair now</button>
           <span className={`pill ${jurors ? "GREEN" : "AMBER"}`} title="peer kiosks connected to A's consult jury">
             {jurors === null ? "jury: ?" : jurors > 0 ? `jury: ${jurors} peer${jurors > 1 ? "s" : ""} ✓` : "jury: connecting…"}
           </span>

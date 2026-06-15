@@ -82,6 +82,7 @@ const kbAdapter = new HypercoreAdapter({ storage: process.env.MEDPSY_KB_DIR || p
 const kbStore = createFactStore({ adapter: kbAdapter });
 seedInteractions(kbStore).catch((e) => console.warn(`[kb] interaction seed skipped: ${e?.message || e}`));
 let kbShare = null;        // { keyHex, swarm } once this device is sharing its graph
+let myKbKey = null;        // this kiosk's kb:medical core key (announced to the mesh)
 const kbPeers = [];        // [{ key, log, swarm, importedAt }] joined peer graphs
 // Pull a joined peer's edges into the local kb:medical. Only NEW or CHANGED edges are
 // asserted — assert() always appends to the chain (statementId dedupes at fold, not append),
@@ -105,6 +106,28 @@ async function mergePeerGraph(peerLog) {
   return merged;
 }
 
+// Replicate + merge a peer's KB graph (idempotent: dedup by key). Used by the manual
+// /api/kb/join endpoint AND the auto-discovered mesh (a peer's announced KB key). LIVE: merges
+// the instant the peer's core appends; a slow interval is a catch-up backstop. Returns
+// { joined, imported } or { joined:false } if it was a self/duplicate/invalid key.
+const kbJoining = new Set(); // keys currently being joined (avoid a race on concurrent announces)
+async function joinPeer(key) {
+  if (!key || !/^[0-9a-f]{64}$/i.test(key) || key === myKbKey) return { joined: false, reason: "self/invalid" };
+  if (kbPeers.some((p) => p.key === key) || kbJoining.has(key)) return { joined: false, reason: "already joined" };
+  kbJoining.add(key);
+  try {
+    const peerLog = `kb:peer:${key.slice(0, 12)}`;
+    const { swarm, core } = await joinLog(kbAdapter, peerLog, key);
+    const imported = await mergePeerGraph(peerLog);
+    let merging = false;
+    const syncNow = () => { if (merging) return; merging = true; mergePeerGraph(peerLog).catch(() => {}).finally(() => { merging = false; }); };
+    core.on("append", syncNow);
+    const peer = { key, log: peerLog, swarm, importedAt: new Date().toISOString(), _timer: setInterval(syncNow, Number(process.env.MEDPSY_KB_SYNC_MS) || 30000) };
+    kbPeers.push(peer);
+    return { joined: peerLog, imported };
+  } finally { kbJoining.delete(key); }
+}
+
 // P2P "consult a colleague" — when a consult code is configured, the agent gets a tool to
 // reach a paired senior-clinician device for a second opinion (src/consult.js). No cloud.
 const CONSULT_CODE = process.env.MEDPSY_CONSULT_CODE || null;
@@ -112,12 +135,21 @@ const CONSULT_CODE = process.env.MEDPSY_CONSULT_CODE || null;
 // ANSWERS them (so every kiosk is a juror — it vets peers' edges with its own medpsy). The
 // client ignores its own pubkey, so a kiosk never votes on its own edge.
 const CONSULT_SYS = "You are a SENIOR clinician giving a brief second opinion to a community pharmacist's triage assistant. 2-4 sentences: red flags, safest disposition, anything to add. Advisory.";
-const consultClient = CONSULT_CODE ? createConsultClient(CONSULT_CODE, {
-  answerFn: async (q, ctx) => (await provider.complete([{ role: "system", content: CONSULT_SYS }, { role: "user", content: ctx ? `${q}\n\nContext: ${ctx}` : q }], { temperature: 0.3 })).trim(),
-  vetFn: async (edge) => (await import("./edge-learning.js")).vetEdge(provider, edge),
-}) : null;
+let consultClient = null;
+if (CONSULT_CODE) {
+  // MESH: share this kiosk's KB core, then announce its key to every peer on the consult swarm
+  // and auto-join peers' graphs as they announce theirs — full bidirectional federation, no
+  // manual pairing. The same swarm is the jury (asks + answers). (Manual /api/kb/join still works.)
+  try { kbShare = await shareLog(kbAdapter, "kb:medical"); myKbKey = kbShare.keyHex; } catch (e) { console.warn(`[kb-mesh] share skipped: ${e?.message || e}`); }
+  consultClient = createConsultClient(CONSULT_CODE, {
+    answerFn: async (q, ctx) => (await provider.complete([{ role: "system", content: CONSULT_SYS }, { role: "user", content: ctx ? `${q}\n\nContext: ${ctx}` : q }], { temperature: 0.3 })).trim(),
+    vetFn: async (edge) => (await import("./edge-learning.js")).vetEdge(provider, edge),
+    announce: myKbKey,
+    onAnnounce: (key) => joinPeer(key).then((r) => { if (r.joined) console.log(`[kb-mesh] auto-joined peer ${key.slice(0, 12)}…`); }).catch(() => {}),
+  });
+  console.log(`[consult] mesh enabled (code "${CONSULT_CODE}") — jury + auto-federated KB (this kiosk asks, answers, and shares its graph)`);
+}
 const consultTools = consultClient ? [makeConsultTool(consultClient)] : [];
-if (CONSULT_CODE) console.log(`[consult] peer-consult enabled (code "${CONSULT_CODE}") — this kiosk asks AND answers (juror)`);
 
 // Agentic-triage conversations, kept per encounter (in-memory; a kiosk session is short).
 const triageSessions = new Map(); // encounterId -> { messages: [] }
@@ -545,21 +577,9 @@ http.createServer(async (req, res) => {
       if (req.method === "POST" && action === "join") {
         const { key } = JSON.parse((await readBody(req)).toString() || "{}");
         if (!key || !/^[0-9a-f]{64}$/i.test(key)) { json(400, { error: "a 64-hex core key is required" }); return; }
-        if (kbPeers.some((p) => p.key === key)) { json(200, { joined: false, reason: "already joined" }); return; }
-        const peerLog = `kb:peer:${key.slice(0, 12)}`;
-        const { swarm, core } = await joinLog(kbAdapter, peerLog, key);
-        const imported = await mergePeerGraph(peerLog);
-        const peer = { key, log: peerLog, swarm, importedAt: new Date().toISOString() };
-        kbPeers.push(peer);
-        // LIVE federation: merge the instant the peer's core gets new blocks (a promotion
-        // replicates in ~1 s), not on a poll. A slow interval stays as a catch-up backstop
-        // (e.g. blocks that arrived while we were busy, or a missed event).
-        let merging = false;
-        const syncNow = () => { if (merging) return; merging = true; mergePeerGraph(peerLog).catch(() => {}).finally(() => { merging = false; }); };
-        core.on("append", syncNow);
-        peer._timer = setInterval(syncNow, Number(process.env.MEDPSY_KB_SYNC_MS) || 30000);
+        const r = await joinPeer(key);
         const total = (await kbStore.fold("kb:medical", { predicate: "interacts_with" })).facts.length;
-        json(200, { joined: peerLog, imported, total }); return;
+        json(200, { ...r, total }); return;
       }
       if (req.method === "POST" && action === "sync") {
         let merged = 0;
