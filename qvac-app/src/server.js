@@ -135,19 +135,33 @@ const CONSULT_CODE = process.env.MEDPSY_CONSULT_CODE || null;
 // ANSWERS them (so every kiosk is a juror — it vets peers' edges with its own medpsy). The
 // client ignores its own pubkey, so a kiosk never votes on its own edge.
 const CONSULT_SYS = "You are a SENIOR clinician giving a brief second opinion to a community pharmacist's triage assistant. 2-4 sentences: red flags, safest disposition, anything to add. Advisory.";
+// OPT-IN membership: an allowlist of authorized peer DEVICE pubkeys. null = OPEN mesh (anyone
+// with the code joins — fine for a demo). When set, only allowlisted devices (verified by their
+// signed announce) may auto-join the mesh, and only their votes count in the jury — so a
+// member's (re-)vet-free promoted edges only federate from TRUSTED kiosks. Settable at startup
+// (MEDPSY_CONSULT_MEMBERS=hexpub,hexpub) or at runtime (POST /api/consult/members).
+const myPub = identity.getIdentity().publicKey;
+let meshMembers = process.env.MEDPSY_CONSULT_MEMBERS
+  ? new Set(process.env.MEDPSY_CONSULT_MEMBERS.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean))
+  : null;
+const isMember = (pub) => !meshMembers || pub === myPub || meshMembers.has(String(pub || "").toLowerCase());
 let consultClient = null;
 if (CONSULT_CODE) {
-  // MESH: share this kiosk's KB core, then announce its key to every peer on the consult swarm
-  // and auto-join peers' graphs as they announce theirs — full bidirectional federation, no
-  // manual pairing. The same swarm is the jury (asks + answers). (Manual /api/kb/join still works.)
+  // MESH: share this kiosk's KB core, then announce its (signed) key to every peer on the
+  // consult swarm and auto-join authorized peers as they announce theirs — bidirectional
+  // federation, no manual pairing. The same swarm is the jury. (Manual /api/kb/join still works.)
   try { kbShare = await shareLog(kbAdapter, "kb:medical"); myKbKey = kbShare.keyHex; } catch (e) { console.warn(`[kb-mesh] share skipped: ${e?.message || e}`); }
   consultClient = createConsultClient(CONSULT_CODE, {
     answerFn: async (q, ctx) => (await provider.complete([{ role: "system", content: CONSULT_SYS }, { role: "user", content: ctx ? `${q}\n\nContext: ${ctx}` : q }], { temperature: 0.3 })).trim(),
     vetFn: async (edge) => (await import("./edge-learning.js")).vetEdge(provider, edge),
     announce: myKbKey,
-    onAnnounce: (key) => joinPeer(key).then((r) => { if (r.joined) console.log(`[kb-mesh] auto-joined peer ${key.slice(0, 12)}…`); }).catch(() => {}),
+    onAnnounce: (key, from, fromOk) => {
+      if (!fromOk) return; // unsigned/forged announce — ignore
+      if (!isMember(from?.publicKey)) { console.log(`[kb-mesh] rejected non-member ${String(from?.publicKey).slice(0, 12)}…`); return; }
+      joinPeer(key).then((r) => { if (r.joined) console.log(`[kb-mesh] auto-joined peer ${key.slice(0, 12)}…`); }).catch(() => {});
+    },
   });
-  console.log(`[consult] mesh enabled (code "${CONSULT_CODE}") — jury + auto-federated KB (this kiosk asks, answers, and shares its graph)`);
+  console.log(`[consult] mesh enabled (code "${CONSULT_CODE}") — jury + auto-federated KB; membership: ${meshMembers ? meshMembers.size + " allowlisted" : "OPEN"}`);
 }
 const consultTools = consultClient ? [makeConsultTool(consultClient)] : [];
 
@@ -181,11 +195,29 @@ http.createServer(async (req, res) => {
       backend: provider.name, mode: BACKEND, onDevice, cloud: false,
       peerConsult: !!CONSULT_CODE, // agent can reach a paired clinician device (P2P)
       consultPeers: consultClient?.peerCount?.() ?? null, // connected consult peers (jurors)
+      devicePublicKey: myPub,
+      membership: { enforced: !!meshMembers, count: meshMembers ? meshMembers.size : null }, // mesh allowlist
       model: onDevice ? QVAC_LLM_GGUF : `${LMSTUDIO_LLM} @ ${LMSTUDIO_URL}`,
       note: onDevice
         ? "All inference runs on this device via @qvac/sdk (local .gguf) — no cloud, no outbound model calls."
         : "Dev backend: LM Studio's local server on this machine (not cloud, but not the on-device QVAC path).",
     }));
+    return;
+  }
+  // Mesh membership (opt-in). GET → status; POST {keys:[hexpub,…]} → enforce an allowlist at
+  // runtime (empty/[] → reopen the mesh). Only allowlisted devices auto-join + vote.
+  if (req.url.split("?")[0] === "/api/consult/members") {
+    res.writeHead(200, { "content-type": "application/json" });
+    if (req.method === "POST") {
+      try {
+        const { keys } = JSON.parse((await readBody(req)).toString() || "{}");
+        meshMembers = Array.isArray(keys) && keys.length
+          ? new Set(keys.map((k) => String(k).trim().toLowerCase()).filter((k) => /^[0-9a-f]{64}$/.test(k)))
+          : null;
+        console.log(`[kb-mesh] membership ${meshMembers ? "ENFORCED (" + meshMembers.size + ")" : "OPEN"}`);
+      } catch { /* ignore bad body */ }
+    }
+    res.end(JSON.stringify({ enforced: !!meshMembers, count: meshMembers ? meshMembers.size : null, self: myPub }));
     return;
   }
   // Latest agent-eval results (scripts/agent_eval.mjs writes them) — the measured trust story.
@@ -645,6 +677,7 @@ http.createServer(async (req, res) => {
         if (consultClient) {
           const jury = await consultClient.askVetAll({ a: e.a, b: e.b, severity: e.severity, note: e.note }).catch(() => []);
           for (const j of jury) {
+            if (!j.signatureOk || !isMember(j.peer?.publicKey)) continue; // only verified, allowlisted jurors count
             const p = { real: j.verdict.real, severity: j.verdict.severity, reason: j.verdict.reason, by: j.peer?.name || "peer", signatureOk: j.signatureOk };
             await recordVote(kbStore, edgeId, { voter: j.peer?.publicKey || `peer:${p.by}`, by: `peer:${p.by}`, real: p.real, severity: p.severity, reason: p.reason, signatureOk: p.signatureOk });
             audit.append("kb-learning", "learn.vet", { edgeId, real: p.real, severity: p.severity, by: `peer:${p.by}`, signatureOk: p.signatureOk }, "model").catch(() => {});

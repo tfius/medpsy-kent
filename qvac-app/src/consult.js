@@ -160,12 +160,21 @@ export function createConsultClient(code, { vetFn = null, answerFn = null, annou
     onJsonLine(conn, (msg) => {
       if (msg.kind === "consult-response" && pending.has(msg.id)) pending.get(msg.id)(msg);
       else if (msg.kind === "consult-request" && msg.id && serves) serve(conn, msg);
-      else if (msg.kind === "kb-announce" && onAnnounce && msg.key) onAnnounce(msg.key, msg.from);
+      else if (msg.kind === "kb-announce" && onAnnounce && msg.key) {
+        // The signature proves the announcer owns `from.publicKey` AND committed to this key —
+        // so membership (allowlist) decisions can trust `from`. Pass fromOk to the policy.
+        const fromOk = !!(msg.from?.publicKey && verify(`kb-announce:${msg.key}`, msg.sig || "", msg.from.publicKey));
+        onAnnounce(msg.key, msg.from, fromOk);
+      }
     });
-    if (announce) { try { sendJson(conn, { kind: "kb-announce", key: announce, from: getIdentity() }); } catch { /* dead conn */ } }
+    if (announce) { try { sendJson(conn, { kind: "kb-announce", key: announce, from: getIdentity(), sig: sign(`kb-announce:${announce}`) }); } catch { /* dead conn */ } }
     for (const wire of active.values()) { try { sendJson(conn, wire); } catch { /* dead conn */ } } // catch late jurors
   });
-  swarm.join(topicFor(code), { server: serves, client: true });
+  // Flush the announce onto the DHT, then re-run discovery shortly after — two peers that join
+  // at the same instant can otherwise miss each other's initial lookup (a star around whoever
+  // joined last). flushed() + a re-flush makes simultaneous-start peers find each other.
+  const disc = swarm.join(topicFor(code), { server: serves, client: true });
+  disc.flushed().then(() => setTimeout(() => disc.refresh?.({ client: true, server: serves }), 2000)).catch(() => {});
 
   const waitForConn = (ms) => conns.size ? Promise.resolve(true) : new Promise((res) => {
     const t = setTimeout(() => { swarm.off("connection", h); res(false); }, ms);
