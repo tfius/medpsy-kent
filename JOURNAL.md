@@ -1873,6 +1873,37 @@ quirk) — it captures once the page settles; the console-message tool is unaffe
 
 ---
 
+## 2026-06-15 — Unified `medpsy` CLI: keygen, interactive init, sign/verify/import
+
+The signing + config story was HTTP-only or implicit (keys auto-generated silently; config
+hand-edited; verify/import only via `/api/audit`). Filled the gaps with one entrypoint
+(`src/cli.js` dispatcher + `src/cli-commands.js`; `bin: medpsy`/`medpsy-triage`). Bare args still
+run a triage (back-compat); `bootstrap-config.js` runs first so `--profile`/`--config` apply to
+every subcommand.
+
+- **`init`** — interactive config scaffolder (`readline/promises`): prompts backend/port/device
+  name/profile/mesh code/members/speech → writes `medpsy.config.json`. TTY-gated so piped/CI runs
+  fall back to safe defaults (never hangs); `--yes`/`-o <file>`/`--force`; echoes a one-line
+  summary + next steps.
+- **`keygen`** — create/print this device's ed25519 key (`--force` regenerates, with a warning);
+  added `keyFilePath()`/`keyExists()` to `identity.js`.
+- **`export <id>` / `verify <bundle>` / `import <bundle>`** — signed audit bundles from the
+  command line, reusing `audit.exportBundle/importBundle` + `identity` (so CLI and `/api/audit`
+  agree). `verify` returns exit 0/1; `import` **fails closed** (no persist without a valid chain +
+  signature).
+- **Consolidation:** folded the standalone `scripts/print_identity.mjs` + `scripts/roster.mjs`
+  into the CLI and re-pointed `npm run identity`/`roster` at it — single source of truth (the two
+  scripts were deleted). Fixed a flag-parser bug (a value must not start with `-`, so `--yes -o x`
+  parses correctly).
+
+Verified end-to-end: keygen/identity (+profile), init (`-o`/`--yes`), roster sign, and
+**export → verify(✓) → tamper(FAIL, exit 1) → import(✓, idempotent "already present")**;
+back-compat triage intact; `node --check` clean. STACK.md §6 documents the commands. New:
+`src/cli-commands.js`. Touched: `src/cli.js`, `src/identity.js`, `package.json`, `STACK.md`;
+removed `scripts/{print_identity,roster}.mjs`.
+
+---
+
 ## 2026-06-15 — QVAC-SDK usage slide (hackathon requirement)
 
 The hackathon requires one slide showing *how* we used the QVAC SDK. Rather than write

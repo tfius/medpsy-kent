@@ -917,6 +917,47 @@ Everything worked, with no errors.
 
 ---
 
+## Session 37 — A toolbox you can run from the keyboard
+
+Some setup chores were either buried inside the app or only doable by poking the running server.
+We pulled them into one tidy command-line tool (`medpsy`) so a clinic's tech person can do them in
+a single line, even before the app starts:
+
+- **Set up a new kiosk by answering a few questions.** `medpsy init` walks you through it — which
+  AI engine, which port, the kiosk's name, whether it joins a clinic network — and writes the
+  settings file for you. No hunting through docs.
+- **Give each kiosk its own ID badge.** `medpsy keygen` creates the device's unique signing key —
+  the thing that proves "this record really came from *this* kiosk."
+- **Check a shared record is genuine.** When one kiosk hands a patient's sealed record to another,
+  `medpsy verify` re-checks the seal and signature and says plainly: genuine, or tampered. And
+  `medpsy import` only files it if it passes — it refuses anything that doesn't.
+
+These reuse the very same locks and seals the app already used; now they work from the keyboard
+too. We also tidied up by deleting two older mini-scripts the new tool replaces.
+
+Bottom line: setting up and trusting kiosks is now a handful of plain commands.
+
+---
+
+## Session 38 — One slide: how we actually used QVAC
+
+The hackathon asks every team to show, on a single slide, how they used the QVAC engine. Instead
+of writing something vague, we built the slide straight from the real code — we even counted how
+many times each QVAC feature is called — so every claim points at something that actually runs.
+
+It tells the story in three parts: (1) the medical brain, the speech, and the code-matching all
+run **on the device** through QVAC — flip one switch and it works with no internet; (2) the kiosks
+talk **directly to each other** over QVAC's peer-to-peer network — that's how a lesson learned on
+one kiosk reaches the others, and how each record gets its tamper-proof signature; (3) the
+time-aware memory and the knowledge library sit on QVAC's building blocks too. We saved it as a
+file in the project (so it never drifts from the code) and wrote down how to turn it into real
+slides plus a ~30-second script to say out loud.
+
+Bottom line: the required "how we used QVAC" slide is done — and it's honest, because it mirrors
+the code.
+
+---
+
 ## The whole story in three sentences
 
 We built a tiny medical AI helper, tried our hardest to break it, and found its
