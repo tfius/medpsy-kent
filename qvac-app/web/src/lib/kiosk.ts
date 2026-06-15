@@ -5,6 +5,9 @@ import type { VetResult, PairCheck, Learning } from "./learn";
 import type { BackendInfo } from "./trust";
 
 export interface MeshMembership { enforced: boolean; count: number | null; self?: string }
+export interface SignalRow { pairKey: string; a: string; b: string; seen: number; flagged: number; contributors: number; rate: number }
+export interface SignalProposal extends SignalRow { id: string; severity: string }
+export interface SignalStatus { threshold: { minContributors: number; minFlagged: number; minRate: number }; contributors: number; aggregate: SignalRow[]; crossing: SignalRow[]; me: string }
 export interface KioskBackend extends BackendInfo { devicePublicKey?: string; consultPeers?: number; membership?: { enforced: boolean; count: number | null } }
 
 export function kiosk(base: string) {
@@ -24,6 +27,10 @@ export function kiosk(base: string) {
     members: (keys?: string[]) => keys === undefined
       ? j<MeshMembership>("/api/consult/members")
       : post<MeshMembership>("/api/consult/members", { keys }),
+    // Federated safety intelligence (pharmacovigilance).
+    signals: () => j<SignalStatus>("/api/signals"),
+    observeSignal: (a: string, b: string, adverse: boolean) => post<{ recorded: unknown[] }>("/api/signals/observe", { a, b, adverse }),
+    scanSignals: () => post<{ crossing: SignalRow[]; proposed: SignalProposal[] }>("/api/signals/scan"),
     kb: () => j<{ count: number; peers: { key: string }[] }>("/api/kb"),
     share: () => post<{ key: string }>("/api/kb/share"),
     join: (key: string) => post<{ joined?: string | false; total?: number; reason?: string }>("/api/kb/join", { key }),

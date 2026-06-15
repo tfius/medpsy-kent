@@ -14,6 +14,7 @@ import Trust from "./pages/Trust";
 import Demo from "./pages/Demo";
 import TwoKiosk from "./pages/TwoKiosk";
 import MeshDemo from "./pages/MeshDemo";
+import SignalsDemo from "./pages/SignalsDemo";
 import { audit } from "./lib/audit";
 
 type Step = { path: string; key: string; el: ReactNode; clinician?: boolean };
@@ -87,6 +88,7 @@ export default function App() {
             <NavLink to="/trust" className="btn ghost newpt" title="Trust: on-device, grounded, measured">📊 Trust</NavLink>
             <NavLink to="/demo" className="btn ghost newpt" title="Guided demo: the edge-learning loop">✨ Demo</NavLink>
             <NavLink to="/mesh" className="btn ghost newpt" title="Mesh: N kiosks federated learning">🕸 Mesh</NavLink>
+            <NavLink to="/signals" className="btn ghost newpt" title="Federated safety intelligence (pharmacovigilance)">📡 Signals</NavLink>
             <NavLink to="/audit" className="btn ghost newpt" title="Audit log">🛡 {T("audit") !== "audit" ? T("audit") : "Audit"}</NavLink>
             <HelpButton />
           </div>
@@ -117,6 +119,7 @@ export default function App() {
             <Route path="/demo" element={<Demo />} />
             <Route path="/two-kiosk" element={<TwoKiosk />} />
             <Route path="/mesh" element={<MeshDemo />} />
+            <Route path="/signals" element={<SignalsDemo />} />
           </Routes>
         </main>
 

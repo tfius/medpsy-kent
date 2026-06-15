@@ -19,6 +19,7 @@ import { shareLog, joinLog } from "./kb-sync.js";
 import { makeConsultTool, createConsultClient } from "./consult.js";
 import { verifyRoster } from "./roster.js";
 import { proposeEdge, vetEdge, recordVote, promoteEdge, rejectEdge, pendingEdges, distillEdges } from "./edge-learning.js";
+import { observeCooccurrence, aggregateSignals, detectSignals, autoProposeSignals, DEFAULT_THRESHOLD, pairKey } from "./signals.js";
 import { seedInteractions, makeInteractionTool, drugId } from "./medlens.js";
 import { encounterToOKF } from "./audit-okf.js";
 import { BACKEND, QVAC_LLM_GGUF, LMSTUDIO_LLM, LMSTUDIO_URL } from "./config.js";
@@ -568,6 +569,22 @@ http.createServer(async (req, res) => {
               source: "triage", confidence: 0.6, meta: { proposed: true, band: e.outcome.band } })
               .then((rec) => audit.append(encounterId, "facts.assert", { tool: "triage.conclude", statementId: rec?.payload?.statementId, hash: rec?.hash, subject: log, predicate: "diagnosed", object: { name: e.outcome.condition, icd: e.outcome.icd }, proposed: true, confidence: 0.6 }, "model"))
               .catch(() => {});
+            // Federated safety intelligence: tally de-identified co-occurrences of the patient's
+            // meds, flagging the pair(s) when triage concluded with a concerning disposition.
+            // PHI-free (drug names + counts only) — a crossed NETWORK threshold later auto-proposes
+            // a candidate into the human-gated learning loop. Best-effort; never blocks the reply.
+            (async () => {
+              try {
+                const meds = (await facts.fold(log, { predicate: "takes" })).facts
+                  .map((f) => String(f.object?.ref || f.object?.name || "").replace(/^drug:/, "")).filter(Boolean);
+                if (meds.length < 2) return;
+                const adverse = /red|urgent|escalat|emergen|major|refer|999|a&e|ed\b/i.test(`${e.outcome.band || ""} ${e.outcome.disposition || ""} ${e.outcome.recommendation || ""}`);
+                const meSig = identity.getIdentity().publicKey.slice(0, 12);
+                for (let i = 0; i < meds.length; i++) for (let jj = i + 1; jj < meds.length; jj++)
+                  await observeCooccurrence(kbStore, { a: meds[i], b: meds[jj], adverse, by: meSig }).catch(() => {});
+                audit.append(encounterId, "signal.observe", { pairs: meds.length * (meds.length - 1) / 2, adverse, by: meSig }, "model").catch(() => {});
+              } catch { /* signals best-effort */ }
+            })();
           }
         },
       });
@@ -749,6 +766,60 @@ http.createServer(async (req, res) => {
         json(200, r); return;
       }
       json(404, { error: "unknown learn route" });
+    } catch (e) { json(400, { error: String(e?.message || e) }); }
+    return;
+  }
+  // Federated safety intelligence — PHI-free pharmacovigilance (src/signals.js). Each kiosk
+  // tallies de-identified drug-pair co-occurrences; the mesh sums them and a crossed threshold
+  // auto-proposes a candidate into the human-gated vet/promote loop above.
+  if (req.url.split("?")[0].startsWith("/api/signals")) {
+    const action = req.url.split("?")[0].split("/").filter(Boolean)[2] || null;
+    const json = (c, o) => { res.writeHead(c, { "content-type": "application/json" }); res.end(JSON.stringify(o)); };
+    const me = identity.getIdentity().publicKey.slice(0, 12);
+    const body = async () => JSON.parse((await readBody(req)).toString() || "{}");
+    // Fold self + every replicated peer log directly (no re-mirroring → no double-count).
+    const signalLogs = () => ["kb:medical", ...kbPeers.map((p) => p.log)];
+    // Pairs that already exist as an interaction edge (proposed OR promoted) — don't re-propose.
+    const knownPairs = async () => {
+      const facts = (await kbStore.fold("kb:medical", { predicate: "interacts_with" })).facts;
+      const s = new Set();
+      for (const f of facts) { const pk = pairKey(String(f.subject).replace(/^drug:/, ""), String(f.object?.ref).replace(/^drug:/, "")); if (pk) s.add(pk); }
+      return s;
+    };
+    try {
+      // Record one (or more) de-identified co-occurrence(s). { drugs:[...], adverse:bool } bumps
+      // every pair among the listed drugs; { a, b, adverse } bumps a single pair.
+      if (req.method === "POST" && action === "observe") {
+        const b = await body();
+        const adverse = !!b.adverse;
+        const recorded = [];
+        if (Array.isArray(b.drugs) && b.drugs.length >= 2) {
+          for (let i = 0; i < b.drugs.length; i++) for (let j = i + 1; j < b.drugs.length; j++) {
+            try { recorded.push(await observeCooccurrence(kbStore, { a: b.drugs[i], b: b.drugs[j], adverse, by: me })); } catch { /* degenerate pair */ }
+          }
+        } else if (b.a && b.b) {
+          recorded.push(await observeCooccurrence(kbStore, { a: b.a, b: b.b, adverse, by: me }));
+        } else { json(400, { error: "need drugs[] (>=2) or a+b" }); return; }
+        audit.append("kb-learning", "signal.observe", { pairs: recorded.map((r) => `${r.a}+${r.b}`), adverse, by: me }, "model").catch(() => {});
+        json(200, { recorded, adverse }); return;
+      }
+      // Network status: the aggregate (self + peers), which pairs currently cross the threshold,
+      // and this kiosk's own contribution. Read-only — does NOT propose.
+      if (req.method === "GET" && !action) {
+        const rows = await aggregateSignals(kbStore, { logs: signalLogs() });
+        const crossing = detectSignals(rows, { knownPairs: await knownPairs() });
+        json(200, { threshold: DEFAULT_THRESHOLD, contributors: 1 + kbPeers.length, aggregate: rows, crossing, me }); return;
+      }
+      // Scan: detect pairs crossing the threshold and AUTO-PROPOSE them into the vet/promote loop
+      // (idempotent — already-known/proposed pairs are skipped). A human still vets + promotes.
+      if (req.method === "POST" && action === "scan") {
+        const rows = await aggregateSignals(kbStore, { logs: signalLogs() });
+        const crossing = detectSignals(rows, { knownPairs: await knownPairs() });
+        const proposed = await autoProposeSignals(crossing, (e) => proposeEdge(kbStore, { ...e, evidence: "federated-signal" }), { meId: me });
+        for (const p of proposed) audit.append("kb-learning", "signal.propose", { id: p.id, a: p.a, b: p.b, severity: p.severity, seen: p.seen, flagged: p.flagged, contributors: p.contributors, by: me }, "model").catch(() => {});
+        json(200, { crossing, proposed }); return;
+      }
+      json(404, { error: "unknown signals route" });
     } catch (e) { json(400, { error: String(e?.message || e) }); }
     return;
   }
