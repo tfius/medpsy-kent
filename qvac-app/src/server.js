@@ -193,6 +193,7 @@ const consultTools = consultClient ? [makeConsultTool(consultClient)] : [];
 
 // Agentic-triage conversations, kept per encounter (in-memory; a kiosk session is short).
 const triageSessions = new Map(); // encounterId -> { messages: [] }
+const triageInFlight = new Set(); // encounterIds with a turn in progress (one turn at a time per encounter)
 
 // Warm the on-device STT model now so the first dictation isn't "stuck" loading.
 // Skippable so the two-kiosk demo (two server processes) doesn't spin up 4 speech workers.
@@ -512,6 +513,10 @@ http.createServer(async (req, res) => {
       res.end(JSON.stringify({ error: `backend ${provider.name} has no tool-calling support` })); return;
     }
     if (!encounterId) { res.writeHead(400, { "content-type": "application/json" }); res.end(JSON.stringify({ error: "encounterId required" })); return; }
+    // One turn at a time per encounter: a concurrent POST (double-tap / retried fetch) would race
+    // on the shared session — both spending the re-ask budget and clobbering session.messages.
+    if (triageInFlight.has(encounterId)) { res.writeHead(409, { "content-type": "application/json" }); res.end(JSON.stringify({ error: "a triage turn is already in progress for this encounter" })); return; }
+    triageInFlight.add(encounterId);
     if (reset) triageSessions.delete(encounterId);
     const session = triageSessions.get(encounterId) || { messages: [] };
     triageSessions.set(encounterId, session);
@@ -552,7 +557,13 @@ http.createServer(async (req, res) => {
         try {
           const res = await consultClient.ask(q, { context: "" });
           const ans = String(res?.answer || "");
-          return { answer: ans, peer: res?.peer?.name || res?.peer?.publicKey?.slice(0, 12) || "peer", signatureOk: !!res?.signatureOk, escalate: /\bescalat/i.test(ans) && !/\bagree/i.test(ans.slice(0, 12)) };
+          // The prompt asks the peer to LEAD with AGREE or ESCALATE; trust that prefix first, then
+          // fall back to a body scan. An empty/ambiguous answer → no escalation (safe: the gate can
+          // only raise, so the worst case is "peer advice not applied", never a downgrade).
+          const lead = ans.trim().slice(0, 16).toUpperCase();
+          const escalate = /^ESCALAT/.test(lead) || (/\bescalat/i.test(ans) && !/^AGREE/.test(lead));
+          const emergency = escalate && /\b999\b|\b911\b|anaphylax|emergency department|\bA&E\b|\bED\b|resus|ambulance|right away|immediately/i.test(ans);
+          return { answer: ans, peer: res?.peer?.name || res?.peer?.publicKey?.slice(0, 12) || "peer", signatureOk: !!res?.signatureOk, escalate, emergency };
         } catch { return null; }
       } : null;
       const r = await runTriageAgent({
@@ -610,6 +621,8 @@ http.createServer(async (req, res) => {
       send({ type: "done" });
     } catch (e) {
       send({ type: "error", error: String(e?.message || e) });
+    } finally {
+      triageInFlight.delete(encounterId); // release the per-encounter turn lock
     }
     try { if (!res.writableEnded) { res.write("data: [DONE]\n\n"); res.end(); } } catch { /* socket gone */ }
     return;

@@ -61,13 +61,33 @@ const f = (await run("uncertain → peer escalates", "vague tummy ache",
   JSON.stringify({ agree: true, decision: "INSUFFICIENT-DATA", severity: 5, missedRedFlags: "none", rationale: "insufficient information" }),
   { consultFn })).r;
 
+// 7) OFF-ENUM supervisor label: "A&E" must map to a real escalation, not be dropped.
+const g = (await run("off-enum label → escalate", "sudden severe headache",
+  { decision: "ROUTINE", severity: 3, condition: "tension headache", icd: "R51", redFlags: "none", routing: "self-care", safetyNet: "return if worse" },
+  JSON.stringify({ agree: false, decision: "A&E", severity: 8, missedRedFlags: "thunderclap headache", rationale: "send to A&E to exclude SAH" }))).r;
+
+// 8) UNRECOGNIZABLE disagreement → conservative escalation to URGENT (never silently kept).
+const h = (await run("garbled label → conservative URGENT", "odd palpitations",
+  { decision: "ROUTINE", severity: 2, condition: "benign ectopics", icd: "R00.2", redFlags: "none", routing: "self-care", safetyNet: "return if worse" },
+  JSON.stringify({ agree: false, decision: "??!", severity: 5, missedRedFlags: "needs ECG", rationale: "uncharacterised arrhythmia" }))).r;
+
+// 9) PEER signals EMERGENCY (not just URGENT) → band raised all the way.
+const consultEmerg = async () => ({ answer: "ESCALATE — call 999 now, this is anaphylaxis.", peer: "Dr-C", signatureOk: true, escalate: true, emergency: true });
+const i = (await run("peer → EMERGENCY", "lip swelling after antibiotic",
+  { decision: "INSUFFICIENT-DATA", severity: 5, condition: "allergic reaction?", icd: "T78.4", redFlags: "none identified", routing: "pharmacist review", safetyNet: "return if worse" },
+  JSON.stringify({ agree: true, decision: "INSUFFICIENT-DATA", severity: 5, missedRedFlags: "none", rationale: "unclear" }),
+  { consultFn: consultEmerg })).r;
+
 const pass =
   a.outcome?.decision === "EMERGENCY" && a.outcome?.band === "RED" && a.outcome?.supervised?.escalated === true && !a.supervisorAsk &&
   b.outcome?.decision === "PHARMACIST-LED" && b.outcome?.supervised?.escalated === false &&
   c.outcome?.decision === "EMERGENCY" && c.outcome?.supervised?.escalated === false &&
   d.supervisorAsk === true && /suddenly/.test(d.question || "") && !d.outcome &&
   e.supervisorAsk !== true && e.outcome?.decision === "URGENT" &&
-  f.outcome?.consult?.answer && f.outcome?.decision === "URGENT" && f.outcome?.consult?.signatureOk === true;
+  f.outcome?.consult?.answer && f.outcome?.decision === "URGENT" && f.outcome?.consult?.signatureOk === true &&
+  g.outcome?.decision === "EMERGENCY" && g.outcome?.supervised?.escalated === true &&
+  h.outcome?.decision === "URGENT" && h.outcome?.supervised?.escalated === true &&
+  i.outcome?.decision === "EMERGENCY" && i.outcome?.consult?.escalate === true;
 
-console.log(`\n${pass ? "PASS" : "FAIL"} — escalate(${a.outcome?.decision === "EMERGENCY"}) keep(${b.outcome?.supervised?.escalated === false}) no-deescalate(${c.outcome?.decision === "EMERGENCY"}) follow-up(${d.supervisorAsk === true}) budget(${e.outcome?.decision === "URGENT"}) peer-raises(${f.outcome?.decision === "URGENT"})`);
+console.log(`\n${pass ? "PASS" : "FAIL"} — escalate(${a.outcome?.decision === "EMERGENCY"}) keep(${b.outcome?.supervised?.escalated === false}) no-deescalate(${c.outcome?.decision === "EMERGENCY"}) follow-up(${d.supervisorAsk === true}) budget(${e.outcome?.decision === "URGENT"}) peer-URGENT(${f.outcome?.decision === "URGENT"}) off-enum(${g.outcome?.decision === "EMERGENCY"}) garbled→URGENT(${h.outcome?.decision === "URGENT"}) peer-EMERGENCY(${i.outcome?.decision === "EMERGENCY"})`);
 process.exit(pass ? 0 : 1);

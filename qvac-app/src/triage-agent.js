@@ -80,6 +80,24 @@ function extractJsonObj(text) {
 // silently lower it — so the gate can make a conclusion safer but never less safe.
 const ACUITY = { ROUTINE: 0, "PHARMACIST-LED": 1, "INSUFFICIENT-DATA": 1, URGENT: 2, EMERGENCY: 3 };
 
+// Map a model-emitted disposition label to the canonical enum. Models phrase escalation many ways
+// ("A&E", "999", "refer to ED", "same-day") — without this, an off-enum label scores acuity −1 and
+// a real escalation gets SILENTLY DROPPED. Returns a canonical decision, or null if unrecognizable.
+const DECISION_SYNONYMS = [
+  [/EMERGENC|\b999\b|\b911\b|RESUS|ANAPHYLAX|BLUE.?LIGHT|AMBULANCE|\bA&E\b|A AND E|\bED\b|\bER\b/, "EMERGENCY"],
+  [/URGENT|SAME.?DAY|\b111\b|REFER|ESCALAT|HOSPITAL/, "URGENT"],
+  [/PHARMAC/, "PHARMACIST-LED"],
+  [/ROUTINE|SELF.?CARE|\bGP\b|HOME/, "ROUTINE"],
+  [/INSUFFICIENT|UNCLEAR|UNKNOWN|MORE INFO/, "INSUFFICIENT-DATA"],
+];
+function normDecision(d) {
+  const s = String(d || "").toUpperCase().trim();
+  if (!s) return null;
+  if (ACUITY[s] !== undefined) return s;
+  for (const [re, label] of DECISION_SYNONYMS) if (re.test(s)) return label;
+  return null;
+}
+
 // Compact, PHI-light recap of what the interview gathered (patient answers + the on-device tool
 // results that grounded the reasoning) — the evidence the safety reviewer re-reads.
 function summarizeEvidence(history) {
@@ -190,30 +208,41 @@ export async function runTriageAgent({ provider, icdIndex, extraTools = [], mess
         return { question: v.askInstead, supervisorAsk: true, reason: v.rationale || "", messages: strip() };
       }
 
-      // (2) Safety-biased escalation: the supervisor may only RAISE acuity.
-      const escalate = !v.agree && (ACUITY[v.decision] ?? -1) > (ACUITY[orig] ?? 1);
+      // (2) Safety-biased escalation: the supervisor may only RAISE acuity. A disagreement whose
+      // decision label we can't map is treated as a CONSERVATIVE escalation to URGENT rather than
+      // dropped — so an off-enum "REFER"/"A&E"/"999" never silently keeps a ROUTINE band.
+      const supDec = normDecision(v.decision);
+      const supAcuity = !v.agree ? (supDec ? ACUITY[supDec] : ACUITY.URGENT) : -1;
+      const escalate = supAcuity > (ACUITY[orig] ?? 1);
       if (escalate) {
-        args = { ...args, decision: v.decision,
-          severity: Math.max(Number(args.severity) || 0, Number(v.severity) || 0),
+        const newDec = supDec && ACUITY[supDec] !== undefined ? supDec : "URGENT";
+        args = { ...args, decision: newDec,
+          severity: Math.max(Number(args.severity) || 0, Number(v.severity) || 0, ACUITY[newDec] >= ACUITY.URGENT ? 6 : 0),
           redFlags: v.missedRedFlags && !/^\s*none/i.test(v.missedRedFlags) ? v.missedRedFlags : args.redFlags,
           routing: `${String(args.routing || "").trim()} [Safety review escalated: ${v.rationale || "missed red flag"}]`.trim() };
       }
+      const reviewerFailed = !!(v.error || v.unparsed || v.skipped);
       supervised = { agreed: !!v.agree, escalated: escalate, from: orig, missedRedFlags: v.missedRedFlags || "", rationale: v.rationale || "", error: v.error || v.unparsed || v.skipped || null };
 
-      // (3) Autonomous peer second opinion when uncertain (the supervisor escalated, or the
-      // disposition is itself low-confidence) and a consult peer is reachable. Advisory: it's
+      // (3) Autonomous peer second opinion when uncertain (the supervisor escalated, the
+      // disposition is itself low-confidence, OR the reviewer FAILED — so a reviewer outage
+      // doesn't disable both safety layers at once) and a consult peer is reachable. Advisory:
       // attached for the pharmacist + audited, and can only RAISE the band, never lower it.
       const finalDec = String(args.decision || "").toUpperCase();
-      const uncertain = escalate || orig === "INSUFFICIENT-DATA" || finalDec === "INSUFFICIENT-DATA";
+      const uncertain = escalate || reviewerFailed || orig === "INSUFFICIENT-DATA" || finalDec === "INSUFFICIENT-DATA";
       if (consultFn && uncertain) {
         consult = await consultFn({ args, rationale: v.rationale || "" }).catch(() => null);
         if (consult?.answer) {
           onEvent({ type: "consult", consult });
-          // A peer can only RAISE the band (to URGENT), and we attribute it to the peer (the
-          // consult card + this routing note), NOT to the supervisor's own `escalated` flag.
-          if (consult.escalate && ACUITY.URGENT > (ACUITY[finalDec] ?? 1)) {
-            args = { ...args, decision: "URGENT", severity: Math.max(Number(args.severity) || 0, 6),
-              routing: `${String(args.routing || "").trim()} [Peer second opinion advised escalation]`.trim() };
+          // A peer can only RAISE the band (URGENT, or EMERGENCY if the peer clearly signals it),
+          // attributed to the peer (the consult card + this routing note), never to the
+          // supervisor's `escalated` flag and never downward.
+          if (consult.escalate) {
+            const target = consult.emergency ? "EMERGENCY" : "URGENT";
+            if (ACUITY[target] > (ACUITY[finalDec] ?? 1)) {
+              args = { ...args, decision: target, severity: Math.max(Number(args.severity) || 0, consult.emergency ? 9 : 6),
+                routing: `${String(args.routing || "").trim()} [Peer second opinion advised escalation]`.trim() };
+            }
           }
         }
       }
