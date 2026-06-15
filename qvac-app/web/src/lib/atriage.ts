@@ -4,11 +4,12 @@ import { getAuditEncounter } from "./audit";
 import { readSSE } from "./sse";
 
 export type Supervision = { agreed: boolean; escalated: boolean; from: string; missedRedFlags: string; rationale: string; error?: unknown };
-export type Critique = { agree: boolean; decision?: string; severity?: number; missedRedFlags?: string; rationale?: string };
+export type Critique = { agree: boolean; decision?: string; severity?: number; missedRedFlags?: string; askInstead?: string; rationale?: string };
+export type ConsultOpinion = { answer: string; peer: string; signatureOk: boolean; escalate?: boolean };
 export type TriageOutcome = {
   decision: string; severity: number; band: "RED" | "AMBER" | "GREEN" | "";
   condition: string; icd: string; icdGuess?: string; icdDescription?: string;
-  redFlags: string; routing: string; safetyNet: string; supervised?: Supervision;
+  redFlags: string; routing: string; safetyNet: string; supervised?: Supervision; consult?: ConsultOpinion;
 };
 export type ATriageEvent =
   | { type: "reasoning"; text: string }
@@ -16,6 +17,7 @@ export type ATriageEvent =
   | { type: "tool_result"; id: string; name: string; result: unknown }
   | { type: "question"; text: string }
   | { type: "critique"; verdict: Critique }
+  | { type: "consult"; consult: ConsultOpinion }
   | { type: "conclusion"; outcome: TriageOutcome }
   | { type: "done" }
   | { type: "error"; error: string };

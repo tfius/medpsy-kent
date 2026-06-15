@@ -541,8 +541,23 @@ http.createServer(async (req, res) => {
         const pf = (await facts.fold(log, { status: "confirmed" })).facts;
         context = pf.map((f) => `- ${f.predicate}: ${typeof f.object === "object" ? JSON.stringify(f.object) : f.object}`).join("\n");
       } catch { /* no facts yet */ }
+      // The safety reviewer may bounce the interview back for ONE more question per encounter
+      // (bounded so it can never interrogate endlessly across turns), and — when a consult peer
+      // is reachable and the case is escalating/uncertain — autonomously fetch a signed second
+      // opinion over the mesh (advisory; can only raise the band).
+      const MAX_SUPERVISOR_ASKS = 2;
+      const consultFn = consultClient ? async ({ args, rationale }) => {
+        if ((consultClient.peerCount?.() ?? 0) < 1) return null;
+        const q = `Triage second opinion. Proposed disposition: ${args.decision} (severity ${args.severity}) for "${args.condition}". Red flags: ${args.redFlags || "none stated"}.${rationale ? ` Safety concern: ${rationale}.` : ""} Do you AGREE with this disposition, or would you escalate? Start your reply with AGREE or ESCALATE, then 1-2 sentences.`;
+        try {
+          const res = await consultClient.ask(q, { context: "" });
+          const ans = String(res?.answer || "");
+          return { answer: ans, peer: res?.peer?.name || res?.peer?.publicKey?.slice(0, 12) || "peer", signatureOk: !!res?.signatureOk, escalate: /\bescalat/i.test(ans) && !/\bagree/i.test(ans.slice(0, 12)) };
+        } catch { return null; }
+      } : null;
       const r = await runTriageAgent({
         provider, icdIndex: index, extraTools, context, messages: session.messages, signal: ac.signal,
+        supervisorAsksLeft: Math.max(0, MAX_SUPERVISOR_ASKS - (session.supervisorAsks || 0)), consultFn,
         // EVERY step of the loop lands in the tamper-evident chain. The conversation layer
         // (message.user/message.assistant/outcome) and the facts layer (facts.read/.assert)
         // reuse the kiosk's event types so both flows are auditable the same way; the
@@ -551,6 +566,7 @@ http.createServer(async (req, res) => {
           send(e);
           if (e.type === "reasoning") audit.append(encounterId, "atriage.reasoning", { text: e.text }, "model").catch(() => {});
           else if (e.type === "critique") audit.append(encounterId, "atriage.critique", e.verdict, "model").catch(() => {});
+          else if (e.type === "consult") audit.append(encounterId, "consult.response", { ...e.consult, trigger: "safety-gate" }, "model").catch(() => {});
           else if (e.type === "tool_call") audit.append(encounterId, "atriage.tool", { name: e.name, args: e.args }, "model").catch(() => {});
           else if (e.type === "tool_result") {
             // Pin grounding to the exact facts used: a factstore recall carries a receipt
@@ -590,6 +606,7 @@ http.createServer(async (req, res) => {
         },
       });
       if (r?.messages) session.messages = r.messages; // persist the conversation incl. tool turns
+      if (r?.supervisorAsk) session.supervisorAsks = (session.supervisorAsks || 0) + 1; // spend the re-ask budget
       send({ type: "done" });
     } catch (e) {
       send({ type: "error", error: String(e?.message || e) });

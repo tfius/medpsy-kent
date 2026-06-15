@@ -102,15 +102,15 @@ function summarizeEvidence(history) {
 // failure: a reviewer glitch must not block the pharmacist from seeing the agent's own outcome.
 export async function superviseConclusion(provider, { args, evidence }) {
   if (typeof provider.complete !== "function") return { agree: true, skipped: "no complete()" };
-  const sys = "You are a SENIOR supervising clinician performing an INDEPENDENT SAFETY REVIEW of a triage assistant's proposed conclusion before it reaches the pharmacist. Be skeptical and conservative: your single job is to catch UNDER-triage and missed red flags. You may only make the outcome SAFER (higher acuity), never less. If the proposed conclusion is already appropriately safe, AGREE.";
+  const sys = "You are a SENIOR supervising clinician performing an INDEPENDENT SAFETY REVIEW of a triage assistant's proposed conclusion before it reaches the pharmacist. Be skeptical and conservative: your single job is to catch UNDER-triage and missed red flags. You may only make the outcome SAFER (higher acuity), never less. If a red flag is PLAUSIBLE but was not confirmed or excluded by the interview, prefer to ASK ONE more targeted question to resolve it rather than guessing. If the proposed conclusion is already appropriately safe, AGREE.";
   const proposed = { decision: args.decision, severity: args.severity, condition: args.condition, redFlags: args.redFlags, routing: args.routing };
-  const user = `Evidence gathered during the interview:\n${evidence || "(none captured)"}\n\nProposed conclusion:\n${JSON.stringify(proposed)}\n\nReview it for patient safety. Reply with ONLY a JSON object and nothing else:\n{"agree": true|false, "decision": "EMERGENCY|URGENT|PHARMACIST-LED|ROUTINE|INSUFFICIENT-DATA", "severity": 0-10, "missedRedFlags": "<text or 'none'>", "rationale": "<one sentence>"}`;
+  const user = `Evidence gathered during the interview:\n${evidence || "(none captured)"}\n\nProposed conclusion:\n${JSON.stringify(proposed)}\n\nReview it for patient safety. Reply with ONLY a JSON object and nothing else:\n{"agree": true|false, "decision": "EMERGENCY|URGENT|PHARMACIST-LED|ROUTINE|INSUFFICIENT-DATA", "severity": 0-10, "missedRedFlags": "<text or 'none'>", "askInstead": "<ONE direct question to the PATIENT that would confirm or exclude a suspected red flag, or empty string if none needed>", "rationale": "<one sentence>"}`;
   let text = "";
   try { text = await provider.complete([{ role: "system", content: sys }, { role: "user", content: user }], { temperature: 0.2 }); }
   catch (e) { return { agree: true, error: String(e?.message || e) }; }
   const v = extractJsonObj(text);
   if (!v) return { agree: true, unparsed: true };
-  return { agree: v.agree !== false, decision: String(v.decision || "").toUpperCase(), severity: v.severity, missedRedFlags: String(v.missedRedFlags || ""), rationale: String(v.rationale || "").slice(0, 240) };
+  return { agree: v.agree !== false, decision: String(v.decision || "").toUpperCase(), severity: v.severity, missedRedFlags: String(v.missedRedFlags || ""), askInstead: String(v.askInstead || "").trim(), rationale: String(v.rationale || "").slice(0, 240) };
 }
 
 // medpsy often puts its reasoning before the actual question. The PATIENT should see only
@@ -159,7 +159,7 @@ async function finalizeConclusion(args, { provider, icdIndex }) {
 // Run the interview from the conversation so far until the agent asks a QUESTION or
 // CONCLUDES. Returns { question?, outcome?, messages } (messages = updated conversation
 // WITHOUT the system prompt, for the session to store), or { aborted } / { error }.
-export async function runTriageAgent({ provider, icdIndex, extraTools = [], messages, onEvent = () => {}, maxSteps = 12, signal, retries = 6, context = "", supervise = true }) {
+export async function runTriageAgent({ provider, icdIndex, extraTools = [], messages, onEvent = () => {}, maxSteps = 12, signal, retries = 6, context = "", supervise = true, supervisorAsksLeft = 1, consultFn = null }) {
   const ground = [...makeTools(provider, icdIndex), ...extraTools];
   const toolDefs = [...ground.map((t) => t.def), CONCLUDE_DEF];
   const byName = Object.fromEntries(ground.map((t) => [t.def.function.name, t]));
@@ -169,15 +169,28 @@ export async function runTriageAgent({ provider, icdIndex, extraTools = [], mess
   const history = [{ role: "system", content: sys }, ...messages];
   const strip = () => history.slice(1);
 
-  // Conclude THROUGH a safety gate: an independent supervisor re-reads the evidence and may
-  // escalate (only) the outcome before it's finalized. The gate is auditable (a `critique`
-  // event) and the merge is safety-biased — the supervisor can raise acuity, never lower it.
-  const conclude = async (rawArgs) => {
-    let args = rawArgs, supervised = null;
+  // Conclude THROUGH a safety gate: an independent supervisor re-reads the evidence and may, in
+  // order, (1) ask ONE more targeted question to resolve a plausible-but-unconfirmed red flag
+  // (bounded by `reaskLeft`), (2) escalate the outcome (only — never de-escalate), and (3) when
+  // the case is escalating/uncertain, autonomously fetch a peer's second opinion over the mesh.
+  // Every step is auditable (`critique` / `question` / `consult` events); the merge is
+  // safety-biased throughout. `reaskLeft` is 0 on the forced fallback so it always terminates.
+  const conclude = async (rawArgs, { reaskLeft = supervisorAsksLeft } = {}) => {
+    let args = rawArgs, supervised = null, consult = null;
     if (supervise) {
       const v = await superviseConclusion(provider, { args, evidence: summarizeEvidence(history) });
       onEvent({ type: "critique", verdict: v });
       const orig = String(args.decision || "INSUFFICIENT-DATA").toUpperCase();
+
+      // (1) Plausible red flag not yet confirmed/excluded → ask ONE more question instead of
+      // guessing, while budget remains. The answer comes back as the next patient turn.
+      if (!v.agree && v.askInstead && reaskLeft > 0) {
+        history.push({ role: "assistant", content: v.askInstead });
+        onEvent({ type: "question", text: v.askInstead });
+        return { question: v.askInstead, supervisorAsk: true, reason: v.rationale || "", messages: strip() };
+      }
+
+      // (2) Safety-biased escalation: the supervisor may only RAISE acuity.
       const escalate = !v.agree && (ACUITY[v.decision] ?? -1) > (ACUITY[orig] ?? 1);
       if (escalate) {
         args = { ...args, decision: v.decision,
@@ -185,10 +198,29 @@ export async function runTriageAgent({ provider, icdIndex, extraTools = [], mess
           redFlags: v.missedRedFlags && !/^\s*none/i.test(v.missedRedFlags) ? v.missedRedFlags : args.redFlags,
           routing: `${String(args.routing || "").trim()} [Safety review escalated: ${v.rationale || "missed red flag"}]`.trim() };
       }
-      supervised = { agreed: !!v.agree, escalated: escalate, from: orig, missedRedFlags: v.missedRedFlags || "", rationale: v.rationale || "", error: v.error || v.unparsed || null };
+      supervised = { agreed: !!v.agree, escalated: escalate, from: orig, missedRedFlags: v.missedRedFlags || "", rationale: v.rationale || "", error: v.error || v.unparsed || v.skipped || null };
+
+      // (3) Autonomous peer second opinion when uncertain (the supervisor escalated, or the
+      // disposition is itself low-confidence) and a consult peer is reachable. Advisory: it's
+      // attached for the pharmacist + audited, and can only RAISE the band, never lower it.
+      const finalDec = String(args.decision || "").toUpperCase();
+      const uncertain = escalate || orig === "INSUFFICIENT-DATA" || finalDec === "INSUFFICIENT-DATA";
+      if (consultFn && uncertain) {
+        consult = await consultFn({ args, rationale: v.rationale || "" }).catch(() => null);
+        if (consult?.answer) {
+          onEvent({ type: "consult", consult });
+          // A peer can only RAISE the band (to URGENT), and we attribute it to the peer (the
+          // consult card + this routing note), NOT to the supervisor's own `escalated` flag.
+          if (consult.escalate && ACUITY.URGENT > (ACUITY[finalDec] ?? 1)) {
+            args = { ...args, decision: "URGENT", severity: Math.max(Number(args.severity) || 0, 6),
+              routing: `${String(args.routing || "").trim()} [Peer second opinion advised escalation]`.trim() };
+          }
+        }
+      }
     }
     const outcome = await finalizeConclusion(args, { provider, icdIndex });
     if (supervised) outcome.supervised = supervised;
+    if (consult) outcome.consult = consult;
     onEvent({ type: "conclusion", outcome });
     return { outcome, messages: strip() };
   };
@@ -230,12 +262,14 @@ export async function runTriageAgent({ provider, icdIndex, extraTools = [], mess
     return { question: q, messages: strip() };
   }
 
-  // Ran out of steps without concluding — push for a conclusion, then fall back.
+  // Ran out of steps without concluding — push for a conclusion, then fall back. These are the
+  // forced terminal conclusions: reaskLeft:0 so the gate can escalate/consult but never bounce
+  // the interview back to another question (which would risk never terminating).
   history.push({ role: "user", content: "You have asked enough questions. Call conclude() now with your best assessment based on what you know." });
   const turn = await persistentTurn(provider, history, toolDefs, { signal, retries });
   const cc = (turn.toolCalls || []).find((tc) => tc.function?.name === "conclude");
-  if (cc) { let a = {}; try { a = JSON.parse(cc.function?.arguments || "{}"); } catch { /* defaults */ } return conclude(a); }
+  if (cc) { let a = {}; try { a = JSON.parse(cc.function?.arguments || "{}"); } catch { /* defaults */ } return conclude(a, { reaskLeft: 0 }); }
   const textCc = parseTextConclude(turn.content || "");
-  if (textCc) return conclude(textCc);
-  return conclude({ decision: "INSUFFICIENT-DATA", severity: 5, condition: turn.content?.slice(0, 80) || "unclear", routing: "Pharmacist review — interview inconclusive.", safetyNet: "Seek medical help if symptoms worsen or new red flags appear." });
+  if (textCc) return conclude(textCc, { reaskLeft: 0 });
+  return conclude({ decision: "INSUFFICIENT-DATA", severity: 5, condition: turn.content?.slice(0, 80) || "unclear", routing: "Pharmacist review — interview inconclusive.", safetyNet: "Seek medical help if symptoms worsen or new red flags appear." }, { reaskLeft: 0 });
 }
