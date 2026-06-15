@@ -1870,3 +1870,40 @@ not just type-checks. Every surface works; **zero console errors** across the se
   Consent & Capacity correctly. **Demo / Mesh** render (mesh shows B/C offline — only one kiosk up).
 Caveat: the screenshot tool stalls on `document_idle` while the kiosk is polling (the known localhost-vite
 quirk) — it captures once the page settles; the console-message tool is unaffected.
+
+---
+
+## 2026-06-15 — QVAC-SDK usage slide (hackathon requirement)
+
+The hackathon requires one slide showing *how* we used the QVAC SDK. Rather than write
+marketing, we grounded it in the actual imports — counted across `src/`: `@qvac/sdk`
+(`loadModel`×5, `completion`×9, `embed`×19, `transcribe`×8, `textToSpeech`×2, `ragIngest`/
+`ragSearch`×1), `@qvac/factstore` (×7), `@qvac/rag` (×5, evaluated), and the Holepunch P2P
+stack `@qvac` ships on — `hyperswarm`/`hypercore`/`hypercore-crypto` (in `consult.js`,
+`p2p.js`, `kb-sync.js`, `identity.js`). So the slide claims map 1:1 to real code paths.
+
+The slide lives at **`qvac-app/SLIDE_QVAC.md`** (single source; edit there). It frames QVAC as
+three things, not a bolt-on:
+1. **On-device inference** — `loadModel`+`completion` (medpsy-4B triage), `embed` (ICD-10
+   grounding over 12,246 codes), `transcribe` (STT), `textToSpeech` (TTS). All local GGUF/ONNX;
+   `MEDPSY_BACKEND=qvac` → nothing leaves the device.
+2. **P2P federation** — `hypercore-crypto` for per-kiosk ed25519 identity + signed audit
+   bundles; `hyperswarm`/`hypercore` for the federated-learning mesh, pharmacovigilance signals,
+   encrypted encounter hand-off, and KB replication — no central server.
+3. **Knowledge & retrieval** — `@qvac/factstore` (bi-temporal, replicated) + `@qvac/rag`
+   (evaluated `ragIngest`/`ragSearch`, measured vs. exact cosine, kept the winner — rigor).
+
+### How to use it
+- **Markdown slide deck:** it's a single Marp/Slidev slide. Render to HTML/PDF with
+  `npx @marp-team/marp-cli qvac-app/SLIDE_QVAC.md -o qvac.pdf` (or `--html`), or just paste
+  the four blocks into Keynote/Google Slides (title + 3 numbered groups + the bottom flow strip
+  + the one-line takeaway).
+- **Speaking points (≈30 s):** "QVAC is our engine, our identity layer, and our network. The
+  model runs on-device through `loadModel`/`completion`/`embed` — flip one env var and we're
+  fully offline. Every audit record is ed25519-signed with a per-kiosk QVAC key, and kiosks
+  federate learning peer-to-peer over Hyperswarm — a drug interaction taught on one kiosk
+  reaches all, with only drug names crossing the wire."
+- **The flow strip** is the demo arc: `transcribe → completion → embed → ICD-10 → signed audit
+  → Hyperswarm → peers` — narrate the live demo against it.
+- Keep `SLIDE_QVAC.md` as the source of truth; if the `@qvac/sdk` API or our usage changes,
+  edit it (and re-grep the import counts) so the slide never drifts from the code.
