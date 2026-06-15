@@ -2,7 +2,7 @@
 // + provider embeddings. No external deps on the LM Studio path (built-in http/fetch).
 //   node src/server.js          # serves POST /api/icd {condition} -> verified code(s)
 //   node src/server.js --profile clinic-b --port 8788 --consult-code CLINIC   # one flag, not 8 env vars
-import "./bootstrap-config.js"; // MUST be first — turns CLI flags / config file / --profile into env
+import bootCfg from "./bootstrap-config.js"; // MUST be first — turns CLI flags / config file / --profile into env
 import http from "node:http";
 import fs from "node:fs";
 import os from "node:os";
@@ -17,6 +17,7 @@ import { HypercoreAdapter } from "@qvac/factstore/hypercore";
 import { exportOKF, importOKF } from "@qvac/factstore/okf";
 import { shareLog, joinLog } from "./kb-sync.js";
 import { makeConsultTool, createConsultClient } from "./consult.js";
+import { verifyRoster } from "./roster.js";
 import { proposeEdge, vetEdge, recordVote, promoteEdge, rejectEdge, pendingEdges, distillEdges } from "./edge-learning.js";
 import { seedInteractions, makeInteractionTool, drugId } from "./medlens.js";
 import { encounterToOKF } from "./audit-okf.js";
@@ -147,6 +148,27 @@ let meshMembers = process.env.MEDPSY_CONSULT_MEMBERS
   ? new Set(process.env.MEDPSY_CONSULT_MEMBERS.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean))
   : null;
 const isMember = (pub) => !meshMembers || pub === myPub || meshMembers.has(String(pub || "").toLowerCase());
+
+// A SIGNED roster (from a trusted issuer/admin) is the tamper-evident way to set the allowlist:
+// accept it only if it verifies against the one issuer key we trust. Source: config `roster` +
+// `rosterIssuer`, or a --roster file. Applying a verified roster overrides the plain members list.
+const ROSTER_ISSUER = process.env.MEDPSY_ROSTER_ISSUER || null;
+function applyRoster(roster, { runtime = false } = {}) {
+  if (!roster) return { ok: false, reason: "no roster" };
+  if (!ROSTER_ISSUER) return { ok: false, reason: "no trusted rosterIssuer configured" };
+  const members = verifyRoster(roster, ROSTER_ISSUER);
+  if (!members) { console.warn(`[kb-mesh] roster REJECTED (untrusted issuer or bad signature)`); return { ok: false, reason: "untrusted issuer or bad signature" }; }
+  meshMembers = new Set(members);
+  console.log(`[kb-mesh] signed roster accepted${runtime ? " (runtime)" : ""} — ${members.length} member(s), issuer ${roster.issuer.slice(0, 12)}…`);
+  return { ok: true, count: members.length };
+}
+if (ROSTER_ISSUER) {
+  // A trusted issuer is configured ⇒ membership is INTENDED. Fail CLOSED: admit no peers until a
+  // VALID signed roster is accepted (so a missing/forged roster can't force the mesh open).
+  let roster = bootCfg?.roster || null;
+  if (!roster && process.env.MEDPSY_ROSTER_FILE) { try { roster = JSON.parse(fs.readFileSync(process.env.MEDPSY_ROSTER_FILE, "utf8")); } catch (e) { console.warn(`[kb-mesh] roster file unreadable: ${e?.message || e}`); } }
+  if (!applyRoster(roster).ok) { meshMembers = new Set(); console.warn(`[kb-mesh] membership CLOSED — only self until a roster signed by ${ROSTER_ISSUER.slice(0, 12)}… is accepted`); }
+}
 let consultClient = null;
 if (CONSULT_CODE) {
   // MESH: share this kiosk's KB core, then announce its (signed) key to every peer on the
@@ -219,7 +241,14 @@ http.createServer(async (req, res) => {
         console.log(`[kb-mesh] membership ${meshMembers ? "ENFORCED (" + meshMembers.size + ")" : "OPEN"}`);
       } catch { /* ignore bad body */ }
     }
-    res.end(JSON.stringify({ enforced: !!meshMembers, count: meshMembers ? meshMembers.size : null, self: myPub }));
+    res.end(JSON.stringify({ enforced: !!meshMembers, count: meshMembers ? meshMembers.size : null, self: myPub, rosterIssuer: ROSTER_ISSUER }));
+    return;
+  }
+  // Push a SIGNED roster at runtime — applied only if it verifies against the trusted issuer.
+  if (req.method === "POST" && req.url.split("?")[0] === "/api/consult/roster") {
+    res.writeHead(200, { "content-type": "application/json" });
+    let roster = null; try { roster = JSON.parse((await readBody(req)).toString() || "{}").roster; } catch { /* bad body */ }
+    res.end(JSON.stringify({ ...applyRoster(roster, { runtime: true }), enforced: !!meshMembers, count: meshMembers ? meshMembers.size : null }));
     return;
   }
   // Latest agent-eval results (scripts/agent_eval.mjs writes them) — the measured trust story.

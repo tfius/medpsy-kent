@@ -14,6 +14,7 @@
     "serve:qvac": "MEDPSY_BACKEND=qvac node src/server.js",
     "kiosk": "node src/server.js",
     "identity": "node scripts/print_identity.mjs",
+    "roster": "node scripts/roster.mjs",
     "agent-eval": "node scripts/agent_eval.mjs",
     "check": "node scripts/preflight.mjs",
     "download-models": "node scripts/preflight.mjs --download",

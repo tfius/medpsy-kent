@@ -35,6 +35,8 @@ set("MEDPSY_CONSULT_CODE", flag("consult-code"), file.consultCode);
 set("MEDPSY_CONSULT_MEMBERS", flag("members"), file.members);
 set("MEDPSY_KB_SYNC_MS", flag("kb-sync-ms"), file.kbSyncMs);
 set("MEDPSY_DEVICE_NAME", flag("device-name"), file.deviceName);
+set("MEDPSY_ROSTER_ISSUER", flag("roster-issuer"), file.rosterIssuer);
+set("MEDPSY_ROSTER_FILE", flag("roster"), undefined); // a path to a signed roster JSON (object form is in the config file)
 if (flag("no-speech") || file.noSpeech) process.env.MEDPSY_NO_SPEECH ??= "1";
 
 const profile = (flag("profile") && flag("profile") !== "true" ? flag("profile") : undefined) ?? process.env.MEDPSY_PROFILE ?? file.profile;
@@ -47,3 +49,7 @@ if (profile) {
   process.env.MEDPSY_DEVICE_NAME ??= profile;
   console.error(`[config] profile "${profile}" → ${dir}`);
 }
+
+// Expose the parsed config so the server can read object-valued settings (e.g. a signed
+// `roster`) that don't fit in a string env var.
+export default file;
