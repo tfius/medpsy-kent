@@ -10,8 +10,6 @@
 // runtime. Validation is FORWARD-COMPATIBLE: an unknown kind/predicate is flagged, never
 // rejected (so a mesh peer on a newer pack can't have its edges silently dropped).
 
-const SCHEMA_KIND = "kg:predicate"; // node-kind under which predicate defs are stored as data
-
 export function createSchema(ontology = {}) {
   const kinds = new Map((ontology.kinds || []).map((k) => [k.name, k]));
   const predicates = new Map((ontology.predicates || []).map((p) => [p.name, normalizePredicate(p)]));
@@ -83,5 +81,3 @@ export async function loadSchema(store, log) {
   }
   return createSchema(ontology);
 }
-
-export const SCHEMA_KIND_PREDICATE = SCHEMA_KIND;

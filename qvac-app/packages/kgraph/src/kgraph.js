@@ -100,20 +100,23 @@ export class KnowledgeGraph {
   // --- reads / traversal ---
   async getNode(id, slice) {
     const { facts } = await this.store.foldView(this.log, { subject: id, ...(slice || {}) });
-    const attrs = {}; let kind = kindOf(id);
+    const attrs = {}; let kind = kindOf(id); let declared = false;
     for (const f of facts) {
       if (f.object && typeof f.object === "object" && f.object.ref) continue; // skip edges
-      if (f.predicate === "kind") kind = f.object; else attrs[f.predicate] = f.object;
+      if (f.predicate === "kind") { kind = f.object; declared = true; } else attrs[f.predicate] = f.object;
     }
-    return { id, kind, attrs };
+    // `exists` = was the node DECLARED (asserted via assertNode → has a `kind` fact); a node that
+    // only appears as an edge target isn't "known" yet (matters for entity resolution in packs).
+    return { id, kind, attrs, exists: declared };
   }
 
   // One-hop edges. Symmetric predicates are bidirectional (derived); directed predicates go
   // outward by default. Deduped per (predicate, neighbor) so a symmetric edge isn't double-listed.
-  async neighbors(id, { predicates, kinds, dir = "out", minConfidence = 0, slice } = {}) {
+  async neighbors(id, { predicates, kinds, dir = "out", minConfidence = 0, confirmedOnly = false, slice } = {}) {
     const { out: outE, in: inE } = await this._incident(id, slice);
     const acc = new Map(); // key (predicate|neighbor) -> edge (first wins)
     const take = (e, d) => {
+      if (confirmedOnly && e.meta?.proposed === true) return; // un-vetted candidates never count in a grounded read
       if (predicates && !predicates.includes(e.predicate)) return;
       if ((e.confidence ?? 1) < minConfidence) return;
       const neighbor = d === "out" ? e.to : e.from;
@@ -129,13 +132,13 @@ export class KnowledgeGraph {
   }
 
   // Depth-bounded neighbourhood subgraph.
-  async expand(id, { depth = 1, predicates, kinds, minConfidence = 0, dir, slice } = {}) {
+  async expand(id, { depth = 1, predicates, kinds, minConfidence = 0, confirmedOnly = false, dir, slice } = {}) {
     const d = Math.min(depth, MAX_DEPTH);
     const seen = new Set([id]); const edges = []; let frontier = [id];
     for (let i = 0; i < d; i++) {
       const next = [];
       for (const node of frontier) {
-        for (const e of await this.neighbors(node, { predicates, kinds, minConfidence, dir, slice })) {
+        for (const e of await this.neighbors(node, { predicates, kinds, minConfidence, confirmedOnly, dir, slice })) {
           edges.push(e);
           if (!seen.has(e.neighbor)) { seen.add(e.neighbor); next.push(e.neighbor); }
         }
@@ -178,7 +181,8 @@ export class KnowledgeGraph {
     }
     const start = params[recipe.from];
     if (!start) throw new Error(`recipe '${recipe.id}' requires param '${recipe.from}'`);
-    const sub = await this.expand(start, { depth: recipe.depth ?? 1, predicates: via, minConfidence: recipe.minConfidence ?? 0, slice });
+    // A grounded read excludes un-vetted candidates (meta.proposed); suggest-mode may include them.
+    const sub = await this.expand(start, { depth: recipe.depth ?? 1, predicates: via, minConfidence: recipe.minConfidence ?? 0, confirmedOnly: mode === "ground", slice });
     return {
       recipe: recipe.id, mode,
       answer: sub.nodes.filter((n) => n !== start),

@@ -134,6 +134,29 @@ test("as-of (slice) read preserves confidence + meta", async () => {
   assert.equal(ns[0].meta.note, "x");
 });
 
+test("grounding excludes un-vetted (proposed) edges; raw neighbors still show them", async () => {
+  const kg = kgOf();
+  await kg.assertEdge({ from: "thing:a", predicate: "related_to", to: "thing:b" });                       // authored
+  await kg.assertEdge({ from: "thing:a", predicate: "related_to", to: "thing:c", meta: { proposed: true } }); // candidate
+
+  const grounded = await kg.ground({ id: "rel", from: "x", via: ["related_to"], depth: 1 }, { x: "thing:a" });
+  assert.ok(grounded.answer.includes("thing:b"), "authored edge grounds");
+  assert.ok(!grounded.answer.includes("thing:c"), "un-vetted candidate must NOT ground a decision");
+
+  const raw = (await kg.neighbors("thing:a")).map((e) => e.neighbor);
+  assert.ok(raw.includes("thing:c"), "but a raw read still surfaces the candidate");
+  const confirmed = (await kg.neighbors("thing:a", { confirmedOnly: true })).map((e) => e.neighbor);
+  assert.ok(!confirmed.includes("thing:c"));
+});
+
+test("getNode.exists: declared nodes only", async () => {
+  const kg = kgOf();
+  await kg.assertNode("thing:a", { attrs: { label: "A" } });
+  await kg.assertEdge({ from: "thing:a", predicate: "related_to", to: "thing:ghost" }); // ghost never declared
+  assert.equal((await kg.getNode("thing:a")).exists, true);
+  assert.equal((await kg.getNode("thing:ghost")).exists, false, "an edge target alone isn't a declared node");
+});
+
 test("neutrality smoke: createSchema accepts an arbitrary non-medical domain", () => {
   const incident = createSchema({
     kinds: [{ name: "svc" }, { name: "team" }],
