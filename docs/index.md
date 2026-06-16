@@ -54,6 +54,12 @@ service: patients are vulnerable, the data is sensitive, connectivity is unrelia
 
 ## See it in action
 
+**▶ The whole flow, end to end** — a heart-attack walkthrough across all 8 steps: sign-in → consent → complaint → meds → triage (a clear ACS escalates immediately to EMERGENCY) → hospital record (history refines the plan, warfarin-aware) → ED routing → clinician sign-off as a signed, tamper-evident record:
+
+![Full walkthrough — Welcome → consent → complaint → meds → triage (immediate EMERGENCY) → FHIR record (prior MI + warfarin) → ED handover → practitioner sign-off (SHA-256 signed outcome)](media/medpsy-full-walkthrough-heart-attack.gif)
+
+…or step by step:
+
 **1 · Guided sign-in & consent** — a multilingual, voice-enabled, consent-first start:
 
 ![Patient sign-in — welcome (8 languages + on-device voice), name, then the consent & capacity teach-back step; the rail advances 1✓→2](media/medpsy-patient-triage.gif)
