@@ -1,0 +1,12 @@
+{
+  "name": "@qvac/kgraph",
+  "version": "0.1.0",
+  "description": "Domain-neutral, bi-temporal knowledge-graph layer built OVER @qvac/factstore (by injection — factstore untouched). Schema-as-data with edge epistemics (factual vs associative), bounded typed traversal (expand/paths) over a materialized adjacency index, and a factual-only grounding rule. Medical is just a pack.",
+  "type": "module",
+  "license": "MIT",
+  "exports": { ".": "./src/index.js" },
+  "main": "./src/index.js",
+  "scripts": { "test": "node --test" },
+  "devDependencies": { "@qvac/factstore": "file:../factstore" },
+  "files": ["src", "README.md"]
+}

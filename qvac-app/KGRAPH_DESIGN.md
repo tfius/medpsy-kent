@@ -48,22 +48,26 @@ not a comprehensive medical brain — a **targeted safety net** for high-value, 
 │ Domain packs   medical · incident-ops · …                             │
 │   each: { ontology, seed(store), recipes, resolve }                   │
 ├─────────────────────────────────────────────────────────────────────┤
-│ @qvac/kgraph (NEW)  — the OPINIONATED layer                           │
+│ @qvac/kgraph (NEW)  — built OVER factstore's public API; factstore UNTOUCHED │
 │   schema-as-data + epistemics · validated assertNode/assertEdge       │
+│   expand · bounded paths · materialized adjacency index               │
 │   recipe runner (factual-grounding rule) · provenance/confirmed-only  │
 │   federation POLICY (promotion is local) · standard-vocab + OKF map   │
 ├─────────────────────────────────────────────────────────────────────┤
-│ @qvac/factstore — the SUBSTRATE (+ pure graph primitives)             │
+│ @qvac/factstore — the SUBSTRATE (frozen, proven; NOT modified)        │
 │   bi-temporal signed statements · adapters · CRDT merge · receipts    │
-│   neighbors · expand · bounded paths (materialized adjacency index)   │
+│   assert · fold · foldView · neighbors · edgesAmong · bundles · OKF    │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 **The neutrality invariant:** the core contains **zero domain vocabulary** — all medical-ness
-lives in the medical pack's data. **Boundary choice:** the *pure* traversal primitives
-(`expand`/`paths`, the materialized index) live **in factstore** (which already has `neighbors`);
-`@qvac/kgraph` is only the *opinion* — schema, edge epistemics, recipes, packs, and federation
-policy. No fat wrapper.
+lives in the (app-side) domain packs. **Boundary choice — build-over, don't-modify:** factstore
+stays the frozen, proven substrate; `@qvac/kgraph` is a **separate package built on factstore's
+public read/write API** (`assert`/`fold`/`foldView`/`neighbors`/`edgesAmong`). Everything new —
+schema, epistemics, `expand`/`paths`, the materialized adjacency index, recipes, federation policy
+— lives in kgraph. (kgraph takes a factstore instance by injection; it doesn't even hard-depend on
+the package.) Rationale: don't regress a tested, possibly-shared substrate for a benefit only we'd
+use; move the index *down* into factstore later only if a second consumer needs traversal.
 
 ---
 
@@ -138,10 +142,11 @@ kg.ground(recipeId, params, slice?);                           // → { answer, 
 - **No generic `match([{s,p,o}…])` in v1** — it's a baby SPARQL and an attractive nuisance. The
   *only* sanctioned query surfaces are **recipes** (reviewed) + `expand`/`paths`. Ad-hoc patterns
   aren't reviewed, so they don't ground decisions.
-- **Performance:** never `fold` per hop. factstore builds a **materialized adjacency index** once
-  from a fold and updates it incrementally on append → traversal is O(neighbors). The hot index is
-  the *current* graph; the rarer **as-of** (`knownAt`) audit-replay query falls back to
-  fold-with-slice. Two tiers.
+- **Performance:** never `fold` per hop. **kgraph** builds a **materialized adjacency index** over
+  factstore's reads — cold-started from one `foldView` and kept in lockstep because every edge
+  write goes through `kgraph.assertEdge` → traversal is O(neighbors). The hot index is the *current*
+  graph; the rarer **as-of** (`knownAt`) audit-replay query bypasses the index and folds-with-slice.
+  Two tiers. (factstore is not modified to support this.)
 - **`paths`** = bounded BFS within a tiny `maxHops` (2–3) above a `minConfidence` floor, ranked by
   aggregate edge confidence, top-k. (Confidence-weighted shortest-path deferred until corpora grow.)
 - **Recipe inputs are bound/factual**, never free LLM extraction (see §5).
@@ -245,10 +250,11 @@ medlens is today.
 ## 9. Plan (phased; each shippable + evaluated)
 
 - **Phase 0 — Design ratify (this doc).**
-- **Phase 1 — Core + primitives.** Push `expand`/bounded `paths` + a **materialized adjacency
-  index** into factstore; in kgraph: schema-as-data (+ epistemics), validated assertNode/assertEdge
-  (read-time symmetry/inverse), bi-temporal slicing, confirmed/**factual-only** reads.
-  **Domain-neutrality proven by a TOY pack in tests from day one.**
+- **Phase 1 — kgraph core (over factstore, factstore untouched).** New `packages/kgraph`:
+  schema-as-data (+ epistemics), validated assertNode/assertEdge (read-time symmetry/inverse),
+  `expand` + bounded `paths` + a **materialized adjacency index** built on factstore's
+  `foldView`/`neighbors`, bi-temporal slicing, confirmed/**factual-only** reads. **Domain-neutrality
+  proven by a TOY pack in the kgraph test-suite from day one** (no app, no medical content).
 - **Phase 2 — Recipe runner + bindings.** Declarative recipes (ground/suggest) → auto agent tools +
   `/api/kg/*`; audit receipts on every ground.
 - **Phase 3 — Medical pack (factual, targeted).** Generalize medlens; add `condition`/`icd`/
@@ -287,6 +293,6 @@ must be vetted); comprehensive domain coverage; trust inherited from peers.
 6. Graph **invariants derived at read time** (CRDT merges statements, not invariants).
 7. **Promotion is local; evidence (signed proposals + votes) travels** — no transitive trust.
 8. **Entity resolution via standard vocabularies**, reusing the existing embedding ICD resolver.
-9. Migrate `kb:medical` by **alias**; pure traversal primitives live **in factstore**, policy/packs in `@qvac/kgraph`.
+9. Migrate `kb:medical` by **alias**. `@qvac/kgraph` is a **separate package built OVER factstore's public API** (factstore frozen/untouched) — traversal + index + policy all in kgraph; domain packs live app-side. (Move the index into factstore later only if a second consumer needs it.)
 10. Content: **targeted safety net** seeded from authored + **imported authoritative datasets**, not a hand-built comprehensive graph.
 11. Second pack = **incident-ops** (transitive closure + multi-hop) — neutrality proof; demo, doesn't inflate v1.
