@@ -1985,3 +1985,50 @@ through-line: **sound · grounded · factual · locally-trusted.** Load-bearing 
 
 Plan is 5 phases (core+primitives → recipe runner → medical pack → federation+UI → holism demo),
 each shippable + eval-gated. New: `qvac-app/KGRAPH_DESIGN.md`.
+
+## 2026-06-16 — Building `@qvac/kgraph`: Phase 1 core, the medical pack, and an eval gate (+ always-review)
+
+Started building the design. Three shippable pieces landed, each built → adversarially reviewed →
+fixed → committed.
+
+**Phase 1 — the domain-neutral core (`packages/kgraph/`).** A `KnowledgeGraph` built *over* an
+injected factstore (no factstore import — build-over, don't-modify): `assertNode/assertEdge`,
+deterministic `edgeId(from,predicate,to)` (idempotent upsert), `neighbors/expand/paths/ground`,
+a materialized adjacency index, read-time symmetry derivation, and a recipe registry. `schema.js`
+is schema-as-data with forward-compatible validation (unknown predicate → `unschema'd`, never
+dropped). 17 tests over a toy generic pack prove domain-neutrality from day one. Two self-review
+passes caught duplicate edges (no deterministic id), symmetric double-listing, slice dropping
+meta/confidence, and `ground()` not excluding un-vetted edges.
+
+**Phase 3 slice 1 — the medical pack (`src/packs/medical.js`).** Gives the neutral engine its
+medical vocabulary, *reusing* the curated `INTERACTIONS` list + `drugId` resolver from medlens (one
+source of curated facts) and reading the existing `kb:medical` log by alias. Added `pairsAmong`
+(edges among a set — the grounding primitive for "screen these drugs"), factual + **confirmed-only**
+by default. An adversarial review subagent found a CRITICAL leak: confirmed-only used strict
+`proposed === true`, so a truthy-non-boolean `proposed: 1` (from a peer/learner) leaked into a
+grounded screen → fixed to truthy (matching factstore/medlens). Also MAJOR ER false-negatives —
+`drugId` didn't strip a bare trailing dose (`naproxen 250`) and brand aliases (Advil/Naprosyn/…)
+were missing → both fixed; these are the dangerous *miss* class.
+
+**The eval gate (`scripts/medpack_eval.mjs`, `npm run eval:medpack`).** The design says no pack
+ships without its eval green — this is it, and it's **asymmetric**: a missed interaction is
+dangerous, a spurious flag is noise, so **zero false-negatives is the hard gate** (exit ≠ 0). It is
+honestly scoped (a targeted safety net over the curated list, *not* real-world coverage) and tests
+the two real failure surfaces: entity resolution (144 generated name-variants — dose-suffixed,
+bare-number, form words — + 41 synonym round-trips + a 29-brand watchlist, each must resolve) and
+graph retrieval (every curated interaction surfaces with a receipt; free-text composition;
+non-interacting controls return `[]`; the proposed/associative gates hold). 285 assertions.
+
+The review of the gate earned its keep: it **mutation-tested** the gate and found a false-confidence
+hole — the severity check was *tautological* (expected and actual both came from the same
+`INTERACTIONS` literal), so a fat-fingered severity *downgrade* (clinically an under-warning) and a
+*deleted* interaction both passed green. Fixed with an independent frozen `GOLDEN` oracle (§0):
+severity + membership are pinned to a separately-reviewed snapshot, so any curation edit must be a
+deliberate two-place change. Verified by re-running the mutations — both now fail the gate.
+
+**Process change.** The recurring pattern — finding my own mistakes a turn late — became a standing
+practice: spawn an adversarial review subagent *before* declaring non-trivial code done, not after
+being asked twice. It paid off immediately (the `proposed===true` leak and the tautological-severity
+gate were both caught pre-commit). New: `packages/kgraph/**`, `src/packs/medical.js`,
+`scripts/medpack_{smoke,eval}.mjs`; medlens exports `INTERACTIONS`/`SYNONYMS`; preflight auto-links
+`file:` packages.

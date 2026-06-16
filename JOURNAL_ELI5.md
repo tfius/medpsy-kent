@@ -992,6 +992,37 @@ design before building, because here, getting it right matters more than getting
 
 ---
 
+## Session 40 — We built the "web of facts," and built a safety inspector for it
+
+Last time we *designed* the web of medical facts. This time we **built** the first working piece of
+it: the engine itself (kept deliberately general — medicine is just the first "pack" plugged into
+it), and on top of it the drug-clash checker, now reusing the same hand-checked list of dangerous
+pairs we already trusted. You can hand it a messy list like "Coumadin, Advil 400mg" and it still
+finds the clash — because it knows those are just other names for warfarin and ibuprofen.
+
+The real story this time is **how** we built it. Every time we wrote a chunk, we sent a second,
+deliberately suspicious helper to *try to break it* before we called it done — instead of finding
+our own mistakes a day later. It kept catching real things:
+- A clash flagged by another kiosk but **not yet signed off by a human** was sneaking into the
+  "safe to rely on" answers. Caught and plugged.
+- A drug written as "naproxen 250" wasn't being recognised as plain naproxen — exactly the kind of
+  silent miss that loses a danger. Fixed, plus we taught it all the common brand names.
+
+Then we built a **safety inspector** for the drug-clash checker — a test that fails loudly if the
+checker ever misses a known dangerous pair (a miss is dangerous; a false alarm is just annoying, so
+we're strict about misses and relaxed about alarms). It runs 285 checks: every clash must be found,
+every brand and dose-spelling must be recognised, and unsafe "hunch" links must never be allowed to
+decide anything. The suspicious helper then tried to break *the inspector itself* — and found a
+sneaky flaw: it was checking each danger's severity against *itself*, so if someone accidentally
+downgraded "major" to "moderate," the inspector wouldn't notice. We fixed it by pinning every
+severity to a separately-checked master list, so a careless edit now trips the alarm. We proved the
+fix by deliberately breaking it and watching the alarm go off.
+
+Bottom line: we built the fact-web's first working piece, and — more importantly — made
+"break-it-before-you-trust-it" the default, including breaking our own safety tools.
+
+---
+
 ## The whole story in three sentences
 
 We built a tiny medical AI helper, tried our hardest to break it, and found its
