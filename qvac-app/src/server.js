@@ -18,6 +18,7 @@ import { exportOKF, importOKF } from "@qvac/factstore/okf";
 import { shareLog, joinLog } from "./kb-sync.js";
 import { makeConsultTool, createConsultClient } from "./consult.js";
 import { verifyRoster } from "./roster.js";
+import { memberOf, isCountableVote } from "./membership.js";
 import { proposeEdge, vetEdge, recordVote, promoteEdge, rejectEdge, pendingEdges, distillEdges } from "./edge-learning.js";
 import { observeCooccurrence, aggregateSignals, detectSignals, autoProposeSignals, DEFAULT_THRESHOLD, pairKey } from "./signals.js";
 import { seedInteractions, makeInteractionTool, drugId } from "./medlens.js";
@@ -148,7 +149,7 @@ const myPub = identity.getIdentity().publicKey;
 let meshMembers = process.env.MEDPSY_CONSULT_MEMBERS
   ? new Set(process.env.MEDPSY_CONSULT_MEMBERS.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean))
   : null;
-const isMember = (pub) => !meshMembers || pub === myPub || meshMembers.has(String(pub || "").toLowerCase());
+const isMember = (pub) => memberOf(meshMembers, myPub, pub); // reads meshMembers live (src/membership.js)
 
 // A SIGNED roster (from a trusted issuer/admin) is the tamper-evident way to set the allowlist:
 // accept it only if it verifies against the one issuer key we trust. Source: config `roster` +
@@ -757,7 +758,7 @@ http.createServer(async (req, res) => {
         if (consultClient) {
           const jury = await consultClient.askVetAll({ a: e.a, b: e.b, severity: e.severity, note: e.note }).catch(() => []);
           for (const j of jury) {
-            if (!j.signatureOk || !isMember(j.peer?.publicKey)) continue; // only verified, allowlisted jurors count
+            if (!isCountableVote(j, isMember)) continue; // only verified, allowlisted jurors count (src/membership.js)
             const p = { real: j.verdict.real, severity: j.verdict.severity, reason: j.verdict.reason, by: j.peer?.name || "peer", signatureOk: j.signatureOk };
             await recordVote(kbStore, edgeId, { voter: j.peer?.publicKey || `peer:${p.by}`, by: `peer:${p.by}`, real: p.real, severity: p.severity, reason: p.reason, signatureOk: p.signatureOk });
             audit.append("kb-learning", "learn.vet", { edgeId, real: p.real, severity: p.severity, by: `peer:${p.by}`, signatureOk: p.signatureOk }, "model").catch(() => {});

@@ -25,7 +25,8 @@
     "download-models": "node scripts/preflight.mjs --download",
     "start": "bash scripts/start.sh",
     "start:qvac": "MEDPSY_BACKEND=qvac bash scripts/start.sh",
-    "demo:two-kiosk": "bash scripts/demo_two_kiosk.sh"
+    "demo:two-kiosk": "bash scripts/demo_two_kiosk.sh",
+    "test:kiosk": "node scripts/kiosk_matrix.mjs"
   },
   "dependencies": {
     "@qvac/factstore": "file:./packages/factstore",
