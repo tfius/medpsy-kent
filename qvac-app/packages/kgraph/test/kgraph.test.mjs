@@ -16,6 +16,7 @@ const PACK = {
       { name: "reminds_of", epistemics: "associative", valueType: "ref", symmetric: true }, // suggest-only
     ],
   },
+  recipes: [{ id: "related", from: "x", via: ["related_to"], depth: 1 }],
 };
 const kgOf = () => createKnowledgeGraph(createFactStore(), { pack: PACK });
 
@@ -155,6 +156,27 @@ test("getNode.exists: declared nodes only", async () => {
   await kg.assertEdge({ from: "thing:a", predicate: "related_to", to: "thing:ghost" }); // ghost never declared
   assert.equal((await kg.getNode("thing:a")).exists, true);
   assert.equal((await kg.getNode("thing:ghost")).exists, false, "an edge target alone isn't a declared node");
+});
+
+test("recipe registry: ground by id (from the pack)", async () => {
+  const kg = kgOf();
+  await kg.assertEdge({ from: "thing:a", predicate: "related_to", to: "thing:b" });
+  assert.deepEqual(kg.recipeIds(), ["related"]);
+  const r = await kg.ground("related", { x: "thing:a" });
+  assert.ok(r.answer.includes("thing:b"));
+  await assert.rejects(() => kg.ground("nope", { x: "thing:a" }), /unknown recipe/);
+});
+
+test("lifecycle: confirmEdge promotes a candidate so it grounds; retractEdge removes it", async () => {
+  const kg = kgOf();
+  await kg.assertEdge({ from: "thing:a", predicate: "related_to", to: "thing:c", meta: { proposed: true } });
+  assert.ok(!(await kg.ground("related", { x: "thing:a" })).answer.includes("thing:c"), "candidate doesn't ground");
+
+  await kg.confirmEdge("thing:a", "related_to", "thing:c");          // promote
+  assert.ok((await kg.ground("related", { x: "thing:a" })).answer.includes("thing:c"), "now it grounds");
+
+  await kg.retractEdge("thing:a", "related_to", "thing:c", { reason: "wrong" });
+  assert.ok(!(await kg.neighbors("thing:a")).some((e) => e.neighbor === "thing:c"), "retracted edge is gone");
 });
 
 test("neutrality smoke: createSchema accepts an arbitrary non-medical domain", () => {

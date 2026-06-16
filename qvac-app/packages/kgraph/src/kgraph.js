@@ -20,17 +20,19 @@ const slug = (s) => String(s).trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").r
 const edgeId = (from, predicate, to) => `e:${from}|${predicate}|${to}`;
 
 export class KnowledgeGraph {
-  constructor(store, { schema, log = "kg:default", source = "authored" } = {}) {
+  constructor(store, { schema, log = "kg:default", source = "authored", recipes = [] } = {}) {
     if (!store || typeof store.assert !== "function") throw new Error("KnowledgeGraph needs a factstore instance");
     if (!schema) throw new Error("KnowledgeGraph needs a schema (pass { pack } to createKnowledgeGraph)");
     this.store = store;
     this.schema = schema;
     this.log = log;
     this.defaultSource = source;
+    this.recipes = new Map((recipes || []).map((r) => [r.id, r]));
     this._out = new Map();   // from -> edge[]   (materialized adjacency index, current graph)
     this._in = new Map();    // to   -> edge[]
     this._indexed = false;
   }
+  recipeIds() { return [...this.recipes.keys()]; }
 
   nodeId(kind, key) { return `${kind}:${slug(key)}`; }
 
@@ -66,9 +68,20 @@ export class KnowledgeGraph {
     for (const e of this._edgesFromFacts(facts)) this._indexEdge(e);
     this._indexed = true;
   }
-  // Rebuild the index from the store. Call after external mutations (confirm/reject/retract/
-  // promote) so traversal doesn't serve stale edges.
+  // Rebuild the index from the store. Called automatically by confirmEdge/retractEdge; call
+  // manually after external mutations so traversal doesn't serve stale edges.
   refresh() { this._out.clear(); this._in.clear(); this._indexed = false; }
+
+  // Lifecycle (propose→vet→promote / reject). Edges have deterministic ids, so these target an
+  // existing edge by its endpoints. Both refresh the index so reads reflect the change at once.
+  async confirmEdge(from, predicate, to, { actor = "clinician" } = {}) {
+    await this.store.confirm(this.log, edgeId(from, predicate, to), { actor });
+    this.refresh();
+  }
+  async retractEdge(from, predicate, to, { reason = "", actor = "clinician" } = {}) {
+    await this.store.retract(this.log, edgeId(from, predicate, to), { reason, source: "clinician", actor });
+    this.refresh();
+  }
 
   _edgesFromFacts(facts) {
     const out = [];
@@ -149,11 +162,13 @@ export class KnowledgeGraph {
   }
 
   // Bounded simple-path enumeration → ranked by aggregate (product) confidence → top-k. (§10.4)
-  async paths(from, to, { maxHops = 2, predicates, minConfidence = 0, topK = 5, slice } = {}) {
+  async paths(from, to, { maxHops = 2, predicates, minConfidence = 0, topK = 5, maxExplore = 5000, slice } = {}) {
     const cap = Math.min(maxHops, MAX_HOPS);
     const results = [];
+    let explored = 0; // worst-case guard: a dense node could fan out exponentially within the cap
     const prod = (p) => p.reduce((a, e) => a * (e.confidence ?? 1), 1);
     const walk = async (node, path, visited) => {
+      if (explored++ > maxExplore) return;
       if (node === to && path.length > 0) { results.push(path); return; }
       if (path.length >= cap) return;
       for (const e of await this.neighbors(node, { predicates, minConfidence, slice })) {
@@ -169,7 +184,9 @@ export class KnowledgeGraph {
   // Run a grounding recipe. mode "ground" enforces the factual-only rule (throws on an
   // associative/unschema'd predicate). Returns { answer, edges, receipts } — receipts pin the
   // exact factstore statements the answer stands on. Inputs come bound (not free LLM text).
-  async ground(recipe, params = {}, slice) {
+  async ground(recipeOrId, params = {}, slice) {
+    const recipe = typeof recipeOrId === "string" ? this.recipes.get(recipeOrId) : recipeOrId;
+    if (!recipe) throw new Error(`unknown recipe '${recipeOrId}'`);
     const via = recipe.via || [];
     const mode = recipe.mode || "ground";
     if (mode === "ground") {
@@ -194,7 +211,7 @@ export class KnowledgeGraph {
 
 export function createKnowledgeGraph(store, { pack, schema, log, source } = {}) {
   const sch = schema || createSchema(pack?.ontology || {});
-  return new KnowledgeGraph(store, { schema: sch, log: log ?? pack?.log ?? "kg:default", source });
+  return new KnowledgeGraph(store, { schema: sch, log: log ?? pack?.log ?? "kg:default", source, recipes: pack?.recipes });
 }
 
 export { createSchema, loadSchema, seedSchema, kindOf };
