@@ -45,9 +45,10 @@ can kill. So the design constraints were non-negotiable:
 6. **Spot signals no single kiosk could** — PHI-free **federated pharmacovigilance**: each kiosk keeps
    de-identified co-occurrence tallies; the network sums them and an emerging pattern auto-proposes a
    candidate into the same human-gated learning loop.
-7. **Train pharmacists** — a **simulation sandbox**: practise on simulated cases, commit to a
-   disposition, and get graded against a clinician answer key + the AI's safety-reviewed assessment.
-   Simulated runs never touch the real record.
+7. **Train pharmacists — the Triage Preceptor** — practise like you would under a senior pharmacist:
+   **interview** a simulated patient, then decide; the preceptor (our independent safety review)
+   grades whether you screened the red flags and made the safe call. Also a "bring a real case"
+   second-opinion mode. Simulated runs never touch the record, KB, or safety signals.
 
 ## How it works
 

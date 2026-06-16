@@ -23,6 +23,7 @@ import { proposeEdge, vetEdge, recordVote, promoteEdge, rejectEdge, pendingEdges
 import { observeCooccurrence, aggregateSignals, detectSignals, autoProposeSignals, DEFAULT_THRESHOLD, pairKey } from "./signals.js";
 import { seedInteractions, makeInteractionTool, drugId } from "./medlens.js";
 import { encounterToOKF } from "./audit-okf.js";
+import { stripThink } from "./think.js";
 import { BACKEND, QVAC_LLM_GGUF, LMSTUDIO_LLM, LMSTUDIO_URL } from "./config.js";
 
 // OKF (Open Knowledge Format) interchange directory — exported knowledge bundles are
@@ -635,6 +636,41 @@ http.createServer(async (req, res) => {
       triageInFlight.delete(encounterId); // release the per-encounter turn lock
     }
     try { if (!res.writableEnded) { res.write("data: [DONE]\n\n"); res.end(); } } catch { /* socket gone */ }
+    return;
+  }
+  // Patient simulator for the Preceptor training flow — the model role-plays a patient from a
+  // HIDDEN brief, answering only what the trainee asks. Pure simulation: backend-agnostic
+  // (provider.complete), writes NOTHING (no facts/KB/signals/audit). POST {brief, turns:[{role,
+  // content}], question} -> {reply}. Roles in `turns`: user = pharmacist question, assistant = patient.
+  if (req.method === "POST" && req.url === "/api/patient-sim") {
+    const buf = await readBody(req);
+    try {
+      const { brief, turns, question } = JSON.parse(buf.toString() || "{}");
+      if (!brief || !question) { res.writeHead(400, { "content-type": "application/json" }); res.end(JSON.stringify({ error: "brief and question required" })); return; }
+      const sys = `You are ROLE-PLAYING a PATIENT at a community pharmacy, for a pharmacist's training exercise. Your situation (do NOT recite this as a list, and never name your own diagnosis):\n${String(brief).slice(0, 1500)}\n\nRules: answer ONLY what the pharmacist asks, in the first person, briefly (1-2 sentences), like a real worried-but-ordinary person. Do not volunteer extra symptoms unless asked. If asked about something not in your situation, give a plausible NORMAL/negative answer. Never break character, never give medical advice, never state the diagnosis.`;
+      const history = [{ role: "system", content: sys }, ...(Array.isArray(turns) ? turns.slice(-12) : []), { role: "user", content: String(question).slice(0, 500) }];
+      const raw = await provider.complete(history, { temperature: 0.6 });
+      // medpsy sometimes RUNS ON past the patient's turn — leaking the system prompt or inventing a
+      // next exchange. Keep only the patient's actual line(s): skip leading role/prompt echoes, then
+      // stop at the first blank line or chat-role marker once real content has started.
+      // A leak line is a chat-template / system-prompt echo — NOT ordinary speech. Anchored tightly
+      // so a real reply like "You are right to ask, it started this morning" is NOT dropped.
+      const isLeak = (l) => /^(you are (medpsy|role-?playing|a patient)|<\|)/i.test(l) || /^(user|assistant|system)\s*:?\s*$/i.test(l) || /^(patient|pharmacist)\s*:/i.test(l);
+      const out = [];
+      for (const l of stripThink(String(raw || "")).split("\n").map((x) => x.trim())) {
+        if (!l || isLeak(l)) { if (out.length) break; else continue; } // blank/leak line ends the patient's turn
+        out.push(l);
+        if (out.join(" ").length > 240) break;
+      }
+      // If nothing survived (model returned only leakage), return a SAFE non-answer — never echo the
+      // raw output, which could leak the hidden brief / system prompt.
+      const reply = out.join(" ").trim().slice(0, 400) || "Sorry, I didn't catch that — could you ask me again?";
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ reply }));
+    } catch (e) {
+      res.writeHead(500, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: String(e?.message || e) }));
+    }
     return;
   }
   // Warm the on-device speech models for a language ahead of use (called when the
