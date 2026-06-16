@@ -82,6 +82,14 @@ service: patients are vulnerable, the data is sensitive, connectivity is unrelia
 
 ![Audit — a verified, chain-intact timeline: reasoning → safety-review critique → EMERGENCY outcome, each row hash-stamped](media/medpsy-signed-audit-trail.gif)
 
+**8 · Train pharmacists — the Triage Preceptor** — interview a simulated patient, decide, get graded:
+
+![Preceptor — interview a simulated patient, then commit: "✓ correct disposition" + a red-flag screening breakdown (what you probed vs missed)](media/medpsy-preceptor-training.gif)
+
+**9 · Verify all of it** — runs on this device (no cloud), measured by an eval, and every decision recorded:
+
+![Trust — DEV/NO CLOUD backend, the agent eval (67% pass / 92% grounded / 4-4 red-flag escalation), and grounded+auditable provenance](media/medpsy-trust-on-device.gif)
+
 ## How it works
 
 ```
