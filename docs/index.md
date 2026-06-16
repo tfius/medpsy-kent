@@ -54,39 +54,43 @@ service: patients are vulnerable, the data is sensitive, connectivity is unrelia
 
 ## See it in action
 
-**1 · Guided patient triage** — a consent-first, multilingual, voice-enabled 9-step flow:
+**1 · Guided sign-in & consent** — a multilingual, voice-enabled, consent-first start:
 
-![Patient triage — welcome (8 languages + on-device voice), name, then the consent & capacity teach-back step; the rail advances 1✓→2](media/medpsy-patient-triage.gif)
+![Patient sign-in — welcome (8 languages + on-device voice), name, then the consent & capacity teach-back step; the rail advances 1✓→2](media/medpsy-patient-triage.gif)
 
-**2 · AI-led triage + an independent safety review** — medpsy conducts the interview and a second pass checks it:
+**2 · The triage interview** — medpsy asks one focused question at a time, then concludes & safety-nets:
+
+![Triage interview — a multi-question back-and-forth (onset/severity → red-flag screen → history) that de-escalates to "Routine — pharmacist care" with on-device references](media/medpsy-triage-interview.gif)
+
+**3 · AI-led triage + an independent safety review** — medpsy conducts the interview and a second pass checks it:
 
 ![AI triage — a chest-pain case concludes EMERGENCY 10/10 with a verified ICD-10 (I21.9), and "independent safety review agreed"](media/medpsy-ai-triage.gif)
 
-**3 · Tool-grounded clinical Q&A** — the agent recalls facts, screens interactions, and cites its sources:
+**4 · Tool-grounded clinical Q&A** — the agent recalls facts, screens interactions, and cites its sources:
 
 ![Agent — recall → screen_interactions → search_knowledge → a grounded answer on warfarin + ibuprofen](media/medpsy-agent-tool-grounded.gif)
 
-**4 · The on-device knowledge graph + the learning loop** — verified facts, OKF export, P2P federation:
+**5 · The on-device knowledge graph + the learning loop** — verified facts, OKF export, P2P federation:
 
 ![Knowledge — kb:medical with verified ICD/interaction facts, OKF export, P2P federate, and the propose→vet→promote learn panel](media/medpsy-knowledge-base.gif)
 
-**5 · A clinic network that learns — teach one, all learn** (jury-vetted, PHI-free):
+**6 · A clinic network that learns — teach one, all learn** (jury-vetted, PHI-free):
 
 ![Mesh — teach one kiosk, the jury (including a signed peer vote) vets it, a pharmacist promotes it, and every kiosk learns it](media/medpsy-mesh-teach-one-all-learn.gif)
 
-**6 · A signal no single kiosk could see** — federated pharmacovigilance crossing a threshold and auto-proposing a candidate:
+**7 · A signal no single kiosk could see** — federated pharmacovigilance crossing a threshold and auto-proposing a candidate:
 
 ![Signals — one more flagged encounter crosses the network threshold; scan auto-proposes a candidate into the human-gated loop](media/medpsy-signals-crossing.gif)
 
-**7 · Every step signed and hash-chained** — the independent safety review sits in the tamper-evident trail:
+**8 · Every step signed and hash-chained** — the independent safety review sits in the tamper-evident trail:
 
 ![Audit — a verified, chain-intact timeline: reasoning → safety-review critique → EMERGENCY outcome, each row hash-stamped](media/medpsy-signed-audit-trail.gif)
 
-**8 · Train pharmacists — the Triage Preceptor** — interview a simulated patient, decide, get graded:
+**9 · Train pharmacists — the Triage Preceptor** — interview a simulated patient, decide, get graded:
 
 ![Preceptor — interview a simulated patient, then commit: "✓ correct disposition" + a red-flag screening breakdown (what you probed vs missed)](media/medpsy-preceptor-training.gif)
 
-**9 · Verify all of it** — runs on this device (no cloud), measured by an eval, and every decision recorded:
+**10 · Verify all of it** — runs on this device (no cloud), measured by an eval, and every decision recorded:
 
 ![Trust — DEV/NO CLOUD backend, the agent eval (67% pass / 92% grounded / 4-4 red-flag escalation), and grounded+auditable provenance](media/medpsy-trust-on-device.gif)
 
