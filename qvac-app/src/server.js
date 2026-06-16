@@ -508,7 +508,7 @@ http.createServer(async (req, res) => {
     let parsed;
     try { parsed = JSON.parse(body.toString() || "{}"); }
     catch { res.writeHead(400, { "content-type": "application/json" }); res.end(JSON.stringify({ error: "bad json" })); return; }
-    const { encounterId, message, reset } = parsed;
+    const { encounterId, message, reset, training } = parsed; // training mode = run the agent+gate but DON'T write to the real KB/signals/facts
     if (typeof provider.chatWithTools !== "function") {
       res.writeHead(501, { "content-type": "application/json" });
       res.end(JSON.stringify({ error: `backend ${provider.name} has no tool-calling support` })); return;
@@ -521,11 +521,15 @@ http.createServer(async (req, res) => {
     if (reset) triageSessions.delete(encounterId);
     const session = triageSessions.get(encounterId) || { messages: [] };
     triageSessions.set(encounterId, session);
+    // Training runs are SIMULATIONS — they must touch NOTHING real: not facts/KB/signals (guarded
+    // at conclusion) and not the tamper-evident audit. `aud` is a no-op in training, so a fake case
+    // never appears as an encounter in the audit store. Real triage is unaffected.
+    const aud = (type, data, who) => (training ? Promise.resolve() : audit.append(encounterId, type, data, who));
     if (message) {
       session.messages.push({ role: "user", content: String(message) });
       // The patient's utterance — same event type the kiosk logs, so a single encounter
       // chain reads uniformly across both flows.
-      audit.append(encounterId, "message.user", { text: String(message) }, "patient").catch(() => {});
+      aud("message.user", { text: String(message) }, "patient").catch(() => {});
     }
 
     res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive", "x-accel-buffering": "no" });
@@ -576,22 +580,26 @@ http.createServer(async (req, res) => {
         // agentic-only internals (private reasoning, raw tool I/O) use atriage.* types.
         onEvent: (e) => {
           send(e);
-          if (e.type === "reasoning") audit.append(encounterId, "atriage.reasoning", { text: e.text }, "model").catch(() => {});
-          else if (e.type === "critique") audit.append(encounterId, "atriage.critique", e.verdict, "model").catch(() => {});
-          else if (e.type === "consult") audit.append(encounterId, "consult.response", { ...e.consult, trigger: "safety-gate" }, "model").catch(() => {});
-          else if (e.type === "tool_call") audit.append(encounterId, "atriage.tool", { name: e.name, args: e.args }, "model").catch(() => {});
+          if (e.type === "reasoning") aud("atriage.reasoning", { text: e.text }, "model").catch(() => {});
+          else if (e.type === "critique") aud("atriage.critique", e.verdict, "model").catch(() => {});
+          else if (e.type === "consult") aud("consult.response", { ...e.consult, trigger: "safety-gate" }, "model").catch(() => {});
+          else if (e.type === "tool_call") aud("atriage.tool", { name: e.name, args: e.args }, "model").catch(() => {});
           else if (e.type === "tool_result") {
             // Pin grounding to the exact facts used: a factstore recall carries a receipt
             // (-> facts.read, as in /api/agent); other tools log their raw result.
             const r = e.result || {};
-            if (r.receipt) audit.append(encounterId, "facts.read", { tool: e.name, query: r.receipt.query, validAt: r.receipt.validAt, knownAt: r.receipt.knownAt, statements: r.receipt.statements }, "model").catch(() => {});
-            else if (e.name === "consult_peer") audit.append(encounterId, "consult.response", { answer: r.answer, peer: r.peer, signatureOk: r.signatureOk, error: r.error }, "model").catch(() => {});
-            else audit.append(encounterId, "atriage.tool_result", { name: e.name, result: r }, "model").catch(() => {});
+            if (r.receipt) aud("facts.read", { tool: e.name, query: r.receipt.query, validAt: r.receipt.validAt, knownAt: r.receipt.knownAt, statements: r.receipt.statements }, "model").catch(() => {});
+            else if (e.name === "consult_peer") aud("consult.response", { answer: r.answer, peer: r.peer, signatureOk: r.signatureOk, error: r.error }, "model").catch(() => {});
+            else aud("atriage.tool_result", { name: e.name, result: r }, "model").catch(() => {});
           }
-          else if (e.type === "question") audit.append(encounterId, "message.assistant", { text: e.text, kind: "triage.question" }, "model").catch(() => {});
-          else if (e.type === "error") audit.append(encounterId, "atriage.error", { error: e.error }, "model").catch(() => {});
+          else if (e.type === "question") aud("message.assistant", { text: e.text, kind: "triage.question" }, "model").catch(() => {});
+          else if (e.type === "error") aud("atriage.error", { error: e.error }, "model").catch(() => {});
           else if (e.type === "conclusion") {
-            audit.append(encounterId, "outcome", e.outcome, "model").catch(() => {});
+            aud("outcome", e.outcome, "model").catch(() => {});
+            // TRAINING mode: the agent + safety gate still run (that's the teaching value), but a
+            // simulated case must NOT touch the real record — `aud` already no-op'd the audit above;
+            // here we also skip the diagnosed-fact assert AND the federated co-occurrence tally.
+            if (training) return;
             // Record the working diagnosis as a PROPOSED fact for the pharmacist to confirm,
             // and audit that assertion (statementId/hash) so the proposal is itself on-chain.
             facts.assert(log, { subject: log, predicate: "diagnosed", object: { name: e.outcome.condition, icd: e.outcome.icd },
@@ -619,6 +627,7 @@ http.createServer(async (req, res) => {
       });
       if (r?.messages) session.messages = r.messages; // persist the conversation incl. tool turns
       if (r?.supervisorAsk) session.supervisorAsks = (session.supervisorAsks || 0) + 1; // spend the re-ask budget
+      if (training) triageSessions.delete(encounterId); // don't accumulate one-shot training sessions
       send({ type: "done" });
     } catch (e) {
       send({ type: "error", error: String(e?.message || e) });

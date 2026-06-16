@@ -1,0 +1,113 @@
+# medpsy — a safe, accountable, on-device pharmacy triage mesh
+
+*Built by the **medpsy-kent team** on the [QVAC SDK](https://qvac.tether.io/) + [QVAC MedPsy](https://huggingface.co/blog/qvac/medpsy).*
+
+> A community-pharmacy **triage kiosk** that runs entirely on the device, reaches a **safe disposition**
+> a pharmacist signs off, keeps a **tamper-evident record** of every decision, and lets a network of
+> kiosks **learn from each other without any patient data ever leaving a device**.
+
+Most "medical AI" is a chatbot, or a research sandbox. This is neither. It's point-of-care
+decision-support engineered for the three things medicine actually demands: it must be **grounded**
+(answers tied to verified data, not vibes), **safe** (it fails toward escalation, never silently
+downgrades an emergency), and **accountable** (every step is signed and auditable). All on-device.
+
+---
+
+## Why
+
+A pharmacy counter is the most common front door to healthcare, and the worst place for a cloud chatbot:
+patients are vulnerable, the data is sensitive, connectivity is unreliable, and a wrong "you're fine"
+can kill. So the design constraints were non-negotiable:
+
+- **On-device only.** No cloud APIs, no telemetry. Flip one env var (`MEDPSY_BACKEND=qvac`) and nothing
+  leaves the machine — runs in airplane mode.
+- **Safety over fluency.** The dangerous error is *under-triage* (missing an emergency). The whole
+  architecture is biased toward catching it.
+- **Accountable by construction.** If a machine influences a clinical decision, you must be able to
+  prove *what it said and why* — months later, tamper-evidently.
+- **Private collaboration.** A clinic network should get smarter together without pooling patient data.
+
+## What it does
+
+1. **Triage a patient** — a scripted 9-step flow *or* an AI-led interview, in **8 languages**, by
+   **voice or text** (on-device speech). It produces a structured disposition: a band (🔴 emergency /
+   🟡 urgent / 🟢 pharmacist-led / routine), severity, red flags, routing, and a safety-net.
+2. **Ground every claim** — diagnosis codes are **verified ICD-10** looked up from the real 12k-code set
+   (embedding search), never hallucinated; drug-interaction checks read a curated, replicated graph.
+3. **Check itself** — an **independent safety-review gate** re-reads the evidence at conclusion and may
+   *only escalate* (catch under-triage), ask one more targeted question, or autonomously consult a peer
+   clinician device — never silently downgrade.
+4. **Record everything** — a per-encounter, **ed25519-signed, hash-chained audit log**: every model
+   exchange, tool call, the safety review, and the final code. Exportable; tamper shows up instantly.
+5. **Learn as a network** — kiosks federate over peer-to-peer (Hyperswarm/Hypercore): a missed
+   interaction taught on one kiosk is **jury-vetted** by other kiosks' models and, once a human
+   promotes it, **every kiosk grounds on it** — with only drug names crossing the wire.
+6. **Spot signals no single kiosk could** — PHI-free **federated pharmacovigilance**: each kiosk keeps
+   de-identified co-occurrence tallies; the network sums them and an emerging pattern auto-proposes a
+   candidate into the same human-gated learning loop.
+7. **Train pharmacists** — a **simulation sandbox**: practise on simulated cases, commit to a
+   disposition, and get graded against a clinician answer key + the AI's safety-reviewed assessment.
+   Simulated runs never touch the real record.
+
+## How it works
+
+```
+ patient ──voice/text──▶ triage agent ──tools──▶ verified ICD-10 + interaction graph
+                              │                          (on-device embeddings + factstore)
+                              ▼
+                  independent SAFETY-REVIEW gate  ──uncertain?──▶ peer consult (P2P)
+                       (escalate-only)
+                              ▼
+                   signed, hash-chained AUDIT  ◀── every step
+                              │
+        ┌─────────────────────┴───────────────────────┐
+        ▼                                              ▼
+  federated LEARNING (jury-vetted,             federated SAFETY SIGNALS
+  human-gated, PHI-free)                       (de-identified, summed over the mesh)
+        └──────────────  Hyperswarm / Hypercore mesh, no server  ──────────────┘
+```
+
+**The stack — QVAC is the engine, the identity layer, and the network, not a bolt-on:**
+
+- **On-device inference** — QVAC MedPsy 4B (+1.7B) via the QVAC SDK (`loadModel`/`completion`/`embed`)
+  or LM Studio in dev. Local GGUF; ICD-10 grounding over embeddings; on-device STT + TTS.
+- **Trust & identity** — `hypercore-crypto` ed25519 keys per kiosk; signed audit bundles; signed
+  membership rosters (tamper-evident, fail-closed).
+- **P2P mesh** — Hyperswarm/Hypercore for KB replication, the jury/consult channel, encrypted encounter
+  hand-off, and the safety-signal mesh. No central server.
+- **Knowledge** — `@qvac/factstore` (bi-temporal, replicated triple store) + a knowledge-graph layer;
+  candidate edges never ground until a human promotes them.
+
+**Safety properties we actually test** — a deterministic 45-case acceptance matrix
+(`npm run test:kiosk`) gates every change across four surfaces: the safety gate (no silent
+de-escalation), federated signals (thresholds), federation lifecycle, and the PHI scrub. Plus an
+asymmetric eval where a *missed* interaction is a hard failure.
+
+## How it's different
+
+| | A medical chatbot | A simulation sandbox | **medpsy** |
+|---|---|---|---|
+| Grounded codes/interactions | ✗ | partial | ✅ verified ICD-10 + curated graph |
+| Safety gate (escalate-only) | ✗ | ✗ | ✅ independent reviewer + peer consult |
+| Tamper-evident signed audit | ✗ | ✗ | ✅ per-encounter hash chain |
+| Private federated *learning* | ✗ | resource sharing | ✅ jury-vetted, human-gated, PHI-free |
+| Runs fully offline | sometimes | ✅ | ✅ |
+
+## Run it
+
+```bash
+cd qvac-app && npm run start          # preflight → API → web kiosk
+# a 2-kiosk mesh:
+npm run kiosk -- --profile clinic-a --port 8787 --consult-code CLINIC
+npm run kiosk -- --profile clinic-b --port 8788 --consult-code CLINIC   # auto-meshes in ~4 s
+npm run test:kiosk                    # the 45-case safety/federation/privacy matrix
+```
+
+See [`README.md`](https://github.com/tfius/medpsy-kent/blob/main/qvac-app/README.md) and
+[`ARCHITECTURE.md`](https://github.com/tfius/medpsy-kent/blob/main/qvac-app/ARCHITECTURE.md) for the full
+picture, and [`JOURNAL.md`](https://github.com/tfius/medpsy-kent/blob/main/JOURNAL.md) for the build log.
+
+---
+
+*A human pharmacist reviews every result. medpsy is decision-support, not a diagnosis — and it's built
+to prove it.*

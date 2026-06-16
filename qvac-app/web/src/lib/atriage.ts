@@ -25,14 +25,15 @@ export type ATriageEvent =
 export async function runTriageTurn(
   message: string,
   onEvent: (e: ATriageEvent) => void,
-  opts: { reset?: boolean; signal?: AbortSignal } = {},
+  opts: { reset?: boolean; signal?: AbortSignal; training?: boolean; encounterId?: string } = {},
 ): Promise<void> {
   const isAbort = (e: unknown) => e instanceof Error && e.name === "AbortError";
   let res: Response;
   try {
     res = await fetch("/api/agentic-triage", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ encounterId: getAuditEncounter(), message, reset: opts.reset }),
+      // training mode runs the agent+gate but the server skips the real KB/signals/facts writes.
+      body: JSON.stringify({ encounterId: opts.encounterId || getAuditEncounter(), message, reset: opts.reset, training: opts.training }),
       signal: opts.signal,
     });
   } catch (e) { if (!isAbort(e)) onEvent({ type: "error", error: e instanceof Error ? e.message : String(e) }); return; }
