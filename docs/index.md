@@ -54,9 +54,13 @@ service: patients are vulnerable, the data is sensitive, connectivity is unrelia
 
 ## See it in action
 
-**▶ The whole flow, end to end** — a heart-attack walkthrough across all 8 steps: sign-in → consent → complaint → meds → triage (a clear ACS escalates immediately to EMERGENCY) → hospital record (history refines the plan, warfarin-aware) → ED routing → clinician sign-off as a signed, tamper-evident record:
+**▶ The whole flow, end to end** — an 8-step walkthrough where the *interview* does the work: a patient arrives with a vague **"chest pain"**, and medpsy asks one focused question at a time (onset → pleuritic screen → radiation → breathing/autonomic) until the red flags surface and it escalates to EMERGENCY → hospital record (history refines the plan, warfarin/INR-aware) → ED routing with an SBAR handover → clinician sign-off as a signed, tamper-evident record:
 
-![Full walkthrough — Welcome → consent → complaint → meds → triage (immediate EMERGENCY) → FHIR record (prior MI + warfarin) → ED handover → practitioner sign-off (SHA-256 signed outcome)](media/medpsy-full-walkthrough-heart-attack.gif)
+![Full walkthrough — Welcome → consent → a vague "chest pain" complaint → meds → a multi-question triage interview that reveals cardiac red flags step by step and escalates to EMERGENCY → FHIR record (prior MI + warfarin) → ED handover (SBAR) → practitioner sign-off (SHA-256 signed outcome)](media/medpsy-full-walkthrough-interview.gif)
+
+**…and the same flow when the danger is obvious up front** — a clear ACS that escalates *immediately*, no questions needed. That's the safe failure mode: when the red flags are unambiguous, medpsy stops interviewing and escalates:
+
+![Full walkthrough (fast escalation) — an unambiguous ACS escalates straight to EMERGENCY with zero questions → FHIR record (prior MI + warfarin) → ED handover → practitioner sign-off (SHA-256 signed outcome)](media/medpsy-full-walkthrough-heart-attack.gif)
 
 …or step by step:
 
