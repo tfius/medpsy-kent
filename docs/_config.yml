@@ -1,0 +1,5 @@
+# GitHub Pages config — serves this /docs folder. Clean project-page theme (Cayman).
+theme: jekyll-theme-cayman
+title: medpsy
+description: A safe, accountable, on-device pharmacy triage mesh — built on the QVAC SDK + QVAC MedPsy.
+show_downloads: false

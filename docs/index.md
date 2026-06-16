@@ -1,4 +1,6 @@
-# medpsy — a safe, accountable, on-device pharmacy triage mesh
+---
+title: "medpsy — safe, accountable, on-device pharmacy triage"
+---
 
 *Built by the **medpsy-kent team** on the [QVAC SDK](https://qvac.tether.io/) + [QVAC MedPsy](https://huggingface.co/blog/qvac/medpsy).*
 
@@ -92,6 +94,15 @@ asymmetric eval where a *missed* interaction is a hard failure.
 - **Private federated learning** — jury-vetted, human-gated, PHI-free; only drug names cross the wire.
 - **Trains clinicians** — the Triage Preceptor: interview a patient, then graded against a safe answer.
 - **Fully offline** — flip one env var and nothing leaves the device.
+
+## Dig deeper
+
+- **Safety-review gate** — [ARCHITECTURE → phased build](https://github.com/tfius/medpsy-kent/blob/main/qvac-app/ARCHITECTURE.md#phased-build)
+- **Federated learning mesh** — [README → edge-learning loop](https://github.com/tfius/medpsy-kent/blob/main/qvac-app/README.md#edge-learning-loop-federated-phi-free)
+- **Federated safety intelligence** — [README → pharmacovigilance](https://github.com/tfius/medpsy-kent/blob/main/qvac-app/README.md#federated-safety-intelligence-phi-free-pharmacovigilance)
+- **Hardened mesh (signed roster + serve-side gating)** — [README → hardened mesh](https://github.com/tfius/medpsy-kent/blob/main/qvac-app/README.md#hardened-mesh-production-trust)
+- **Triage Preceptor (clinical training)** — [README → Triage Preceptor](https://github.com/tfius/medpsy-kent/blob/main/qvac-app/README.md#triage-preceptor-clinical-training)
+- **The 45-case acceptance matrix** — [`scripts/kiosk_matrix.mjs`](https://github.com/tfius/medpsy-kent/blob/main/qvac-app/scripts/kiosk_matrix.mjs)
 
 ## Run it
 
