@@ -16,9 +16,21 @@ const SYNONYMS = {
   "warfarin-sodium": "warfarin", "coumadin": "warfarin",
   "frusemide": "furosemide", "lasix": "furosemide",
   "glyceryl-trinitrate": "gtn", "nitroglycerin": "gtn", "nitroglycerine": "gtn", "trinitrate": "gtn",
-  "nurofen": "ibuprofen", "brufen": "ibuprofen",
-  "viagra": "sildenafil",
-  "septrin": "trimethoprim", "co-trimoxazole": "trimethoprim",
+  "nurofen": "ibuprofen", "brufen": "ibuprofen", "advil": "ibuprofen", "motrin": "ibuprofen",
+  "viagra": "sildenafil", "revatio": "sildenafil",
+  "septrin": "trimethoprim", "co-trimoxazole": "trimethoprim", "bactrim": "trimethoprim",
+  // brand/US aliases for the drugs that appear in INTERACTIONS — a miss here is a dangerous
+  // false-negative, so every interacting drug's common aliases are covered.
+  "naprosyn": "naproxen", "aleve": "naproxen",
+  "zoloft": "sertraline", "lustral": "sertraline",
+  "ultram": "tramadol", "zydol": "tramadol",
+  "biaxin": "clarithromycin", "klaricid": "clarithromycin",
+  "zocor": "simvastatin",
+  "altace": "ramipril", "tritace": "ramipril",
+  "aldactone": "spironolactone",
+  "priadel": "lithium", "camcolit": "lithium", "eskalith": "lithium", "lithium-carbonate": "lithium",
+  "rheumatrex": "methotrexate", "trexall": "methotrexate", "mtx": "methotrexate",
+  "zyvox": "linezolid",
 };
 
 // Normalize a drug name to a graph id: strip dose/strength ("Warfarin 5mg" -> warfarin),
@@ -26,6 +38,7 @@ const SYNONYMS = {
 export const drugId = (name) => {
   const slug = String(name || "").toLowerCase().trim()
     .replace(/\b\d+(\.\d+)?\s*(mg|mcg|g|ml|units?|iu|%)\b.*$/i, "") // drop "5mg ...", "400 mg", etc.
+    .replace(/\s+\d+([./]\d+)*\s*$/g, "")                         // drop a trailing BARE strength ("naproxen 250", "co-codamol 30/500")
     .replace(/\b(spray|tablets?|tabs?|caps?|capsules?|cream|gel|patch(es)?|inhaler|oral|solution|injection|drops?|liquid|suspension|sachets?|modified[- ]release|mr|sr|er|xl)\b/gi, "") // drop form/route words
     .trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   return "drug:" + (SYNONYMS[slug] || slug);

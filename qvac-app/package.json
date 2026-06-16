@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@qvac/factstore": "file:./packages/factstore",
+    "@qvac/kgraph": "file:./packages/kgraph",
     "@qvac/sdk": "^0.13.1",
     "kokoro-js": "^1.2.1",
     "onnxruntime-node": "^1.26.0"

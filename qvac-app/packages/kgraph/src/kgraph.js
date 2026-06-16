@@ -129,7 +129,7 @@ export class KnowledgeGraph {
     const { out: outE, in: inE } = await this._incident(id, slice);
     const acc = new Map(); // key (predicate|neighbor) -> edge (first wins)
     const take = (e, d) => {
-      if (confirmedOnly && e.meta?.proposed === true) return; // un-vetted candidates never count in a grounded read
+      if (confirmedOnly && e.meta?.proposed) return; // un-vetted candidates never count in a grounded read (truthy, matches factstore/medlens)
       if (predicates && !predicates.includes(e.predicate)) return;
       if ((e.confidence ?? 1) < minConfidence) return;
       const neighbor = d === "out" ? e.to : e.from;
@@ -179,6 +179,29 @@ export class KnowledgeGraph {
     await walk(from, [], new Set([from]));
     results.sort((a, b) => prod(b) - prod(a));
     return results.slice(0, topK).map((p) => ({ hops: p.length, confidence: prod(p), edges: p }));
+  }
+
+  // Edges AMONG a set of nodes — "which of these interact / depend on each other" (generalizes
+  // factstore.edgesAmong). Symmetry-aware, deduped, with the same epistemics/confirmed/confidence
+  // discipline as the rest. The basis for set-wise grounding recipes (e.g. screen_interactions).
+  // confirmedOnly defaults TRUE: pairsAmong is a grounding primitive, so it's safe-by-default
+  // (un-vetted candidates excluded). Pass confirmedOnly:false for a raw/review read.
+  async pairsAmong(ids, { predicates, minConfidence = 0, confirmedOnly = true, slice } = {}) {
+    const set = new Set(ids);
+    const seen = new Set(), out = [];
+    for (const id of set) {
+      const { out: outE } = await this._incident(id, slice); // outgoing only; symmetric edges caught from either endpoint
+      for (const e of outE) {
+        if (!set.has(e.to) || e.to === e.from) continue;
+        if (predicates && !predicates.includes(e.predicate)) continue;
+        if (confirmedOnly && e.meta?.proposed) continue;
+        if ((e.confidence ?? 1) < minConfidence) continue;
+        const key = this.schema.isSymmetric(e.predicate) ? `${e.predicate}|${[e.from, e.to].sort().join("|")}` : `${e.from}|${e.predicate}|${e.to}`;
+        if (seen.has(key)) continue; seen.add(key);
+        out.push({ from: e.from, predicate: e.predicate, to: e.to, meta: e.meta || {}, confidence: e.confidence ?? 1, statementId: e.statementId, hash: e.hash });
+      }
+    }
+    return out;
   }
 
   // Run a grounding recipe. mode "ground" enforces the factual-only rule (throws on an

@@ -179,6 +179,18 @@ test("lifecycle: confirmEdge promotes a candidate so it grounds; retractEdge rem
   assert.ok(!(await kg.neighbors("thing:a")).some((e) => e.neighbor === "thing:c"), "retracted edge is gone");
 });
 
+test("pairsAmong: edges within a set (symmetric, deduped, confirmed-only)", async () => {
+  const kg = kgOf();
+  await kg.assertEdge({ from: "thing:a", predicate: "related_to", to: "thing:b" });        // a–b (in set)
+  await kg.assertEdge({ from: "thing:a", predicate: "related_to", to: "thing:out" });       // out of set
+  await kg.assertEdge({ from: "thing:b", predicate: "related_to", to: "thing:c", meta: { proposed: 1 } }); // candidate (truthy, not literal true)
+  const pairs = await kg.pairsAmong(["thing:a", "thing:b", "thing:c"], { predicates: ["related_to"] }); // confirmedOnly defaults true
+  assert.equal(pairs.length, 1, "default is safe: only the confirmed a–b pair (truthy proposed excluded)");
+  assert.equal([pairs[0].from, pairs[0].to].sort().join("|"), "thing:a|thing:b");
+  const withCand = await kg.pairsAmong(["thing:a", "thing:b", "thing:c"], { predicates: ["related_to"], confirmedOnly: false });
+  assert.equal(withCand.length, 2, "explicit raw read includes the b–c candidate");
+});
+
 test("neutrality smoke: createSchema accepts an arbitrary non-medical domain", () => {
   const incident = createSchema({
     kinds: [{ name: "svc" }, { name: "team" }],
