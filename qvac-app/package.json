@@ -19,6 +19,8 @@
     "identity": "node src/cli.js identity",
     "roster": "node src/cli.js roster",
     "agent-eval": "node scripts/agent_eval.mjs",
+    "eval:medpack": "node scripts/medpack_eval.mjs",
+    "smoke:medpack": "node scripts/medpack_smoke.mjs",
     "check": "node scripts/preflight.mjs",
     "download-models": "node scripts/preflight.mjs --download",
     "start": "bash scripts/start.sh",

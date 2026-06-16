@@ -9,7 +9,7 @@
 // graph node. A missed match is a dangerous interaction false-negative, so the common
 // aliases for the drugs in the interaction graph are covered here. Full coverage needs an
 // RxNorm/dm+d mapping — this is the pragmatic subset.
-const SYNONYMS = {
+export const SYNONYMS = {
   "acetylsalicylic-acid": "aspirin", "asa": "aspirin",
   "acetaminophen": "paracetamol",
   "albuterol": "salbutamol",
@@ -46,7 +46,7 @@ export const drugId = (name) => {
 
 // Authored interaction edges (a, b) with severity + a one-line rationale. Curated from
 // data/knowledge/*.md. Add to this list as the corpus grows; it's data, not inference.
-const INTERACTIONS = [
+export const INTERACTIONS = [
   ["warfarin", "ibuprofen", "major", "NSAID + anticoagulant — bleeding risk (GI + antiplatelet)"],
   ["warfarin", "aspirin", "major", "antiplatelet + anticoagulant — bleeding risk"],
   ["warfarin", "clarithromycin", "major", "CYP inhibition raises INR — bleeding risk"],
