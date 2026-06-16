@@ -163,6 +163,7 @@ learning** network — all on-device, no cloud. Web pages (top bar):
 | ✨ Demo (`/demo`) | one-screen walkthrough of the edge-learning loop (before/after "does the agent flag it?") |
 | 🕸 Mesh (`/mesh`) | N kiosks side by side — teach on any, watch the others learn live; 🔒/🔓 membership toggle |
 | 📡 Signals (`/signals`) | **federated safety intelligence** — log encounters across kiosks; the network total crosses a threshold and auto-proposes a candidate (PHI-free pharmacovigilance) |
+| 🎓 Preceptor (`/preceptor`) | **clinical-training** mode: interview a simulated patient, decide, and the safety-review gate grades your red-flag screening + disposition. Simulated only — touches nothing real |
 | 🛡 Audit | per-encounter tamper-evident hash-chained log (export / P2P send / lossy OKF view) |
 
 ### Edge-learning loop (federated, PHI-free)
@@ -181,6 +182,22 @@ a threshold (≥2 kiosks, enough flagged, high enough rate) it **auto-proposes a
 human-gated vet → promote loop. Raw signals never ground on their own. Agentic triage feeds it
 automatically; the **📡 Signals** view drives it by hand. Verified by `scripts/federated_signals_smoke.mjs`
 (solo-doesn't-cross, federated-crosses, auto-proposed) + a live 2-kiosk run.
+
+### Triage Preceptor (clinical training)
+Practise like you would under a senior pharmacist — the **preceptor** is the same independent
+safety-review gate the live agent uses. Open **🎓 Preceptor** (`/preceptor`); three workflows:
+- **🩺 Interview** *(flagship)* — pick a case; the model **role-plays the patient** from a hidden brief
+  (answers only what you ask), you take a history, then commit to a disposition. The preceptor grades
+  **which red-flag domains you screened** *and* your call against a clinician answer key (under-triage is
+  flagged as the dangerous error), and shows its own safety-reviewed assessment.
+- **⚡ Quick assess** — read a full vignette, pick a disposition, get graded — fast drilling.
+- **📋 Bring a case** — type a real/hypothetical case → the preceptor's grounded **second opinion** for
+  reflection (CPD); no answer key, clearly labelled "not ground truth".
+
+A **session scorecard** tracks correct / over / **under-triage** (goal: zero). Everything runs in
+*training mode*: the server (`/api/patient-sim` + the agentic-triage `training` flag) writes **nothing**
+— no facts, knowledge base, safety signals, or audit. Needs the LLM backend up (LM Studio or
+`MEDPSY_BACKEND=qvac`); no mesh required. Just `npm run start` and click **🎓 Preceptor**.
 
 ### Hardened mesh (production trust)
 Membership is tamper-evident and gated at the source. The clinic admin signs a **roster** with their

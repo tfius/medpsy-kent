@@ -1047,6 +1047,26 @@ fixed it by making the exam test the exact same code the live kiosk uses. Then w
 two kiosks on the network both correctly rejected a made-up, fake drug warning. Everything passed,
 45 out of 45.
 
+## A flight simulator for pharmacists — the "Preceptor"
+
+A rival app pitched the same little medical AI as a "what-if sandbox". We went a different way that
+plays to our strength — *safety and accountability* — and built a **training mode** instead, named after
+the senior pharmacist who teaches trainees on the job: the **Preceptor**.
+
+It's a flight simulator for triage. You pick a case and the AI **pretends to be the patient** — it only
+tells you what you actually ask, just like a real person at the counter. You take a history, then make
+your call (emergency? urgent? pharmacist can handle it? routine?). Then the "preceptor" — the same
+safety double-checker the real app uses — grades you: did you ask the questions that mattered, and did
+you make the safe call? The worst mistake (calling something routine when it's an emergency) is flagged
+in red. There's also a quick-quiz mode, and a "bring a real case" mode where you type in a tricky case
+you actually saw and get a careful second opinion to reflect on. A little scoreboard tracks how you're
+doing, with one goal: never miss an emergency.
+
+The important part: it's a *simulator*, so none of it is real — practising on a hundred made-up patients
+leaves zero trace in the records, the shared knowledge, or the safety alarms. And, as usual, we had a
+sceptical helper try to break it first and fixed what it found (including stopping the pretend-patient
+from accidentally blurting out the answer).
+
 ---
 
 ## The whole story in three sentences
