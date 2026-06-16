@@ -6,18 +6,18 @@
 > a pharmacist signs off, keeps a **tamper-evident record** of every decision, and lets a network of
 > kiosks **learn from each other without any patient data ever leaving a device**.
 
-Most "medical AI" is a chatbot, or a research sandbox. This is neither. It's point-of-care
-decision-support engineered for the three things medicine actually demands: it must be **grounded**
-(answers tied to verified data, not vibes), **safe** (it fails toward escalation, never silently
-downgrades an emergency), and **accountable** (every step is signed and auditable). All on-device.
+It's point-of-care decision-support engineered for the three things medicine actually demands: it must
+be **grounded** (answers tied to verified data, not vibes), **safe** (it fails toward escalation, never
+silently downgrades an emergency), and **accountable** (every step is signed and auditable). All
+on-device.
 
 ---
 
 ## Why
 
-A pharmacy counter is the most common front door to healthcare, and the worst place for a cloud chatbot:
-patients are vulnerable, the data is sensitive, connectivity is unreliable, and a wrong "you're fine"
-can kill. So the design constraints were non-negotiable:
+A pharmacy counter is the most common front door to healthcare, and the worst place for a cloud AI
+service: patients are vulnerable, the data is sensitive, connectivity is unreliable, and a wrong
+"you're fine" can kill. So the design constraints were non-negotiable:
 
 - **On-device only.** No cloud APIs, no telemetry. Flip one env var (`MEDPSY_BACKEND=qvac`) and nothing
   leaves the machine — runs in airplane mode.
@@ -84,16 +84,14 @@ can kill. So the design constraints were non-negotiable:
 de-escalation), federated signals (thresholds), federation lifecycle, and the PHI scrub. Plus an
 asymmetric eval where a *missed* interaction is a hard failure.
 
-## How it's different
+## What makes it trustworthy
 
-| | A medical chatbot | A simulation sandbox | **medpsy** |
-|---|---|---|---|
-| Grounded codes/interactions | ✗ | partial | ✅ verified ICD-10 + curated graph |
-| Safety gate (escalate-only) | ✗ | ✗ | ✅ independent reviewer + peer consult |
-| Tamper-evident signed audit | ✗ | ✗ | ✅ per-encounter hash chain |
-| Private federated *learning* | ✗ | resource sharing | ✅ jury-vetted, human-gated, PHI-free |
-| Trains clinicians | ✗ | sim canvas (ungraded) | ✅ **Triage Preceptor** — interview a patient, graded vs a safe answer |
-| Runs fully offline | sometimes | ✅ | ✅ |
+- **Grounded** — diagnosis codes are verified ICD-10 (never hallucinated); interactions read a curated, replicated graph.
+- **Safe** — an independent safety-review gate that can only escalate, with an autonomous peer consult when uncertain.
+- **Accountable** — a per-encounter, ed25519-signed, hash-chained audit of every step.
+- **Private federated learning** — jury-vetted, human-gated, PHI-free; only drug names cross the wire.
+- **Trains clinicians** — the Triage Preceptor: interview a patient, then graded against a safe answer.
+- **Fully offline** — flip one env var and nothing leaves the device.
 
 ## Run it
 

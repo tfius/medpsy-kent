@@ -1049,9 +1049,8 @@ two kiosks on the network both correctly rejected a made-up, fake drug warning. 
 
 ## A flight simulator for pharmacists — the "Preceptor"
 
-A rival app pitched the same little medical AI as a "what-if sandbox". We went a different way that
-plays to our strength — *safety and accountability* — and built a **training mode** instead, named after
-the senior pharmacist who teaches trainees on the job: the **Preceptor**.
+We built a **training mode** that plays to our strength — *safety and accountability* — named after the
+senior pharmacist who teaches trainees on the job: the **Preceptor**.
 
 It's a flight simulator for triage. You pick a case and the AI **pretends to be the patient** — it only
 tells you what you actually ask, just like a real person at the counter. You take a history, then make

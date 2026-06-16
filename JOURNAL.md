@@ -2074,23 +2074,18 @@ path. New: `scripts/kiosk_matrix.mjs`, `scripts/kiosk-scenarios.mjs`, `src/membe
 
 ## 2026-06-16 — Triage Preceptor: turning the safety gate into clinical training
 
-A competitor (MedLifeSim, also on QVAC MedPsy) ships a "sim sandbox / prompt-to-scenario". Rather than
-chase exports/LoRA (LoRA isn't a safe clinical bet; we federate *auditable knowledge edges* instead) or
-Bergamot NMT (no Cantonese model, weak Slovenian — useless for our hardest languages), we leaned into the
-moat: **clinical training that's grounded and accountable**, reusing the real safety-review gate as the
-"supervising clinician". Named it the **Triage Preceptor** (the licensed pharmacist who supervises
-trainees — it maps 1:1 to our gate). New page `/preceptor`, nav 🎓.
-
-**v1 was a band-guessing quiz** (read a full vignette → pick 1 of 4 bands → graded). Shipped, then
-reworked because that tests the *output*, not the *competency*. **v2 is interview-first**, three workflows:
+A clinical-training mode that reuses the real safety-review gate as the "supervising clinician" — the
+**Triage Preceptor** (the licensed pharmacist who supervises trainees; it maps 1:1 to our gate). New page
+`/preceptor`, nav 🎓. The point is to train the *competency* (history-taking, red-flag screening), not
+just a final band guess, so it's interview-first. Three workflows:
 - **Interview (flagship):** the model **role-plays the patient** from a hidden brief (answers only what's
   asked); the trainee takes a history, then commits. The preceptor grades **which red-flag domains were
   screened** (`screeningCoverage`, keyword match over the trainee's questions — labels revealed only
   *after* deciding, so it's not a cheat sheet) *and* the disposition vs a clinician answer key. Under-
   triage is the flagged error.
-- **Quick assess:** the v1 full-vignette path, kept for fast drilling.
+- **Quick assess:** read a full vignette → pick a disposition → graded; fast drilling.
 - **Bring a case:** a real/hypothetical case → the preceptor's grounded **second opinion** (CPD; no answer
-  key, labelled "not ground truth") — replaces the dated "prompt-to-scenario".
+  key, labelled "not ground truth").
 - A **session scorecard** spotlights correct / over / under-triage (goal: zero — mirrors the eval ethos).
 
 **Walled off from the real system.** Training must touch nothing: the agentic-triage `training` flag
@@ -2099,12 +2094,12 @@ tamper-evident audit (so a simulated case never appears as an encounter); the ne
 (backend-agnostic `provider.complete`) writes nothing at all. Verified live: a training conclusion runs
 the full gate yet leaves **0 facts/signals and no audit encounter**.
 
-**Two adversarial-review passes before shipping (standing practice) caught real bugs:** (v1) training was
+**Two adversarial-review passes before shipping (standing practice) caught real bugs:** training was
 still writing audit chains — contradicting the "nothing touches the record" claim → fully walled off; a
 mis-clinical answer key (low-mood keyed URGENT without stated risk) → narrative now discloses passive
-suicidal ideation. (v2) the patient-sim sanitizer's empty-fallback echoed raw output (could leak the
-hidden brief) → safe non-answer; an over-broad leak filter dropped legit replies ("You are right…") →
-anchored to true template/role echoes; generic screening keywords ("medication"/"sleep"/"drink") caused
-false "covered" → tightened; an in-flight assessment could land on a switched case → `resetCase` aborts.
+suicidal ideation; the patient-sim sanitizer's empty-fallback echoed raw output (could leak the hidden
+brief) → safe non-answer; an over-broad leak filter dropped legit replies ("You are right…") → anchored
+to true template/role echoes; generic screening keywords ("medication"/"sleep"/"drink") caused false
+"covered" → tightened; an in-flight assessment could land on a switched case → `resetCase` aborts.
 New: `web/src/lib/preceptor.ts`, `web/src/pages/Preceptor.tsx`, `/api/patient-sim`; the GitHub page
-(`docs/index.md`) + `TODO.md` (demo video). (Also explored a MedLifeSim comparison matrix + how-to-compete.)
+(`docs/index.md`) + `TODO.md` (demo video).
