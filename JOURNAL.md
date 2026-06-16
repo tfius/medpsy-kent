@@ -2032,3 +2032,42 @@ being asked twice. It paid off immediately (the `proposed===true` leak and the t
 gate were both caught pre-commit). New: `packages/kgraph/**`, `src/packs/medical.js`,
 `scripts/medpack_{smoke,eval}.mjs`; medlens exports `INTERACTIONS`/`SYNONYMS`; preflight auto-links
 `file:` packages.
+
+## 2026-06-16 — Comprehensive kiosk acceptance matrix (45 cases, 4 surfaces)
+
+The kiosk tests proved happy paths on a handful of hardcoded cases. Replaced that with a broad,
+**deterministic** acceptance matrix (`npm run test:kiosk` → `scripts/kiosk_matrix.mjs`, fixtures in
+`scripts/kiosk-scenarios.mjs`) — no model, no network, so it gates every change and runs in <1 s. The
+"expanded information" is a curated scenario bank spanning the use cases a real triage-kiosk mesh hits.
+
+**Four sections, 45 cases:**
+- **Safety gate (22)** — clinical breadth × the full decision tree: under-triage caught across body
+  systems (ACS, stroke, DKA, cauda equina, meningococcal rash, GI bleed, warfarin+NSAID); off-enum
+  ("A&E", "refer urgently") and garbled supervisor labels ESCALATE rather than silently dropping;
+  appropriate conclusions (sepsis, URTI, elderly constipation, multilingual ACS) left untouched;
+  anaphylaxis can't be de-escalated; over-triage NOT auto-corrected (documented asymmetry); suicidality
+  follow-up question + budget-exhaustion; autonomous peer consult (→URGENT, →EMERGENCY, **can't
+  downgrade**, **still fires on a reviewer outage**). Each case also asserts the RED/AMBER/GREEN band,
+  the exact follow-up question text, and (one case) that the supervisor prompt actually carries the
+  gathered evidence + proposed conclusion (`summarizeEvidence`).
+- **Signals (11)** — every threshold edge: exact-at-threshold, rate-exactly-0.3, just-below-flagged,
+  **single-kiosk-heavy must NOT fire** (the federation requirement), rate-below, distributed-across-3,
+  known-pair-excluded, order-independent pairing, statementId dedup (a contributor mirrored into two
+  logs counts once), and `autoProposeSignals` severity mapping.
+- **Federation (8)** — dedup, candidate-doesn't-ground/promoted-does (both directions), transitive
+  3-node propagation, conflicting-severity (a promoted major beats a local moderate candidate on merge),
+  membership predicate, jury vote filter, recordVote dedup, reject-retracts. `simulateMerge` mirrors the
+  server's `mergePeerGraph` (same sig = object+proposed+severity+confidence).
+- **Privacy (4)** — `sanitizeNote` (the only free-text field that crosses the mesh) strips
+  name/age/DOB/email/MRN while keeping clinical content (CYP2C9, INR, 5mg, J18.9); `noteLooksPersonal`
+  flags residual "the patient" references.
+
+**Adversarial review before done (standing practice) caught real false-confidence:** the
+membership/jury-vote case was validating a *reimplementation* of the server's filter, not the filter
+itself — if `server.js`'s `isMember`/signature check broke, the test stayed green. Fixed at altitude:
+extracted the predicates to **`src/membership.js`** (`memberOf`, `isCountableVote`); `server.js` now
+imports and uses them (the inline `isMember` and the `/api/learn` jury filter), so the matrix validates
+the *same code the server runs*. The review also flagged untested `band`/question-text/evidence and the
+PHI scrub — all now covered. Verified live end-to-end: two kiosks mesh, both juries **refute a
+fabricated interaction**, and the peer's *signed* vote counts through the refactored `isCountableVote`
+path. New: `scripts/kiosk_matrix.mjs`, `scripts/kiosk-scenarios.mjs`, `src/membership.js`; `test:kiosk`.

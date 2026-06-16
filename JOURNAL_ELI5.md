@@ -1023,6 +1023,32 @@ Bottom line: we built the fact-web's first working piece, and — more important
 
 ---
 
+## Giving the kiosk a proper exam — 45 questions, not 5
+
+Up to now we'd checked the kiosk with a handful of test cases. That's like declaring a car safe after
+one lap of an empty car park. So we wrote it a real exam: **45 situations** it must get right, covering
+the things a real pharmacy actually sees — chest pain, stroke, a feverish baby with a rash, a possible
+ectopic pregnancy, someone quietly suicidal, a dangerous drug combo, an 82-year-old on nine medicines,
+even a patient speaking Spanish. For each, we check the kiosk does the safe thing: catch the real
+emergencies, leave the genuinely-minor ones alone, *never* talk an emergency down, ask one more question
+when something's unclear, and phone a colleague when it's truly uncertain. The whole exam runs in under a
+second on the laptop with no internet, so we can re-run it after every change and instantly see if we
+broke something.
+
+We also tested the "network learns together" features against tricky cases (does a warning spread to a
+third pharmacy? does a single pharmacy's hunch correctly *not* trigger a network-wide alert on its own?)
+and — importantly — tested the **privacy scrubber** that cleans the one note that ever leaves a device,
+proving it erases names, ages, birthdays, emails and record numbers while keeping the medical meaning.
+
+And, true to the new habit, we had a sceptical helper try to poke holes in the exam *before* trusting it
+— and it found one: a question that looked like it was checking the network's "who's allowed in" rule but
+was secretly checking a *copy* of the rule, so the real rule could break without the exam noticing. We
+fixed it by making the exam test the exact same code the live kiosk uses. Then we confirmed it for real:
+two kiosks on the network both correctly rejected a made-up, fake drug warning. Everything passed,
+45 out of 45.
+
+---
+
 ## The whole story in three sentences
 
 We built a tiny medical AI helper, tried our hardest to break it, and found its
