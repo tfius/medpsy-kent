@@ -52,6 +52,28 @@ service: patients are vulnerable, the data is sensitive, connectivity is unrelia
    grades whether you screened the red flags and made the safe call. Also a "bring a real case"
    second-opinion mode. Simulated runs never touch the record, KB, or safety signals.
 
+## See it in action
+
+**A clinic network that learns — teach one, all learn** (jury-vetted, PHI-free):
+
+![Mesh — teach one kiosk, the jury (including a signed peer vote) vets it, a pharmacist promotes it, and every kiosk learns it](media/medpsy-mesh-teach-one-all-learn.gif)
+
+**A signal no single kiosk could see** — federated pharmacovigilance crossing a threshold and auto-proposing a candidate:
+
+![Signals — one more flagged encounter crosses the network threshold; scan auto-proposes a candidate into the human-gated loop](media/medpsy-signals-crossing.gif)
+
+**Every step signed and hash-chained** — the independent safety review sits in the tamper-evident trail:
+
+![Audit — a verified, chain-intact timeline: reasoning → safety-review critique → EMERGENCY outcome, each row hash-stamped](media/medpsy-signed-audit-trail.gif)
+
+**Tool-grounded clinical Q&A** — the agent recalls facts, screens interactions, and cites its sources:
+
+![Agent — recall → screen_interactions → search_knowledge → a grounded answer on warfarin + ibuprofen](media/medpsy-agent-tool-grounded.gif)
+
+**The on-device knowledge graph + the learning loop** — verified facts, OKF export, P2P federation:
+
+![Knowledge — kb:medical with verified ICD/interaction facts, OKF export, P2P federate, and the propose→vet→promote learn panel](media/medpsy-knowledge-base.gif)
+
 ## How it works
 
 ```
