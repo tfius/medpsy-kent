@@ -92,6 +92,7 @@ asymmetric eval where a *missed* interaction is a hard failure.
 | Safety gate (escalate-only) | ✗ | ✗ | ✅ independent reviewer + peer consult |
 | Tamper-evident signed audit | ✗ | ✗ | ✅ per-encounter hash chain |
 | Private federated *learning* | ✗ | resource sharing | ✅ jury-vetted, human-gated, PHI-free |
+| Trains clinicians | ✗ | sim canvas (ungraded) | ✅ **Triage Preceptor** — interview a patient, graded vs a safe answer |
 | Runs fully offline | sometimes | ✅ | ✅ |
 
 ## Run it
