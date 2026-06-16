@@ -54,25 +54,33 @@ service: patients are vulnerable, the data is sensitive, connectivity is unrelia
 
 ## See it in action
 
-**A clinic network that learns — teach one, all learn** (jury-vetted, PHI-free):
+**1 · Guided patient triage** — a consent-first, multilingual, voice-enabled 9-step flow:
 
-![Mesh — teach one kiosk, the jury (including a signed peer vote) vets it, a pharmacist promotes it, and every kiosk learns it](media/medpsy-mesh-teach-one-all-learn.gif)
+![Patient triage — welcome (8 languages + on-device voice), name, then the consent & capacity teach-back step; the rail advances 1✓→2](media/medpsy-patient-triage.gif)
 
-**A signal no single kiosk could see** — federated pharmacovigilance crossing a threshold and auto-proposing a candidate:
+**2 · AI-led triage + an independent safety review** — medpsy conducts the interview and a second pass checks it:
 
-![Signals — one more flagged encounter crosses the network threshold; scan auto-proposes a candidate into the human-gated loop](media/medpsy-signals-crossing.gif)
+![AI triage — a chest-pain case concludes EMERGENCY 10/10 with a verified ICD-10 (I21.9), and "independent safety review agreed"](media/medpsy-ai-triage.gif)
 
-**Every step signed and hash-chained** — the independent safety review sits in the tamper-evident trail:
-
-![Audit — a verified, chain-intact timeline: reasoning → safety-review critique → EMERGENCY outcome, each row hash-stamped](media/medpsy-signed-audit-trail.gif)
-
-**Tool-grounded clinical Q&A** — the agent recalls facts, screens interactions, and cites its sources:
+**3 · Tool-grounded clinical Q&A** — the agent recalls facts, screens interactions, and cites its sources:
 
 ![Agent — recall → screen_interactions → search_knowledge → a grounded answer on warfarin + ibuprofen](media/medpsy-agent-tool-grounded.gif)
 
-**The on-device knowledge graph + the learning loop** — verified facts, OKF export, P2P federation:
+**4 · The on-device knowledge graph + the learning loop** — verified facts, OKF export, P2P federation:
 
 ![Knowledge — kb:medical with verified ICD/interaction facts, OKF export, P2P federate, and the propose→vet→promote learn panel](media/medpsy-knowledge-base.gif)
+
+**5 · A clinic network that learns — teach one, all learn** (jury-vetted, PHI-free):
+
+![Mesh — teach one kiosk, the jury (including a signed peer vote) vets it, a pharmacist promotes it, and every kiosk learns it](media/medpsy-mesh-teach-one-all-learn.gif)
+
+**6 · A signal no single kiosk could see** — federated pharmacovigilance crossing a threshold and auto-proposing a candidate:
+
+![Signals — one more flagged encounter crosses the network threshold; scan auto-proposes a candidate into the human-gated loop](media/medpsy-signals-crossing.gif)
+
+**7 · Every step signed and hash-chained** — the independent safety review sits in the tamper-evident trail:
+
+![Audit — a verified, chain-intact timeline: reasoning → safety-review critique → EMERGENCY outcome, each row hash-stamped](media/medpsy-signed-audit-trail.gif)
 
 ## How it works
 
