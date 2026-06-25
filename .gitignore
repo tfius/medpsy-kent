@@ -54,3 +54,7 @@ qvac-app/models/
 qvac-app/data/icd10.index.bin
 qvac-app/data/icd10.index.meta.json
 qvac-app/audit/
+
+# --- Local-only demo media (slides + screen recordings, ~tens of MB) ---
+# Kept out of git history on purpose; large binaries bloat every clone.
+materials/
